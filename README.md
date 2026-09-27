@@ -1,44 +1,48 @@
 # EduPal AI
 
-An AI-powered exam prep tutor for Nigerian students covering WAEC, JAMB, NECO, and other exams.
+AI-powered exam prep tutor for Nigerian students — WAEC & JAMB in v1.0. Personalized practice, instant explanations, weak-topic tracking, parent visibility.
 
-## Overview
+## Run it locally (100% offline-friendly)
 
-EduPal AI helps students prepare smarter with personalized tutoring, practice questions, instant feedback, and exam-focused study plans tailored to the Nigerian curriculum.
+Needs Node.js 24.
 
-## Features
+```powershell
+npm install
+node scripts/seed.mjs
+npm run dev
+```
 
-- **WAEC / JAMB / NECO Prep:** Syllabus-aligned practice questions and explanations
-- **AI Tutor:** Ask questions and get step-by-step solutions in Math, English, Physics, Chemistry, Biology, Economics, and more
-- **Mock Exams & CBT Practice:** Timed JAMB-style CBT simulations with scoring
-- **Progress Tracking:** Identify weak topics and get a personalized study plan
-- **Media Library:**
-  - `docx/` – study notes and documents
-  - `picx/` – images and diagrams
-  - `vidx/` – tutorial videos
+Open `http://localhost:3000` → **Set up your study plan** → practice → dashboard.
 
-## Getting Started
+Local login (dev only): `amina@example.com` / `password123`.
 
-1. Clone the repo:
-   ```bash
-   git clone https://github.com/isaacareo-analytics/edupal-ai.git
-   cd edupal-ai
-   ```
-2. Add your study materials to `docx/`, `picx/`, and `vidx/`.
-3. Follow the app setup instructions (to be added).
+## Project map
 
-## Roadmap
+```
+app/            Next.js pages + API routes (onboarding, diagnostic, practice, topics, auth, media)
+lib/            db (Node built-in SQLite), auth, ai (pluggable), mail (Mailpit-ready), storage (local fs)
+db/schema.sql   Tables — auto-applied on boot, no migrations tool needed
+scripts/seed.mjs  Curated + template question bank (idempotent)
+storage/        Local media library (gitignored)
+docs/           PRD, implementation plan, design preview
+docx/ picx/ vidx/  Study-notes / images / videos libraries
+```
 
-- [ ] Syllabus mapping for WAEC & JAMB
-- [ ] Question bank + auto-marking
-- [ ] CBT timer and scoring engine
-- [ ] Mobile-friendly UI
-- [ ] Offline mode
+## Stack (local-first, $0)
 
-## Contributing
+| Piece | Choice | Prod swap |
+|---|---|---|
+| Framework | Next.js 15 + Tailwind | same |
+| Database | Node built-in SQLite (`dev.db`) | Postgres/Supabase |
+| Auth | NextAuth credentials (local) | + bcrypt/Prisma lookup |
+| Email | Nodemailer → Mailpit `:1025` | ZeptoMail SMTP |
+| Payments | Mock checkout | Paystack |
+| AI | `lib/ai.ts` stub | Ollama local / OpenAI API |
 
-Pull requests are welcome. For major changes, please open an issue first to discuss what you would like to change.
+Decisions with rationale live in `docs/PRD-v1.0.md` §11–13.
 
-## License
+## Status
 
-TBD
+* [x] Phase 0 — local foundation, health check, auth, media API
+* [x] Phase 1 — onboarding, 10Q diagnostic, MCQ/theory practice, mastery dashboard
+* [ ] Phase 2 — smart suggestions + retention quizzes
