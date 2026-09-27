@@ -4,7 +4,13 @@ import path from "node:path";
 
 // Zero-dependency local DB (Node built-in SQLite, no downloads).
 // Prod/Postgres stage: replace this module with a pg client; same table names.
+import { randomUUID } from "node:crypto";
+
 let db: DatabaseSync | null = null;
+
+export function uid(): string {
+  return randomUUID();
+}
 
 export function getDb(): DatabaseSync {
   if (!db) {

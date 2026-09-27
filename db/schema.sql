@@ -33,6 +33,9 @@ CREATE TABLE IF NOT EXISTS questions (
   predicted_repeat INTEGER NOT NULL DEFAULT 0
 );
 CREATE INDEX IF NOT EXISTS idx_questions_exam_subject_topic ON questions(exam, subject, topic);
+-- Self-heal: drop duplicate stems from pre-index seeds, then enforce uniqueness.
+DELETE FROM questions WHERE rowid NOT IN (SELECT MIN(rowid) FROM questions GROUP BY stem);
+CREATE UNIQUE INDEX IF NOT EXISTS idx_questions_stem_unique ON questions(stem);
 
 CREATE TABLE IF NOT EXISTS attempts (
   id TEXT PRIMARY KEY,
