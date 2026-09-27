@@ -124,3 +124,8 @@ In alignment with rapid design sprint practices (testing early rather than polis
 - Day 5: Feedback survey evaluating explanation clarity, app usability, and parent dashboard satisfaction.  
 * Key Validation Gate: Achieve a \>70% daily active retention rate across the 5-day pilot before initiating full marketing efforts.
 
+**11. Architectural Decision Note (2026-09-27, pre-Phase 0)**
+* Email — Decision: ZeptoMail (Zoho) for production transactional email (parent welcome + magic link, Sunday digest, reminders). Why: cheap, good inbox delivery in Nigeria, simple SMTP/API, fits parent-visibility flow in Module E. Local dev stays fully offline: Nodemailer + Mailpit on `localhost:8025` with identical code path; swap SMTP host to `smtp.zeptomail.com` + API key only in staging/prod via env vars. Status: approved, others (SendGrid/Resend) deferred.
+* Payments — Decision: Paystack for production (cards, bank transfer, USSD — best Nigeria coverage). Why: matches seamless no-block checkout in Module E, test mode is free, live fee is per-transaction only. Local dev stays offline with mock checkout; Paystack test keys used in staging/pilot only. Status: approved, Flutterwave deferred as fallback.
+* Constraint reaffirmed: Phase 0–pilot runs 100% locally; ZeptoMail/Paystack keys never required for `npm run dev`.
+
