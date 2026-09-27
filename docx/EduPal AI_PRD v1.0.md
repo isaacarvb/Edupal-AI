@@ -134,3 +134,7 @@ In alignment with rapid design sprint practices (testing early rather than polis
 * Key highlights: muted teal `#0F766E` for primary buttons, focus rings, progress bar; dark warm blue `#2F5D7C` for chips/links — calm, focused, low-stimulation. Semantic Weak `#DC2626` / Needs Work `#F59E0B` / Strong `#16A34A` unchanged.
 * Preview: `design.html` updated to match. Rationale documented per owner request before Phase 0.
 
+**13. Database Decision Change (2026-09-27, Phase 0)**
+* Switch: Prisma + SQLite file → Node built-in SQLite (`node:sqlite`, `db/schema.sql`, `lib/db.ts`). Why in simple terms: Prisma needs to download its engine from the internet on every fresh install, and our network blocks that server (`binaries.prisma.sh` DNS fails on both dev machines). Node's built-in SQLite needs zero downloads — the database works fully offline, which fits the 100%-local rule even better. Same tables, same file (`dev.db`). Seed runs with plain `node scripts/seed.mjs`.
+* Consequence: no `npx prisma` commands anymore. Prisma returns only at the hosted Postgres/Supabase stage (production), where its engine downloads normally.
+
