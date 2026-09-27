@@ -1,0 +1,18 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --ink: #1e242e;
+  --body: #333a45;
+  --accent: #0f766e;
+  --accent2: #2f5d7c;
+}
+
+body {
+  background: #f8fafc;
+  color: var(--body);
+  font-size: 16px;
+  line-height: 1.6;
+}
+h1, h2, h3 { color: var(--ink); }
