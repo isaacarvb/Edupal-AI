@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>EduPal AI — Design System Preview</title>
+<style>
+  :root{
+    --primary:#0F766E; --ink:#1E242E; --body:#333A45; --muted:#5F6E7F; --bg:#F8FAFC;
+    --accent:#0F766E; --accent2:#2F5D7C;
+    --warn:#F59E0B; --danger:#DC2626; --success:#16A34A; --card:#FFFFFF;
+    --radius:12px;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;font-family:Inter,-apple-system,Segoe UI,Roboto,Arial,sans-serif;background:var(--bg);color:var(--body);font-size:16px;line-height:1.6}
+  .wrap{max-width:420px;margin:0 auto;padding:20px 16px 48px}
+  h1{font-size:28px;margin:8px 0 4px;color:var(--ink)}
+  h2{font-size:20px;margin:28px 0 12px;border-top:1px solid #E2E8F0;padding-top:20px;color:var(--ink)}
+  p.sub{color:var(--muted);margin:0 0 16px}
+  .swatches{display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px}
+  .sw{border-radius:var(--radius);padding:12px;color:#fff;font-size:13px;min-height:76px}
+  .sw span{display:block;color:#fff;opacity:.9;font-size:12px}
+  .sw.light{color:var(--ink);border:1px solid #E2E8F0}
+  .sw.light span{color:var(--muted)}
+  .card{background:var(--card);border:1px solid #E2E8F0;border-radius:16px;padding:16px;margin:12px 0}
+  .btn{display:block;width:100%;height:48px;border-radius:10px;border:0;font-size:16px;font-weight:600;cursor:pointer;margin:8px 0}
+  .btn-primary{background:var(--accent);color:#fff}
+  .btn-secondary{background:#fff;color:var(--ink);border:1px solid #CBD5E1}
+  .btn:disabled{opacity:.5;cursor:not-allowed}
+  label{font-size:14px;font-weight:600;color:var(--ink)}
+  input,select{width:100%;height:48px;border-radius:10px;border:1px solid #CBD5E1;padding:0 12px;font-size:16px;margin:6px 0 12px;background:#fff;color:var(--body)}
+  input:focus{outline:2px solid var(--accent);border-color:var(--accent)}
+  .badges{display:flex;gap:8px;flex-wrap:wrap}
+  .badge{font-size:13px;font-weight:700;padding:6px 10px;border-radius:999px;color:#fff}
+  .b-weak{background:var(--danger)} .b-needs{background:var(--warn);color:#422006} .b-strong{background:var(--success)}
+  .bar{height:8px;background:#E2E8F0;border-radius:999px;overflow:hidden;margin-top:8px}
+  .bar i{display:block;height:100%;background:var(--accent)}
+  .row{display:flex;gap:8px;align-items:center;justify-content:space-between}
+  .chip{font-size:13px;background:#CCFBF1;border:1px solid #99F6E4;color:var(--accent2);padding:6px 10px;border-radius:999px}
+  .meter{font-size:14px;color:var(--muted)}
+  .fb{font-size:14px}
+  .fb li{margin:4px 0}
+  .hit{color:var(--success);font-weight:700} .miss{color:var(--danger);font-weight:700}
+  a.highlight{color:var(--accent2)}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <p class="chip">EduPal AI • Design Preview • 360px mobile-first</p>
+  <h1>Study buddy that feels calm</h1>
+  <p class="sub">WAEC / JAMB • Simple English or Pidgin • Standard English menus</p>
+
+  <h2>1. Colors</h2>
+  <div class="swatches">
+    <div class="sw" style="background:#0F766E">Teal highlight<span>#0F766E</span></div>
+    <div class="sw" style="background:#2F5D7C">Warm blue<span>#2F5D7C</span></div>
+    <div class="sw" style="background:#23272E">Charcoal ink<span>#23272E / #1E242E</span></div>
+    <div class="sw" style="background:#333A45">Body slate<span>#333A45</span></div>
+    <div class="sw light" style="background:#F8FAFC">BG<span>#F8FAFC</span></div>
+    <div class="sw" style="background:#DC2626">Weak<span>#DC2626</span></div>
+  </div>
+
+  <h2>2. Typography</h2>
+  <div class="card">
+    <div style="font-size:28px;font-weight:800">Heading 28 — JAMB countdown: 42 days</div>
+    <div style="font-size:24px;font-weight:700;margin-top:8px">Heading 24 — Quadratic equations</div>
+    <div style="font-size:20px;font-weight:700;margin-top:8px">Heading 20 — Your next topic</div>
+    <p>Body 16/1.6 — Amina, you got 6/10. You missed the middle step. See model answer below and try again.</p>
+  </div>
+
+  <h2>3. Buttons</h2>
+  <button class="btn btn-primary">Continue practice</button>
+  <button class="btn btn-secondary">Skip diagnostic</button>
+  <button class="btn btn-primary" disabled>Pay (disabled sample)</button>
+
+  <h2>4. Inputs</h2>
+  <div class="card">
+    <label for="name">Full name</label>
+    <input id="name" placeholder="e.g. Amina Bello" />
+    <label for="lang">Language</label>
+    <select id="lang"><option>Simple English</option><option>Pidgin</option></select>
+    <label for="otp">SMS code</label>
+    <input id="otp" inputmode="numeric" placeholder="e.g. 123456" />
+  </div>
+
+  <h2>5. Topic + progress</h2>
+  <div class="card">
+    <div class="badges"><span class="badge b-weak">Weak 42%</span><span class="badge b-needs">Needs Work 68%</span><span class="badge b-strong">Strong 91%</span></div>
+    <div class="bar"><i style="width:68%"></i></div>
+    <div class="row" style="margin-top:12px"><span class="meter">Credits left: 7/10</span><span class="chip">Streak 🔥 5 • Freeze available</span></div>
+  </div>
+
+  <h2>6. Question + feedback sample</h2>
+  <div class="card">
+    <strong>Mathematics — MCQ (1 credit)</strong>
+    <p>Solve: x² − 5x + 6 = 0</p>
+    <button class="btn btn-secondary">A) 2, 3</button>
+    <button class="btn btn-secondary">B) 1, 6</button>
+    <ul class="fb"><li><span class="hit">Hit:</span> factorised correctly</li><li><span class="miss">Missed:</span> sign check on middle term</li><li>Score: <strong>6/10</strong> — How to improve: write (x−2)(x−3) first.</li></ul>
+  </div>
+</div>
+</body>
+</html>

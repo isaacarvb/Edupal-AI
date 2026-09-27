@@ -129,3 +129,8 @@ In alignment with rapid design sprint practices (testing early rather than polis
 * Payments — Decision: Paystack for production (cards, bank transfer, USSD — best Nigeria coverage). Why: matches seamless no-block checkout in Module E, test mode is free, live fee is per-transaction only. Local dev stays offline with mock checkout; Paystack test keys used in staging/pilot only. Status: approved, Flutterwave deferred as fallback.
 * Constraint reaffirmed: Phase 0–pilot runs 100% locally; ZeptoMail/Paystack keys never required for `npm run dev`.
 
+**12. Design Token Update (2026-09-27)**
+* Body text: deep charcoal `#23272E` for headings/ink, dark slate grey `#333A45` for body — softer than pure black, reduces eye strain during long evening study.
+* Key highlights: muted teal `#0F766E` for primary buttons, focus rings, progress bar; dark warm blue `#2F5D7C` for chips/links — calm, focused, low-stimulation. Semantic Weak `#DC2626` / Needs Work `#F59E0B` / Strong `#16A34A` unchanged.
+* Preview: `design.html` updated to match. Rationale documented per owner request before Phase 0.
+
