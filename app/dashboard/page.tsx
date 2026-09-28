@@ -20,6 +20,9 @@ function DashInner() {
   const [reason, setReason] = useState("");
   const [retention, setRetention] = useState<null | { topic: { subject: string; topic: string } }>(null);
   const [reminder, setReminder] = useState<string | null>(null);
+  const [parentEmail, setParentEmail] = useState("");
+  const [payMsg, setPayMsg] = useState("");
+  const [paid, setPaid] = useState(false);
 
   function chipStyle(days: number | null): React.CSSProperties {
     const base: React.CSSProperties = { fontSize: 13, padding: "6px 10px", borderRadius: 999 };
@@ -60,6 +63,19 @@ function DashInner() {
 
   useEffect(refresh, [userId]);
 
+  async function pay() {
+    setPayMsg("");
+    const res = await fetch("/api/checkout", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ userId, parentEmail: parentEmail || undefined })
+    });
+    const data = await res.json();
+    if (!res.ok) return setPayMsg(data.needsParent ? "Since you're in secondary school, add a parent or guardian's contact so they can support your subscription and stay updated." : data.error);
+    setPaid(true);
+    refresh();
+  }
+
   async function override(topic: Topic, label: string) {
     await fetch("/api/topics/override", {
       method: "POST",
@@ -88,6 +104,18 @@ function DashInner() {
           <p style={{ fontSize: 14, margin: 0 }}>🔔 {reminder}</p>
         </div>
       )}
+      {profile.plan === "FREE" && profile.creditsLeft === 0 && !paid && (
+        <div style={{ background: "#fff", border: "2px solid #0F766E", borderRadius: 16, padding: 12, margin: "8px 0" }}>
+          <strong>Out of credits — go unlimited?</strong>
+          <p style={{ fontSize: 14 }}>One subscription unlocks unlimited practice + parent dashboard.</p>
+          {profile.level === "SECONDARY" && (
+            <input value={parentEmail} onChange={(e) => setParentEmail(e.target.value)} placeholder="Parent/guardian email" style={{ width: "100%", height: 44, borderRadius: 10, border: "1px solid #CBD5E1", padding: "0 10px", fontSize: 14, marginBottom: 8 }} />
+          )}
+          {payMsg && <p style={{ fontSize: 13, color: "#DC2626" }}>{payMsg}</p>}
+          <button onClick={pay} style={{ display: "block", width: "100%", height: 48, borderRadius: 10, border: 0, background: "#0F766E", color: "#fff", fontWeight: 700, fontSize: 16, cursor: "pointer" }}>Pay with Paystack (test)</button>
+        </div>
+      )}
+      {paid && <p style={{ color: "#16A34A", fontWeight: 700 }}>✓ Unlimited unlocked. Parent link sent.</p>}
       <h2 style={{ color: "#1E242E", fontSize: 18 }}>Next up for you</h2>
       {suggest ? (
         <div style={{ background: "#CCFBF1", border: "1px solid #99F6E4", borderRadius: 16, padding: 12, margin: "8px 0" }}>

@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { getDb } from "@/lib/db";
+import { getWallet } from "@/lib/credits";
 
 // Mastery list + profile summary (countdown, streak, credits) for the dashboard.
 export async function GET(req: Request) {
@@ -10,7 +11,7 @@ export async function GET(req: Request) {
   const profile = db
     .prepare(
       `SELECT u.level, p.exam, p.exam_date AS examDate, p.subjects, p.language,
-              w.credits_left AS creditsLeft, w.plan,
+              w.plan,
               s.current AS streak, s.freeze_available AS freezeAvailable
        FROM users u
        LEFT JOIN profiles p ON p.user_id = u.id
@@ -18,12 +19,13 @@ export async function GET(req: Request) {
        LEFT JOIN streaks s ON s.user_id = u.id
        WHERE u.id = ?`
     )
-    .get(userId);
+    .get(userId) as Record<string, unknown> | undefined;
   if (!profile) return NextResponse.json({ error: "unknown user" }, { status: 404 });
+  const wallet = getWallet(db, userId);
   const topics = db
     .prepare(
       "SELECT subject, topic, accuracy, label FROM topic_mastery WHERE user_id = ? ORDER BY accuracy ASC"
     )
     .all(userId);
-  return NextResponse.json({ profile, topics });
+  return NextResponse.json({ profile: { ...profile, creditsLeft: wallet?.creditsLeft ?? 0, plan: wallet?.plan ?? "FREE" }, topics });
 }

@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { getDb, uid } from "@/lib/db";
 import { explainAnswer, gradeTheory, type TheoryGrade } from "@/lib/ai";
+import { getWallet } from "@/lib/credits";
 
 const COST = { MCQ: 1, THEORY: 3 } as const;
 
@@ -25,11 +26,9 @@ export async function POST(req: Request) {
   if (!q) return NextResponse.json({ error: "unknown question" }, { status: 404 });
 
   const cost = COST[q.type];
-  const wallet = db.prepare("SELECT credits_left AS left FROM wallets WHERE user_id = ?").get(userId) as
-    | { left: number }
-    | undefined;
-  if (!wallet || wallet.left < cost) {
-    return NextResponse.json({ error: "credits exhausted", creditsLeft: wallet?.left ?? 0 }, { status: 402 });
+  const wallet = getWallet(db, userId);
+  if (!wallet || (wallet.plan === "FREE" && wallet.creditsLeft < cost)) {
+    return NextResponse.json({ error: "credits exhausted", creditsLeft: wallet?.creditsLeft ?? 0 }, { status: 402 });
   }
 
   const profile = db.prepare("SELECT language FROM profiles WHERE user_id = ?").get(userId) as
@@ -53,10 +52,13 @@ export async function POST(req: Request) {
 
   const now = new Date().toISOString();
   const today = now.slice(0, 10);
-  db.prepare(
-    "INSERT INTO attempts (id, user_id, question_id, response, correct, theory_score, feedback_json, credits_spent, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)"
-  ).run(uid(), userId, questionId, response ?? "", correct, theoryScore, JSON.stringify({ feedback, theory }), cost, now);
-  db.prepare("UPDATE wallets SET credits_left = credits_left - ? WHERE user_id = ?").run(cost, userId);
+  db.prepare("INSERT INTO attempts (id, user_id, question_id, response, correct, theory_score, feedback_json, credits_spent, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)").run(
+    uid(), userId, questionId, response ?? "", correct, theoryScore,
+    JSON.stringify({ feedback, theory }), wallet.plan === "FREE" ? cost : 0, now
+  );
+  if (wallet.plan === "FREE") {
+    db.prepare("UPDATE wallets SET credits_left = credits_left - ? WHERE user_id = ?").run(cost, userId);
+  }
 
   // Recompute mastery: accuracy + consecutive-correct level-up + hysteresis.
   const rows = db
@@ -123,7 +125,7 @@ export async function POST(req: Request) {
     );
   }
 
-  const creditsLeft = (wallet.left - cost);
+  const creditsLeft = wallet.plan === "UNLIMITED" ? wallet.creditsLeft : wallet.creditsLeft - cost;
   return NextResponse.json({
     correct: Boolean(correct),
     correctAnswer: q.answerKey,
