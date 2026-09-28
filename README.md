@@ -45,4 +45,8 @@ Decisions with rationale live in `docs/PRD-v1.0.md` §11–13.
 
 * [x] Phase 0 — local foundation, health check, auth, media API
 * [x] Phase 1 — onboarding, 10Q diagnostic, MCQ/theory practice, mastery dashboard
-* [ ] Phase 2 — smart suggestions + retention quizzes
+* [x] Phase 2 — theory grading (checklist + score), guardrails, likely-repeat badge
+* [x] Phase 3 — smart suggest + override, consecutive-win level-ups, retention refresh
+* [x] Phase 4 — streak freeze, milestone countdown, daily reminders outbox
+* [x] Phase 5 — 24h credit reset, mock Paystack checkout, parent dashboard + digest
+* [ ] Phase 6 — harden + pilot gate (all 9 subjects, metrics board) ← in progress

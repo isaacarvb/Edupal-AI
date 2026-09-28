@@ -1,8 +1,7 @@
 "use client";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-
-const SUBJECTS = ["English", "Mathematics"];
+import { SUBJECTS } from "@/lib/syllabus";
 const input: React.CSSProperties = { width: "100%", height: 48, borderRadius: 10, border: "1px solid #CBD5E1", padding: "0 12px", fontSize: 16, margin: "6px 0 12px" };
 const btn: React.CSSProperties = { display: "block", width: "100%", height: 48, borderRadius: 10, border: 0, fontSize: 16, fontWeight: 600, background: "#0F766E", color: "#fff", cursor: "pointer", marginTop: 8 };
 
@@ -48,12 +47,12 @@ export default function Onboarding() {
       <label>Exam date</label>
       <input style={input} type="date" value={examDate} onChange={(e) => setExamDate(e.target.value)} />
       <label>Subjects</label>
-      <div style={{ display: "flex", gap: 8, margin: "6px 0 12px" }}>
+      <div style={{ display: "flex", gap: 8, margin: "6px 0 12px", flexWrap: "wrap" }}>
         {SUBJECTS.map((s) => (
           <button
             key={s}
             onClick={() => toggle(s)}
-            style={{ flex: 1, height: 44, borderRadius: 10, border: subjects.includes(s) ? "2px solid #0F766E" : "1px solid #CBD5E1", background: subjects.includes(s) ? "#CCFBF1" : "#fff", fontWeight: 600, cursor: "pointer" }}
+            style={{ flex: "1 1 30%", height: 44, borderRadius: 10, border: subjects.includes(s) ? "2px solid #0F766E" : "1px solid #CBD5E1", background: subjects.includes(s) ? "#CCFBF1" : "#fff", fontWeight: 600, cursor: "pointer" }}
           >
             {s}
           </button>
