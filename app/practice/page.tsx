@@ -17,7 +17,7 @@ function PracticeInner() {
   const [answered, setAnswered] = useState(0);
   const [done, setDone] = useState(false);
   const [answer, setAnswer] = useState("");
-  const [result, setResult] = useState<null | { correct: boolean; correctAnswer: string; feedback: string; theory: Theory | null; creditsLeft: number; mastery: { topic: string; accuracy: number; label: string } }>(null);
+  const [result, setResult] = useState<null | { correct: boolean; correctAnswer: string; feedback: string; theory: Theory | null; leveledUp: boolean; creditsLeft: number; mastery: { topic: string; accuracy: number; label: string } }>(null);
   const [err, setErr] = useState("");
 
   const load = useCallback(async () => {
@@ -88,6 +88,7 @@ function PracticeInner() {
           ) : (
             <div style={{ background: "#fff", border: "1px solid #E2E8F0", borderRadius: 16, padding: 16, marginTop: 8 }}>
               <p style={{ fontWeight: 700, color: result.correct ? "#16A34A" : "#DC2626" }}>{result.correct ? "Correct ✓" : `Not quite — answer: ${result.correctAnswer}`}</p>
+              {result.leveledUp && <p style={{ fontWeight: 800, color: "#0F766E" }}>🎉 Level up! {result.mastery.topic} is now {result.mastery.label}.</p>}
               <p style={{ fontSize: 14 }}>{result.feedback}</p>
               {result.theory && (
                 <>

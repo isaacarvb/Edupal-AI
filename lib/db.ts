@@ -19,6 +19,16 @@ export function getDb(): DatabaseSync {
     db.exec("PRAGMA journal_mode = WAL;");
     const schema = fs.readFileSync(path.join(process.cwd(), "db", "schema.sql"), "utf8");
     db.exec(schema);
+    migrate(db);
   }
   return db;
+}
+
+// Idempotent column migrations for existing dev.db files.
+function migrate(db: DatabaseSync): void {
+  const cols = new Set(
+    (db.prepare("PRAGMA table_info(topic_mastery)").all() as { name: string }[]).map((c) => c.name)
+  );
+  if (!cols.has("consecutive_correct")) db.exec("ALTER TABLE topic_mastery ADD COLUMN consecutive_correct INTEGER NOT NULL DEFAULT 0");
+  if (!cols.has("overridden")) db.exec("ALTER TABLE topic_mastery ADD COLUMN overridden INTEGER NOT NULL DEFAULT 0");
 }

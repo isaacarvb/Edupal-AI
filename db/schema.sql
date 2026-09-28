@@ -58,6 +58,8 @@ CREATE TABLE IF NOT EXISTS topic_mastery (
   accuracy REAL NOT NULL DEFAULT 0,
   label TEXT NOT NULL DEFAULT 'WEAK',
   streak_count INTEGER NOT NULL DEFAULT 0,
+  consecutive_correct INTEGER NOT NULL DEFAULT 0,
+  overridden INTEGER NOT NULL DEFAULT 0,
   updated_at TEXT NOT NULL DEFAULT (datetime('now')),
   UNIQUE(user_id, subject, topic)
 );

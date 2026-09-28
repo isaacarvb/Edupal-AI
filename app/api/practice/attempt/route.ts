@@ -58,7 +58,7 @@ export async function POST(req: Request) {
   ).run(uid(), userId, questionId, response ?? "", correct, theoryScore, JSON.stringify({ feedback, theory }), cost, now);
   db.prepare("UPDATE wallets SET credits_left = credits_left - ? WHERE user_id = ?").run(cost, userId);
 
-  // Recompute mastery from all attempts on this topic.
+  // Recompute mastery: accuracy + consecutive-correct level-up + hysteresis.
   const rows = db
     .prepare(
       `SELECT a.correct AS correct FROM attempts a
@@ -67,14 +67,27 @@ export async function POST(req: Request) {
     )
     .all(userId, q.subject, q.topic) as { correct: number }[];
   const acc = rows.length ? (rows.reduce((s, r) => s + r.correct, 0) / rows.length) * 100 : 0;
-  const label = labelFor(acc);
+  const prev = db
+    .prepare("SELECT label, consecutive_correct AS consec, overridden FROM topic_mastery WHERE user_id = ? AND subject = ? AND topic = ?")
+    .get(userId, q.subject, q.topic) as
+    | { label: "WEAK" | "NEEDS_WORK" | "STRONG"; consec: number; overridden: number }
+    | undefined;
+  const consec = correct ? (prev?.consec ?? 0) + 1 : 0;
+  // STRONG needs 80%+ AND 3 in a row; hysteresis keeps STRONG above 65%.
+  let label = labelFor(acc);
+  if (label === "STRONG" && !(acc >= 80 && consec >= 3)) label = acc >= 50 ? "NEEDS_WORK" : "WEAK";
+  if (prev?.label === "STRONG" && acc >= 65 && label === "NEEDS_WORK") label = "STRONG";
+  if (prev?.overridden) label = prev.label; // manual override sticks
+  const rank = { WEAK: 0, NEEDS_WORK: 1, STRONG: 2 } as const;
+  const leveledUp = !!prev && rank[label] > rank[prev.label];
   db.prepare(
-    `INSERT INTO topic_mastery (id, user_id, subject, topic, accuracy, label, streak_count, updated_at)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+    `INSERT INTO topic_mastery (id, user_id, subject, topic, accuracy, label, streak_count, consecutive_correct, overridden, updated_at)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
      ON CONFLICT(user_id, subject, topic)
      DO UPDATE SET accuracy = excluded.accuracy, label = excluded.label,
-       streak_count = topic_mastery.streak_count + ?, updated_at = excluded.updated_at`
-  ).run(uid(), userId, q.subject, q.topic, acc, label, correct, now, correct);
+       streak_count = topic_mastery.streak_count + ?, consecutive_correct = excluded.consecutive_correct,
+       updated_at = excluded.updated_at`
+  ).run(uid(), userId, q.subject, q.topic, acc, label, correct, consec, prev?.overridden ?? 0, now, correct);
 
   // Streak: +1 per active day.
   const st = db.prepare("SELECT current, longest, last_study_date AS last FROM streaks WHERE user_id = ?").get(userId) as
@@ -97,6 +110,7 @@ export async function POST(req: Request) {
     feedback,
     theory,
     creditsLeft,
+    leveledUp,
     mastery: { subject: q.subject, topic: q.topic, accuracy: Math.round(acc), label }
   });
 }
