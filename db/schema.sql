@@ -86,3 +86,14 @@ CREATE TABLE IF NOT EXISTS parent_links (
   magic_token TEXT NOT NULL UNIQUE,
   verified_at TEXT
 );
+
+-- Local email outbox (stand-in for Mailpit UI; ZeptoMail sends these in prod).
+CREATE TABLE IF NOT EXISTS email_outbox (
+  id TEXT PRIMARY KEY,
+  user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  kind TEXT NOT NULL,
+  subject TEXT NOT NULL,
+  body TEXT NOT NULL,
+  created_at TEXT NOT NULL DEFAULT (datetime('now'))
+);
+CREATE INDEX IF NOT EXISTS idx_outbox_user_day ON email_outbox(user_id, kind, created_at);

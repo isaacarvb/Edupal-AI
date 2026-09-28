@@ -89,16 +89,36 @@ export async function POST(req: Request) {
        updated_at = excluded.updated_at`
   ).run(uid(), userId, q.subject, q.topic, acc, label, correct, consec, prev?.overridden ?? 0, now, correct);
 
-  // Streak: +1 per active day.
-  const st = db.prepare("SELECT current, longest, last_study_date AS last FROM streaks WHERE user_id = ?").get(userId) as
-    | { current: number; longest: number; last: string | null }
+  // Streak: +1 per active day; a missed day consumes the monthly freeze instead of resetting.
+  const st = db.prepare("SELECT current, longest, last_study_date AS last, freeze_available AS freeze FROM streaks WHERE user_id = ?").get(userId) as
+    | { current: number; longest: number; last: string | null; freeze: number }
     | undefined;
+  let freezeUsed = false;
   if (st && st.last?.slice(0, 10) !== today) {
-    const current = st.current + 1;
-    db.prepare("UPDATE streaks SET current = ?, longest = MAX(longest, ?), last_study_date = ? WHERE user_id = ?").run(
+    const lastDay = st.last ? st.last.slice(0, 10) : null;
+    const month = today.slice(0, 7);
+    let freeze = st.freeze;
+    if (freeze === 0 && lastDay?.slice(0, 7) !== month) freeze = 1; // monthly restore
+    let current: number;
+    if (!lastDay) {
+      current = 1;
+    } else {
+      const gap = Math.round((Date.parse(today) - Date.parse(lastDay)) / 86400000);
+      if (gap <= 1) {
+        current = st.current + 1;
+      } else if (freeze === 1) {
+        freeze = 0;
+        freezeUsed = true;
+        current = st.current + 1; // freeze bridges the gap
+      } else {
+        current = 1; // streak lost
+      }
+    }
+    db.prepare("UPDATE streaks SET current = ?, longest = MAX(longest, ?), last_study_date = ?, freeze_available = ? WHERE user_id = ?").run(
       current,
       current,
       now,
+      freeze,
       userId
     );
   }
@@ -111,6 +131,7 @@ export async function POST(req: Request) {
     theory,
     creditsLeft,
     leveledUp,
+    freezeUsed,
     mastery: { subject: q.subject, topic: q.topic, accuracy: Math.round(acc), label }
   });
 }
