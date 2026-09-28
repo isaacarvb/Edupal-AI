@@ -2,7 +2,8 @@
 import { Suspense, useCallback, useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 
-type Q = { id: string; subject: string; topic: string; type: string; stem: string; optionsJson: string };
+type Q = { id: string; subject: string; topic: string; type: string; stem: string; optionsJson: string; predictedRepeat: number };
+type Theory = { score: number; maxScore: number; hits: string[]; misses: string[]; tips: string[]; modelAnswer: string };
 
 const btnPrimary: React.CSSProperties = { display: "block", width: "100%", height: 48, borderRadius: 10, border: 0, fontSize: 16, fontWeight: 600, background: "#0F766E", color: "#fff", cursor: "pointer", margin: "8px 0" };
 const btnOpt: React.CSSProperties = { display: "block", width: "100%", minHeight: 48, borderRadius: 10, border: "1px solid #CBD5E1", fontSize: 16, background: "#fff", cursor: "pointer", margin: "8px 0", padding: 10, textAlign: "left" };
@@ -16,7 +17,7 @@ function PracticeInner() {
   const [answered, setAnswered] = useState(0);
   const [done, setDone] = useState(false);
   const [answer, setAnswer] = useState("");
-  const [result, setResult] = useState<null | { correct: boolean; correctAnswer: string; feedback: string; creditsLeft: number; mastery: { topic: string; accuracy: number; label: string } }>(null);
+  const [result, setResult] = useState<null | { correct: boolean; correctAnswer: string; feedback: string; theory: Theory | null; creditsLeft: number; mastery: { topic: string; accuracy: number; label: string } }>(null);
   const [err, setErr] = useState("");
 
   const load = useCallback(async () => {
@@ -70,6 +71,7 @@ function PracticeInner() {
       ) : (
         <>
           <h2 style={{ color: "#1E242E", fontSize: 20 }}>{q.topic}</h2>
+          {q.predictedRepeat === 1 && <span style={{ fontSize: 12, fontWeight: 700, background: "#FEF3C7", border: "1px solid #FDE68A", color: "#92400E", padding: "4px 10px", borderRadius: 999 }}>Likely to repeat</span>}
           <p>{q.stem}</p>
           {q.type === "MCQ" ? (
             JSON.parse(q.optionsJson).map((opt: string) => (
@@ -87,6 +89,19 @@ function PracticeInner() {
             <div style={{ background: "#fff", border: "1px solid #E2E8F0", borderRadius: 16, padding: 16, marginTop: 8 }}>
               <p style={{ fontWeight: 700, color: result.correct ? "#16A34A" : "#DC2626" }}>{result.correct ? "Correct ✓" : `Not quite — answer: ${result.correctAnswer}`}</p>
               <p style={{ fontSize: 14 }}>{result.feedback}</p>
+              {result.theory && (
+                <>
+                  <p style={{ fontSize: 14, fontWeight: 700 }}>Score: {result.theory.score}/{result.theory.maxScore}</p>
+                  <ul style={{ fontSize: 14, paddingLeft: 18 }}>
+                    {result.theory.hits.map((h) => <li key={`h-${h}`}>✅ {h}</li>)}
+                    {result.theory.misses.map((m) => <li key={`m-${m}`}>❌ {m}</li>)}
+                  </ul>
+                  <p style={{ fontSize: 14 }}><strong>Model answer:</strong> {result.theory.modelAnswer}</p>
+                  <ul style={{ fontSize: 14, paddingLeft: 18 }}>
+                    {result.theory.tips.map((t) => <li key={`t-${t}`}>💡 {t}</li>)}
+                  </ul>
+                </>
+              )}
               <p style={{ fontSize: 13, color: "#5F6E7F" }}>{result.mastery.topic}: {result.mastery.accuracy}% • {result.mastery.label} • Credits left: {result.creditsLeft}</p>
               <button style={btnPrimary} onClick={load}>Next question</button>
             </div>

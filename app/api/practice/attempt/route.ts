@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { getDb, uid } from "@/lib/db";
-import { explainAnswer } from "@/lib/ai";
+import { explainAnswer, gradeTheory, type TheoryGrade } from "@/lib/ai";
 
 const COST = { MCQ: 1, THEORY: 3 } as const;
 
@@ -18,9 +18,9 @@ export async function POST(req: Request) {
   }
   const db = getDb();
   const q = db
-    .prepare("SELECT id, subject, topic, type, stem, answer_key AS answerKey FROM questions WHERE id = ?")
+    .prepare("SELECT id, subject, topic, type, stem, answer_key AS answerKey, marking_rubric AS markingRubric FROM questions WHERE id = ?")
     .get(questionId) as
-    | { id: string; subject: string; topic: string; type: "MCQ" | "THEORY"; stem: string; answerKey: string }
+    | { id: string; subject: string; topic: string; type: "MCQ" | "THEORY"; stem: string; answerKey: string; markingRubric: string }
     | undefined;
   if (!q) return NextResponse.json({ error: "unknown question" }, { status: 404 });
 
@@ -38,23 +38,24 @@ export async function POST(req: Request) {
   const language = profile?.language ?? "SIMPLE";
 
   let correct = 0;
+  let theoryScore: number | null = null;
+  let theory: TheoryGrade | null = null;
   let feedback: string;
   if (q.type === "MCQ") {
     correct = (response ?? "").trim().toLowerCase() === q.answerKey.trim().toLowerCase() ? 1 : 0;
     feedback = await explainAnswer({ subject: q.subject, question: q.stem, answer: response ?? "", language });
   } else {
-    // Rough v1: store for review, no auto-score yet (PRD Module B).
-    feedback =
-      language === "PIDGIN"
-        ? "We don save your essay. AI marking (rough v1) dey come — compare with model answer for now."
-        : "Saved. Rough v1 AI marking coming — compare your answer with the model answer for now.";
+    theory = gradeTheory(response ?? "", q.answerKey, q.markingRubric, language);
+    theoryScore = theory.score;
+    correct = theory.score >= 6 ? 1 : 0;
+    feedback = `${theory.score}/${theory.maxScore} — ${theory.hits.length} point(s) hit, ${theory.misses.length} missed.`;
   }
 
   const now = new Date().toISOString();
   const today = now.slice(0, 10);
   db.prepare(
-    "INSERT INTO attempts (id, user_id, question_id, response, correct, feedback_json, credits_spent, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)"
-  ).run(uid(), userId, questionId, response ?? "", correct, JSON.stringify({ feedback }), cost, now);
+    "INSERT INTO attempts (id, user_id, question_id, response, correct, theory_score, feedback_json, credits_spent, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)"
+  ).run(uid(), userId, questionId, response ?? "", correct, theoryScore, JSON.stringify({ feedback, theory }), cost, now);
   db.prepare("UPDATE wallets SET credits_left = credits_left - ? WHERE user_id = ?").run(cost, userId);
 
   // Recompute mastery from all attempts on this topic.
@@ -94,6 +95,7 @@ export async function POST(req: Request) {
     correct: Boolean(correct),
     correctAnswer: q.answerKey,
     feedback,
+    theory,
     creditsLeft,
     mastery: { subject: q.subject, topic: q.topic, accuracy: Math.round(acc), label }
   });

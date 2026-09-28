@@ -22,7 +22,8 @@ export async function GET(req: Request) {
   if (done.n >= DIAGNOSTIC_CAP) return NextResponse.json({ done: true, answered: done.n });
   const q = db
     .prepare(
-      `SELECT id, exam, subject, topic, type, stem, options_json AS optionsJson
+      `SELECT id, exam, subject, topic, type, stem, options_json AS optionsJson,
+              predicted_repeat AS predictedRepeat
        FROM questions
        WHERE subject = ? AND id NOT IN (SELECT question_id FROM attempts WHERE user_id = ?)
        ORDER BY CASE WHEN source = 'CURATED' THEN 0 ELSE 1 END, id
