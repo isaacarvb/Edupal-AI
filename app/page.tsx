@@ -78,7 +78,7 @@ export default function Landing() {
 
       {/* FOOTER */}
       <footer style={{ textAlign: "center", padding: "16px 20px 40px", fontSize: 13, color: "#5F6E7F" }}>
-        EduPal AI • Built for Nigerian students • WAEC / JAMB / NECO
+        Know what you're learning, where you're weak, and when your exam is.
       </footer>
     </main>
   );

@@ -12,6 +12,8 @@ export default function Onboarding() {
   const [examDate, setExamDate] = useState("");
   const [subjects, setSubjects] = useState<string[]>(["English"]);
   const [language, setLanguage] = useState("SIMPLE");
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
   const [err, setErr] = useState("");
 
   function toggle(s: string) {
@@ -23,7 +25,7 @@ export default function Onboarding() {
     const res = await fetch("/api/onboarding", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ level, exam, examDate: examDate || null, subjects, language })
+      body: JSON.stringify({ level, exam, examDate: examDate || null, subjects, language, email: email.trim() || undefined, password: password || undefined })
     });
     const data = await res.json();
     if (!res.ok) return setErr(data.error || "Something went wrong");
@@ -63,6 +65,10 @@ export default function Onboarding() {
         <option value="SIMPLE">Simple English</option>
         <option value="PIDGIN">Pidgin</option>
       </select>
+      <label>Email (optional — lets you sign back in later)</label>
+      <input style={input} type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="you@example.com" />
+      <label>Password {email.trim() ? "(required with email)" : "(optional)"}</label>
+      <input style={input} type="password" value={password} onChange={(e) => setPassword(e.target.value)} placeholder="At least 6 characters" />
       {err && <p style={{ color: "#DC2626" }}>{err}</p>}
       <button style={btn} onClick={submit} disabled={!subjects.length}>Start diagnostic</button>
     </main>
