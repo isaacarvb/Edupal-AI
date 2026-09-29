@@ -26,6 +26,11 @@ export async function POST(req: Request) {
   if (!q) return NextResponse.json({ error: "unknown question" }, { status: 404 });
 
   const cost = COST[q.type];
+  // Idempotency: ignore accidental double-submits (double-clicks) within 60s.
+  const dupe = db
+    .prepare("SELECT id FROM attempts WHERE user_id = ? AND question_id = ? AND created_at >= datetime('now', '-60 seconds') LIMIT 1")
+    .get(userId, questionId);
+  if (dupe) return NextResponse.json({ error: "already answered", duplicate: true }, { status: 409 });
   const wallet = getWallet(db, userId);
   if (!wallet || (wallet.plan === "FREE" && wallet.creditsLeft < cost)) {
     return NextResponse.json({ error: "credits exhausted", creditsLeft: wallet?.creditsLeft ?? 0 }, { status: 402 });

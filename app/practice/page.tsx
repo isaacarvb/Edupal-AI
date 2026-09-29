@@ -18,6 +18,7 @@ function PracticeInner() {
   const [done, setDone] = useState(false);
   const [answer, setAnswer] = useState("");
   const [result, setResult] = useState<null | { correct: boolean; correctAnswer: string; feedback: string; theory: Theory | null; leveledUp: boolean; freezeUsed: boolean; creditsLeft: number; mastery: { topic: string; accuracy: number; label: string } }>(null);
+  const [busy, setBusy] = useState(false);
   const [err, setErr] = useState("");
 
   const load = useCallback(async () => {
@@ -37,20 +38,26 @@ function PracticeInner() {
   }, [userId, load]);
 
   async function submit() {
-    if (!q || !answer.trim()) return;
+    if (!q || !answer.trim() || busy) return;
+    setBusy(true);
     setErr("");
-    const res = await fetch("/api/practice/attempt", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ userId, questionId: q.id, response: answer })
-    });
-    const data = await res.json();
-    if (res.status === 402) {
-      router.push(`/dashboard?userId=${userId}`);
-      return;
+    try {
+      const res = await fetch("/api/practice/attempt", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ userId, questionId: q.id, response: answer })
+      });
+      const data = await res.json();
+      if (data.duplicate) return load(); // double-click: just move on
+      if (res.status === 402) {
+        router.push(`/dashboard?userId=${userId}`);
+        return;
+      }
+      if (!res.ok) return setErr(data.error || "Failed");
+      setResult(data);
+    } finally {
+      setBusy(false);
     }
-    if (!res.ok) return setErr(data.error || "Failed");
-    setResult(data);
   }
 
   if (!userId) return <main style={{ padding: 20 }}>Missing user. Start from <a href="/onboarding">onboarding</a>.</main>;
@@ -84,7 +91,7 @@ function PracticeInner() {
           )}
           {err && <p style={{ color: "#DC2626" }}>{err}</p>}
           {!result ? (
-            <button style={btnPrimary} onClick={submit}>Submit ({q.type === "MCQ" ? "1 credit" : "3 credits"})</button>
+            <button style={btnPrimary} onClick={submit} disabled={busy}>{busy ? "Marking…" : `Submit (${q.type === "MCQ" ? "1 credit" : "3 credits"})`}</button>
           ) : (
             <div style={{ background: "#fff", border: "1px solid #E2E8F0", borderRadius: 16, padding: 16, marginTop: 8 }}>
               <p style={{ fontWeight: 700, color: result.correct ? "#16A34A" : "#DC2626" }}>{result.correct ? "Correct ✓" : `Not quite — answer: ${result.correctAnswer}`}</p>
