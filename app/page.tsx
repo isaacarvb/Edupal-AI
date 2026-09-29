@@ -1,89 +1,84 @@
 const btn: React.CSSProperties = {
-  display: "inline-block", background: "#0F766E", color: "#fff", fontWeight: 800,
-  fontSize: 17, padding: "14px 34px", borderRadius: 12, textDecoration: "none", marginTop: 16
+  display: "block", textAlign: "center", background: "#0F766E", color: "#fff",
+  borderRadius: 12, minHeight: 52, lineHeight: "52px", fontWeight: 800,
+  fontSize: 17, textDecoration: "none", margin: "16px 0", letterSpacing: 1
 };
 
-const card: React.CSSProperties = {
-  background: "#fff", border: "1px solid #E2E8F0", borderRadius: 16, padding: 16, flex: "1 1 200px"
-};
+function Feature({ emoji, title, text }: { emoji: string; title: string; text: string }) {
+  return (
+    <div style={{ background: "#fff", border: "1px solid #E2E8F0", borderRadius: 16, padding: 14, margin: "8px 0" }}>
+      <div style={{ fontSize: 26 }}>{emoji}</div>
+      <strong style={{ color: "#1E242E" }}>{title}</strong>
+      <p style={{ fontSize: 14, margin: "4px 0 0" }}>{text}</p>
+    </div>
+  );
+}
 
 export default function Landing() {
   return (
-    <main style={{ margin: 0, fontFamily: "Inter,-apple-system,Segoe UI,Roboto,Arial,sans-serif", color: "#333A45", lineHeight: 1.6 }}>
-      {/* HERO — chalkboard-teal gradient with book pattern */}
+    <main style={{ margin: 0, color: "#333A45", fontFamily: "Inter,-apple-system,Segoe UI,Roboto,Arial,sans-serif" }}>
+      {/* HERO */}
       <section
         style={{
-          background: "linear-gradient(135deg,#0F766E 0%,#2F5D7C 60%,#1E242E 100%)",
-          color: "#fff", padding: "56px 20px 64px", textAlign: "center", position: "relative", overflow: "hidden"
+          background: "linear-gradient(160deg, #1E242E 0%, #2F5D7C 60%, #0F766E 100%)",
+          color: "#fff", padding: "56px 20px 48px", textAlign: "center"
         }}
       >
-        <div style={{ fontSize: 13, letterSpacing: 2, opacity: 0.85 }}>WAEC • JAMB • NECO • POST-UTME</div>
-        <h1 style={{ fontSize: 36, margin: "12px 0 4px", color: "#fff", lineHeight: 1.2 }}>
-          EduPal AI
-        </h1>
-        <p style={{ fontSize: 19, margin: "0 auto", maxWidth: 560, opacity: 0.95 }}>
-          Your AI study buddy for Nigerian exams. Practice real-style questions, get instant
-          step-by-step explanations, and fix your weak topics before exam day.
-        </p>
-        <a href="/onboarding" style={btn}>START YOUR JOURNEY</a>
-        <p style={{ fontSize: 13, opacity: 0.8, marginTop: 12 }}>Free daily practice • Simple English or Pidgin • 15 mins a day</p>
-      </section>
-
-      {/* TRUST STRIP */}
-      <section style={{ display: "flex", gap: 8, flexWrap: "wrap", justifyContent: "center", padding: "20px 16px", background: "#F8FAFC" }}>
-        {["9 subjects day one", "Instant AI feedback", "Weak-topic tracking", "Parent progress view"].map((t) => (
-          <span key={t} style={{ fontSize: 13, fontWeight: 700, background: "#CCFBF1", border: "1px solid #99F6E4", color: "#2F5D7C", padding: "6px 12px", borderRadius: 999 }}>{t}</span>
-        ))}
-      </section>
-
-      {/* FEATURES */}
-      <section style={{ maxWidth: 960, margin: "0 auto", padding: "32px 16px" }}>
-        <h2 style={{ color: "#1E242E", fontSize: 24, textAlign: "center" }}>Everything you need to pass</h2>
-        <div style={{ display: "flex", gap: 12, flexWrap: "wrap", marginTop: 16 }}>
-          <div style={card}>
-            <div style={{ fontSize: 28 }}>📝</div>
-            <h3 style={{ color: "#1E242E", margin: "8px 0 4px" }}>Exam-style practice</h3>
-            <p style={{ fontSize: 14, margin: 0 }}>Objective + theory questions across English, Mathematics, Sciences, Commercial and Arts — with likely-to-repeat flags.</p>
-          </div>
-          <div style={card}>
-            <div style={{ fontSize: 28 }}>🤖</div>
-            <h3 style={{ color: "#1E242E", margin: "8px 0 4px" }}>AI tutor that explains</h3>
-            <p style={{ fontSize: 14, margin: 0 }}>Every answer gets a step-by-step breakdown, and essays get a checklist score against the marking scheme.</p>
-          </div>
-          <div style={card}>
-            <div style={{ fontSize: 28 }}>📊</div>
-            <h3 style={{ color: "#1E242E", margin: "8px 0 4px" }}>Know your weak topics</h3>
-            <p style={{ fontSize: 14, margin: 0 }}>Weak / Needs Work / Strong badges with percentages, smart next-topic picks, and retention refreshes.</p>
-          </div>
-          <div style={card}>
-            <div style={{ fontSize: 28 }}>👨‍👩‍👧</div>
-            <h3 style={{ color: "#1E242E", margin: "8px 0 4px" }}>Parents stay in the loop</h3>
-            <p style={{ fontSize: 14, margin: 0 }}>Weekly progress summaries and a view-only dashboard — no hovering required.</p>
-          </div>
+        <div style={{ maxWidth: 560, margin: "0 auto" }}>
+          <p style={{ fontSize: 13, letterSpacing: 2, opacity: 0.85, margin: 0 }}>WAEC • JAMB • NECO</p>
+          <div style={{ fontSize: 52, margin: "8px 0" }}>🎓</div>
+          <h1 style={{ fontSize: 34, margin: "0 0 8px", color: "#fff", lineHeight: 1.2 }}>
+            EduPal AI — your personal exam coach
+          </h1>
+          <p style={{ fontSize: 16, opacity: 0.92, lineHeight: 1.6 }}>
+            Practice real-style questions, get instant step-by-step explanations,
+            and fix your weak topics before exam day. In Simple English or Pidgin.
+          </p>
+          <a href="/onboarding" style={btn}>START YOUR JOURNEY</a>
+          <p style={{ fontSize: 13, opacity: 0.8 }}>Free daily practice • No card needed to start</p>
         </div>
       </section>
 
-      {/* HOW IT WORKS */}
-      <section style={{ background: "#1E242E", color: "#E2E8F0", padding: "36px 16px", textAlign: "center" }}>
-        <h2 style={{ color: "#fff", fontSize: 24 }}>How it works</h2>
-        <div style={{ display: "flex", gap: 12, flexWrap: "wrap", maxWidth: 960, margin: "16px auto 0", textAlign: "left" }}>
+      {/* STATS STRIP */}
+      <section style={{ maxWidth: 560, margin: "0 auto", padding: "20px 16px 0" }}>
+        <div style={{ display: "flex", gap: 8, textAlign: "center" }}>
           {[
-            ["1. Set your target", "Pick your level, exam, date and subjects — plus Simple English or Pidgin."],
-            ["2. Take the diagnostic", "A short 10-question check maps your Weak and Strong topics instantly."],
-            ["3. Practice daily", "Free credits every day. Streaks, freezes and reminders keep you going."],
-            ["4. Watch yourself level up", "Topics climb from Weak to Strong while parents see the progress."]
-          ].map(([h, p]) => (
-            <div key={h} style={{ flex: "1 1 200px", background: "#2A3340", borderRadius: 16, padding: 16 }}>
-              <h3 style={{ color: "#5EEAD4", margin: "0 0 4px", fontSize: 16 }}>{h}</h3>
-              <p style={{ fontSize: 14, margin: 0 }}>{p}</p>
+            ["9", "subjects"],
+            ["30+", "practice questions"],
+            ["2", "languages"]
+          ].map(([n, label]) => (
+            <div key={label} style={{ flex: 1, background: "#fff", border: "1px solid #E2E8F0", borderRadius: 12, padding: 10 }}>
+              <div style={{ fontSize: 22, fontWeight: 800, color: "#0F766E" }}>{n}</div>
+              <div style={{ fontSize: 12, color: "#5F6E7F" }}>{label}</div>
             </div>
           ))}
         </div>
-        <a href="/onboarding" style={{ ...btn, marginTop: 24 }}>START YOUR JOURNEY</a>
       </section>
 
-      <footer style={{ textAlign: "center", padding: 20, fontSize: 13, color: "#5F6E7F" }}>
-        EduPal AI • Built for Nigerian students • <a href="/api/health" style={{ color: "#0F766E" }}>Status</a>
+      {/* FEATURES */}
+      <section style={{ maxWidth: 560, margin: "0 auto", padding: "12px 16px" }}>
+        <h2 style={{ color: "#1E242E", fontSize: 22 }}>Why students love EduPal</h2>
+        <Feature emoji="🤖" title="AI tutor that explains" text="Every answer comes with a step-by-step breakdown — and essays get a checklist, score, and model answer." />
+        <Feature emoji="🎯" title="Finds your weak topics" text="Weak, Needs Work, Strong — the app points at exactly what to study next, and celebrates level-ups." />
+        <Feature emoji="⏳" title="Exam countdown + streaks" text="Daily reminders, study streaks with a monthly freeze, and a countdown that pushes you at 30 and 7 days." />
+        <Feature emoji="👪" title="Parents stay in the loop" text="Weekly progress updates and a view-only dashboard, with zero friction at payment." />
+      </section>
+
+      {/* HOW IT WORKS */}
+      <section style={{ maxWidth: 560, margin: "0 auto", padding: "0 16px" }}>
+        <h2 style={{ color: "#1E242E", fontSize: 22 }}>How it works</h2>
+        {["Set your level, exam and date", "Take a 10-question diagnostic", "Practice daily, fix weak topics", "Go unlimited when ready"].map((s, i) => (
+          <div key={s} style={{ display: "flex", gap: 10, alignItems: "center", margin: "8px 0" }}>
+            <span style={{ width: 28, height: 28, borderRadius: 999, background: "#0F766E", color: "#fff", textAlign: "center", lineHeight: "28px", fontWeight: 800, flexShrink: 0 }}>{i + 1}</span>
+            <span style={{ fontSize: 15 }}>{s}</span>
+          </div>
+        ))}
+        <a href="/onboarding" style={btn}>START YOUR JOURNEY</a>
+      </section>
+
+      {/* FOOTER */}
+      <footer style={{ textAlign: "center", padding: "16px 20px 40px", fontSize: 13, color: "#5F6E7F" }}>
+        EduPal AI • Built for Nigerian students • WAEC / JAMB / NECO
       </footer>
     </main>
   );
