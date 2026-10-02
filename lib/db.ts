@@ -26,6 +26,10 @@ export function getDb(): DatabaseSync {
 
 // Idempotent column migrations for existing dev.db files.
 function migrate(db: DatabaseSync): void {
+  const userCols = new Set(
+    (db.prepare("PRAGMA table_info(users)").all() as { name: string }[]).map((c) => c.name)
+  );
+  if (!userCols.has("name")) db.exec("ALTER TABLE users ADD COLUMN name TEXT");
   const cols = new Set(
     (db.prepare("PRAGMA table_info(topic_mastery)").all() as { name: string }[]).map((c) => c.name)
   );

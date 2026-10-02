@@ -3,13 +3,15 @@ import { Suspense, useEffect, useState } from "react";
 import { useSearchParams } from "next/navigation";
 
 type Topic = { subject: string; topic: string; accuracy: number; label: string };
-type Profile = { level: string; exam: string; examDate: string | null; subjects: string; language: string; creditsLeft: number; plan: string; streak: number; freezeAvailable: number };
+type Profile = { name: string | null; level: string; exam: string; examDate: string | null; subjects: string; language: string; creditsLeft: number; plan: string; streak: number; freezeAvailable: number };
 
 const badge: Record<string, React.CSSProperties> = {
   WEAK: { background: "#DC2626", color: "#fff" },
   NEEDS_WORK: { background: "#F59E0B", color: "#422006" },
   STRONG: { background: "#16A34A", color: "#fff" }
 };
+
+const card: React.CSSProperties = { background: "#fff", border: "1px solid #E2E8F0", borderRadius: 16, padding: 16, margin: "0 0 12px" };
 
 function DashInner() {
   const params = useSearchParams();
@@ -81,29 +83,15 @@ function DashInner() {
     refresh();
   }
 
-  async function override(topic: Topic, label: string) {
-    await fetch("/api/topics/override", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ userId, subject: topic.subject, topic: topic.topic, label })
-    });
-    refresh();
-  }
-
-  if (!userId) return <main style={{ padding: 20 }}>Missing user. Start from <a href="/onboarding">onboarding</a>.</main>;
+  if (!userId) return <main style={{ padding: 20 }}>Missing user. Start from <a href="/signup">signup</a>.</main>;
   if (!profile) return <main style={{ padding: 20 }}>Loading…</main>;
 
   const days = profile.examDate ? Math.max(0, Math.ceil((new Date(profile.examDate).getTime() - Date.now()) / 86400000)) : null;
+  const openSubjects = limits.filter((l) => l.left > 0);
 
   return (
-    <main style={{ maxWidth: 420, margin: "0 auto", padding: 20, color: "#333A45" }}>
+    <main style={{ maxWidth: 1100, margin: "0 auto", padding: 20, color: "#333A45" }}>
       <h1 style={{ color: "#1E242E", fontSize: 24 }}>My dashboard</h1>
-      <div style={{ display: "flex", gap: 8, flexWrap: "wrap", margin: "8px 0" }}>
-        {days !== null && <span style={chipStyle(days)}>{countdownText(profile.exam, days)}</span>}
-        <span style={{ fontSize: 13, background: "#CCFBF1", border: "1px solid #99F6E4", color: "#2F5D7C", padding: "6px 10px", borderRadius: 999 }}>Streak {profile.streak}</span>
-        <span style={{ fontSize: 13, background: "#F1F5F9", border: "1px solid #E2E8F0", color: "#333A45", padding: "6px 10px", borderRadius: 999 }}>Credits {profile.creditsLeft}</span>
-        <span style={{ fontSize: 13, background: "#F1F5F9", border: "1px solid #E2E8F0", color: "#333A45", padding: "6px 10px", borderRadius: 999 }}>{profile.freezeAvailable ? "🧊 Freeze ready" : "🧊 Freeze used"}</span>
-      </div>
       {reminder && (
         <div style={{ background: "#FFFBEB", border: "1px solid #FDE68A", borderRadius: 16, padding: 12, margin: "8px 0" }}>
           <p style={{ fontSize: 14, margin: 0 }}>🔔 {reminder}</p>
@@ -114,72 +102,100 @@ function DashInner() {
           <strong>You've reached your free daily limit for {limited}.</strong>
           <p style={{ fontSize: 14, margin: "4px 0 8px" }}>You can continue practicing other subjects for free, or upgrade to Unlimited for full, uninterrupted access across all subjects!</p>
           <div style={{ display: "flex", gap: 8 }}>
-            <a href={`/practice?userId=${userId}&subject=${encodeURIComponent((limits.find((l) => l.left > 0) ?? { subject: "English" }).subject)}`} style={{ flex: 1, textAlign: "center", background: "#fff", color: "#1E242E", border: "2px solid #0F766E", borderRadius: 10, height: 44, lineHeight: "40px", fontWeight: 700, fontSize: 14, textDecoration: "none" }}>Practice Another Subject</a>
+            <a href={`/practice?userId=${userId}&subject=${encodeURIComponent((openSubjects[0] ?? { subject: "English" }).subject)}`} style={{ flex: 1, textAlign: "center", background: "#fff", color: "#1E242E", border: "2px solid #0F766E", borderRadius: 10, height: 44, lineHeight: "40px", fontWeight: 700, fontSize: 14, textDecoration: "none" }}>Practice Another Subject</a>
             <a href="#upgrade" style={{ flex: 1, textAlign: "center", background: "#0F766E", color: "#fff", borderRadius: 10, height: 44, lineHeight: "44px", fontWeight: 700, fontSize: 14, textDecoration: "none" }}>Upgrade to Unlimited</a>
           </div>
         </div>
       )}
-      {limits.length > 0 && (
-        <div style={{ display: "flex", gap: 6, flexWrap: "wrap", margin: "8px 0" }}>
-          {limits.map((l) => (
-            <span key={l.subject} style={{ fontSize: 12, background: "#F1F5F9", border: "1px solid #E2E8F0", color: "#333A45", padding: "4px 10px", borderRadius: 999 }}>
-              {l.subject}: {profile.plan === "UNLIMITED" ? "∞" : `${l.left} left`}
-            </span>
-          ))}
-        </div>
-      )}
-      {profile.plan === "FREE" && exhaustedAll && !paid && (
-        <div id="upgrade" style={{ background: "#fff", border: "2px solid #0F766E", borderRadius: 16, padding: 12, margin: "8px 0" }}>
-          <strong>Out of credits — go unlimited?</strong>
-          <p style={{ fontSize: 14 }}>One subscription unlocks unlimited practice + parent dashboard.</p>
-          {profile.level === "SECONDARY" && (
-            <input value={parentEmail} onChange={(e) => setParentEmail(e.target.value)} placeholder="Parent/guardian email" style={{ width: "100%", height: 44, borderRadius: 10, border: "1px solid #CBD5E1", padding: "0 10px", fontSize: 14, marginBottom: 8 }} />
+
+      <div style={{ display: "flex", gap: 16, flexWrap: "wrap", alignItems: "flex-start" }}>
+        {/* MAIN COLUMN */}
+        <div style={{ flex: "2 1 520px", minWidth: 0 }}>
+          <div style={{ ...card, background: "#1E242E", color: "#fff", border: "none" }}>
+            <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
+              {days !== null && <span style={chipStyle(days)}>{countdownText(profile.exam, days)}</span>}
+              <span style={{ fontSize: 13, background: "#0F766E", padding: "6px 10px", borderRadius: 999 }}>🔥 Streak {profile.streak}</span>
+              <span style={{ fontSize: 13, background: "#333A45", padding: "6px 10px", borderRadius: 999 }}>
+                {profile.plan === "UNLIMITED" ? "∞ Unlimited" : `${profile.creditsLeft} free left today`}
+              </span>
+              <span style={{ fontSize: 13, background: "#333A45", padding: "6px 10px", borderRadius: 999 }}>{profile.freezeAvailable ? "🧊 Freeze ready" : "🧊 Freeze used"}</span>
+            </div>
+          </div>
+
+          <h2 style={{ color: "#1E242E", fontSize: 18 }}>Next up for you</h2>
+          {suggest ? (
+            <div style={{ ...card, background: "#CCFBF1", border: "1px solid #99F6E4" }}>
+              <strong>{suggest.subject} • {suggest.topic}</strong>
+              <p style={{ fontSize: 14, margin: "4px 0 8px" }}>{reason}</p>
+              <a href={`/practice?userId=${userId}&subject=${encodeURIComponent(suggest.subject)}`} style={{ display: "block", textAlign: "center", background: "#0F766E", color: "#fff", borderRadius: 10, height: 44, lineHeight: "44px", fontWeight: 600, textDecoration: "none" }}>Practice This Topic</a>
+            </div>
+          ) : (
+            <p style={{ fontSize: 14 }}>{reason || "Answer a few questions and I'll pick your weakest topic."}</p>
           )}
-          {payMsg && <p style={{ fontSize: 13, color: "#DC2626" }}>{payMsg}</p>}
-          <button onClick={pay} style={{ display: "block", width: "100%", height: 48, borderRadius: 10, border: 0, background: "#0F766E", color: "#fff", fontWeight: 700, fontSize: 16, cursor: "pointer" }}>Pay with Paystack (test)</button>
-        </div>
-      )}
-      {paid && <p style={{ color: "#16A34A", fontWeight: 700 }}>✓ Unlimited unlocked. Parent link sent.</p>}
-      <h2 style={{ color: "#1E242E", fontSize: 18 }}>Next up for you</h2>
-      {suggest ? (
-        <div style={{ background: "#CCFBF1", border: "1px solid #99F6E4", borderRadius: 16, padding: 12, margin: "8px 0" }}>
-          <strong>{suggest.subject} • {suggest.topic}</strong>
-          <p style={{ fontSize: 14, margin: "4px 0" }}>{reason}</p>
-          <a href={`/practice?userId=${userId}&subject=${encodeURIComponent(suggest.subject)}`} style={{ display: "block", textAlign: "center", background: "#0F766E", color: "#fff", borderRadius: 10, height: 44, lineHeight: "44px", fontWeight: 600, textDecoration: "none" }}>Practice this topic</a>
-        </div>
-      ) : (
-        <p style={{ fontSize: 14 }}>{reason || "Answer a few questions and I'll pick your weakest topic."}</p>
-      )}
-      {retention && (
-        <div style={{ background: "#FFFBEB", border: "1px solid #FDE68A", borderRadius: 16, padding: 12, margin: "8px 0" }}>
-          <strong>Retention refresh: {retention.topic.subject} • {retention.topic.topic}</strong>
-          <p style={{ fontSize: 14, margin: "4px 0" }}>It's Strong — a quick refresh keeps it there.</p>
-          <a href={`/practice?userId=${userId}&subject=${encodeURIComponent(retention.topic.subject)}`} style={{ color: "#0F766E", fontWeight: 700, fontSize: 14 }}>Refresh now</a>
-        </div>
-      )}
-      <h2 style={{ color: "#1E242E", fontSize: 18 }}>Weak topics first</h2>
-      {topics.length === 0 && <p>No practice yet. <a href={`/practice?userId=${userId}&subject=English`} style={{ color: "#0F766E", fontWeight: 700 }}>Start practicing</a></p>}
-      {topics.map((t) => (
-        <div key={`${t.subject}-${t.topic}`} style={{ background: "#fff", border: "1px solid #E2E8F0", borderRadius: 16, padding: 12, margin: "8px 0" }}>
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-            <strong>{t.subject} • {t.topic}</strong>
-            <span style={{ fontSize: 12, fontWeight: 700, padding: "4px 10px", borderRadius: 999, ...badge[t.label] }}>{t.label} {Math.round(t.accuracy)}%</span>
+          {retention && (
+            <div style={{ ...card, background: "#FFFBEB", border: "1px solid #FDE68A" }}>
+              <strong>Retention refresh: {retention.topic.subject} • {retention.topic.topic}</strong>
+              <p style={{ fontSize: 14, margin: "4px 0" }}>It's Strong — a quick refresh keeps it there. <a href={`/practice?userId=${userId}&subject=${encodeURIComponent(retention.topic.subject)}`} style={{ color: "#0F766E", fontWeight: 700 }}>Refresh now</a></p>
+            </div>
+          )}
+
+          <h2 id="topics" style={{ color: "#1E242E", fontSize: 18 }}>Weak topics first</h2>
+          {topics.length === 0 && <p>No practice yet. <a href={`/practice?userId=${userId}&subject=English`} style={{ color: "#0F766E", fontWeight: 700 }}>Start practicing</a></p>}
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: 12 }}>
+            {topics.map((t) => (
+              <div key={`${t.subject}-${t.topic}`} style={{ ...card, margin: 0 }}>
+                <div style={{ fontSize: 13, color: "#5F6E7F" }}>{t.subject}</div>
+                <strong>{t.topic}</strong>
+                <div style={{ marginTop: 8 }}>
+                  <span style={{ fontSize: 12, fontWeight: 700, padding: "4px 10px", borderRadius: 999, ...badge[t.label] }}>{t.label} {Math.round(t.accuracy)}%</span>
+                </div>
+                <div style={{ height: 8, background: "#E2E8F0", borderRadius: 999, marginTop: 8 }}>
+                  <div style={{ height: "100%", width: `${Math.round(t.accuracy)}%`, background: "#0F766E", borderRadius: 999 }} />
+                </div>
+              </div>
+            ))}
           </div>
-          <div style={{ height: 8, background: "#E2E8F0", borderRadius: 999, marginTop: 8 }}>
-            <div style={{ height: "100%", width: `${Math.round(t.accuracy)}%`, background: "#0F766E", borderRadius: 999 }} />
-          </div>
-          <label style={{ fontSize: 12, color: "#5F6E7F" }}>Override:{" "}
-            <select value="" onChange={(e) => e.target.value && override(t, e.target.value)} style={{ fontSize: 12, borderRadius: 6, border: "1px solid #CBD5E1" }}>
-              <option value="">Set label…</option>
-              <option value="WEAK">Weak</option>
-              <option value="NEEDS_WORK">Needs Work</option>
-              <option value="STRONG">Strong</option>
-              <option value="AUTO">Back to auto</option>
-            </select>
-          </label>
+          <a href={`/practice?userId=${userId}&subject=English`} style={{ display: "block", textAlign: "center", background: "#0F766E", color: "#fff", borderRadius: 10, height: 48, lineHeight: "48px", fontWeight: 600, textDecoration: "none", marginTop: 12 }}>Keep practicing</a>
         </div>
-      ))}
-      <a href={`/practice?userId=${userId}&subject=English`} style={{ display: "block", textAlign: "center", background: "#0F766E", color: "#fff", borderRadius: 10, height: 48, lineHeight: "48px", fontWeight: 600, textDecoration: "none", marginTop: 12 }}>Keep practicing</a>
+
+        {/* SIDE COLUMN */}
+        <div style={{ flex: "1 1 280px", minWidth: 0 }}>
+          <div style={card}>
+            <h3 style={{ margin: "0 0 8px", fontSize: 16 }}>Switch subject</h3>
+            <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+              {limits.map((l) => (
+                <a key={l.subject} href={`/practice?userId=${userId}&subject=${encodeURIComponent(l.subject)}`}
+                  style={{ fontSize: 13, fontWeight: 600, padding: "8px 12px", borderRadius: 999, textDecoration: "none",
+                    background: l.left > 0 || profile.plan === "UNLIMITED" ? "#CCFBF1" : "#F1F5F9",
+                    color: l.left > 0 || profile.plan === "UNLIMITED" ? "#0F766E" : "#94A3B8",
+                    border: "1px solid #99F6E4" }}>
+                  {l.subject} • {profile.plan === "UNLIMITED" ? "∞" : l.left}
+                </a>
+              ))}
+            </div>
+          </div>
+
+          <div id="upgrade" style={card}>
+            <h3 style={{ margin: "0 0 8px", fontSize: 16 }}>Subscription &amp; Credits</h3>
+            <p style={{ fontSize: 14, margin: "0 0 8px" }}>Plan: <strong>{profile.plan}</strong></p>
+            {profile.plan === "FREE" && exhaustedAll && !paid ? (
+              <>
+                <p style={{ fontSize: 14 }}>Out of free questions everywhere today. One subscription unlocks unlimited practice + parent dashboard.</p>
+                {profile.level === "SECONDARY" && (
+                  <input value={parentEmail} onChange={(e) => setParentEmail(e.target.value)} placeholder="Parent/guardian email" style={{ width: "100%", height: 44, borderRadius: 10, border: "1px solid #CBD5E1", padding: "0 10px", fontSize: 14, marginBottom: 8, boxSizing: "border-box" }} />
+                )}
+                {payMsg && <p style={{ fontSize: 13, color: "#DC2626" }}>{payMsg}</p>}
+                <button onClick={pay} style={{ display: "block", width: "100%", height: 48, borderRadius: 10, border: 0, background: "#0F766E", color: "#fff", fontWeight: 700, fontSize: 16, cursor: "pointer" }}>Pay with Paystack (test)</button>
+              </>
+            ) : profile.plan === "FREE" ? (
+              <p style={{ fontSize: 14, margin: 0 }}>Free plan: 10 questions per subject daily. Resets at midnight.</p>
+            ) : (
+              <p style={{ fontSize: 14, margin: 0 }}>✓ Unlimited active — practice anything, anytime.</p>
+            )}
+            {paid && <p style={{ color: "#16A34A", fontWeight: 700 }}>✓ Unlimited unlocked. Parent link sent.</p>}
+          </div>
+        </div>
+      </div>
     </main>
   );
 }
