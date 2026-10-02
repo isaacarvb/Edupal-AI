@@ -97,3 +97,12 @@ CREATE TABLE IF NOT EXISTS email_outbox (
   created_at TEXT NOT NULL DEFAULT (datetime('now'))
 );
 CREATE INDEX IF NOT EXISTS idx_outbox_user_day ON email_outbox(user_id, kind, created_at);
+
+-- Per-subject daily free usage (one row per user/subject/day).
+CREATE TABLE IF NOT EXISTS subject_usage (
+  user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  subject TEXT NOT NULL,
+  day TEXT NOT NULL,
+  used INTEGER NOT NULL DEFAULT 0,
+  PRIMARY KEY (user_id, subject, day)
+);

@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { getDb, uid } from "@/lib/db";
 import { explainAnswer, gradeTheory, type TheoryGrade } from "@/lib/ai";
-import { getWallet } from "@/lib/credits";
+import { getWallet, getSubjectLeft, consumeSubject } from "@/lib/credits";
 
 const COST = { MCQ: 1, THEORY: 3 } as const;
 
@@ -32,8 +32,15 @@ export async function POST(req: Request) {
     .get(userId, questionId);
   if (dupe) return NextResponse.json({ error: "already answered", duplicate: true }, { status: 409 });
   const wallet = getWallet(db, userId);
-  if (!wallet || (wallet.plan === "FREE" && wallet.creditsLeft < cost)) {
-    return NextResponse.json({ error: "credits exhausted", creditsLeft: wallet?.creditsLeft ?? 0 }, { status: 402 });
+  // Per-subject daily free limits (UNLIMITED bypasses). Other subjects stay open.
+  if (wallet && wallet.plan === "FREE" && getSubjectLeft(db, userId, q.subject, "FREE") < cost) {
+    return NextResponse.json(
+      { error: "subject limit reached", subjectLimit: true, subject: q.subject, creditsLeft: 0 },
+      { status: 402 }
+    );
+  }
+  if (!wallet) {
+    return NextResponse.json({ error: "no wallet", creditsLeft: 0 }, { status: 402 });
   }
 
   const profile = db.prepare("SELECT language FROM profiles WHERE user_id = ?").get(userId) as
@@ -47,7 +54,10 @@ export async function POST(req: Request) {
   let feedback: string;
   if (q.type === "MCQ") {
     correct = (response ?? "").trim().toLowerCase() === q.answerKey.trim().toLowerCase() ? 1 : 0;
-    feedback = await explainAnswer({ subject: q.subject, question: q.stem, answer: response ?? "", language });
+    feedback = await explainAnswer({
+      subject: q.subject, topic: q.topic, question: q.stem, answer: response ?? "",
+      correctAnswer: q.answerKey, rubric: q.markingRubric, wasCorrect: Boolean(correct), language
+    });
   } else {
     theory = gradeTheory(response ?? "", q.answerKey, q.markingRubric, language);
     theoryScore = theory.score;
@@ -62,7 +72,7 @@ export async function POST(req: Request) {
     JSON.stringify({ feedback, theory }), wallet.plan === "FREE" ? cost : 0, now
   );
   if (wallet.plan === "FREE") {
-    db.prepare("UPDATE wallets SET credits_left = credits_left - ? WHERE user_id = ?").run(cost, userId);
+    consumeSubject(db, userId, q.subject, cost);
   }
 
   // Recompute mastery: accuracy + consecutive-correct level-up + hysteresis.
@@ -130,7 +140,7 @@ export async function POST(req: Request) {
     );
   }
 
-  const creditsLeft = wallet.plan === "UNLIMITED" ? wallet.creditsLeft : wallet.creditsLeft - cost;
+  const creditsLeft = wallet.plan === "UNLIMITED" ? wallet.creditsLeft : getSubjectLeft(db, userId, q.subject, "FREE");
   return NextResponse.json({
     correct: Boolean(correct),
     correctAnswer: q.answerKey,
@@ -139,6 +149,7 @@ export async function POST(req: Request) {
     creditsLeft,
     leveledUp,
     freezeUsed,
+    subject: q.subject,
     mastery: { subject: q.subject, topic: q.topic, accuracy: Math.round(acc), label }
   });
 }

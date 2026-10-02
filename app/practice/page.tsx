@@ -17,7 +17,7 @@ function PracticeInner() {
   const [answered, setAnswered] = useState(0);
   const [done, setDone] = useState(false);
   const [answer, setAnswer] = useState("");
-  const [result, setResult] = useState<null | { correct: boolean; correctAnswer: string; feedback: string; theory: Theory | null; leveledUp: boolean; freezeUsed: boolean; creditsLeft: number; mastery: { topic: string; accuracy: number; label: string } }>(null);
+  const [result, setResult] = useState<null | { correct: boolean; correctAnswer: string; feedback: string; theory: Theory | null; leveledUp: boolean; freezeUsed: boolean; creditsLeft: number; subject: string; mastery: { topic: string; accuracy: number; label: string } }>(null);
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState("");
 
@@ -49,6 +49,10 @@ function PracticeInner() {
       });
       const data = await res.json();
       if (data.duplicate) return load(); // double-click: just move on
+      if (res.status === 402 && data.subjectLimit) {
+        router.push(`/dashboard?userId=${userId}&limited=${encodeURIComponent(data.subject)}`);
+        return;
+      }
       if (res.status === 402) {
         router.push(`/dashboard?userId=${userId}`);
         return;
@@ -111,7 +115,12 @@ function PracticeInner() {
                   </ul>
                 </>
               )}
-              <p style={{ fontSize: 13, color: "#5F6E7F" }}>{result.mastery.topic}: {result.mastery.accuracy}% • {result.mastery.label} • Credits left: {result.creditsLeft}</p>
+              <p style={{ fontSize: 13, color: "#5F6E7F" }}>{result.mastery.topic}: {result.mastery.accuracy}% • {result.mastery.label}</p>
+              <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginTop: 8 }}>
+                <span style={{ fontSize: 12, background: "#F1F5F9", border: "1px solid #E2E8F0", color: "#333A45", padding: "4px 10px", borderRadius: 999 }}>Topic: {result.mastery.topic}</span>
+                <span style={{ fontSize: 12, background: "#F1F5F9", border: "1px solid #E2E8F0", color: "#333A45", padding: "4px 10px", borderRadius: 999 }}>Mastery: {result.mastery.label}</span>
+                <span style={{ fontSize: 12, background: "#CCFBF1", border: "1px solid #99F6E4", color: "#2F5D7C", padding: "4px 10px", borderRadius: 999 }}>{result.subject} credits left: {result.creditsLeft}</span>
+              </div>
               <button style={btnPrimary} onClick={load}>Next question</button>
             </div>
           )}

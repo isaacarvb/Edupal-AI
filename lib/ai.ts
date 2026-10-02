@@ -6,8 +6,12 @@ export type Language = "SIMPLE" | "PIDGIN";
 
 export type ExplainInput = {
   subject: string;
+  topic: string;
   question: string;
   answer: string;
+  correctAnswer: string;
+  rubric: string;
+  wasCorrect: boolean;
   language: Language;
 };
 
@@ -47,13 +51,28 @@ export function systemPrompt(subject: string, exam: string): string {
 // --- MCQ explanations --------------------------------------------------------
 
 export async function explainAnswer(input: ExplainInput): Promise<string> {
-  const provider = process.env.AI_PROVIDER ?? "local-stub";
+  const provider = process.env.AI_PROVIDER ?? "local-templates";
   if (isOffTopic(input.answer)) return redirectNudge(input.language);
-  if (provider === "local-stub") {
-    const tone = input.language === "PIDGIN" ? "My guy, " : "";
-    return `${tone}Step-by-step for ${input.subject}: your answer was "${input.answer}". (Local stub — wire Ollama/OpenAI in prod. Syllabus-strict, study-buddy tone.)`;
+  if (provider !== "local-templates") {
+    throw new Error(`Unknown AI_PROVIDER=${provider}`);
   }
-  throw new Error(`Unknown AI_PROVIDER=${provider}`);
+  // Template engine: 2–3 sentences on WHY the correct choice is right.
+  // An LLM later replaces this body via the same input/output contract.
+  const why = input.rubric
+    ? input.rubric.endsWith(".")
+      ? input.rubric
+      : `${input.rubric}.`
+    : `This follows the ${input.topic} rule in your syllabus.`;
+  if (input.language === "PIDGIN") {
+    const open = input.wasCorrect
+      ? `Correct! Na "${input.correctAnswer}" be di answer.`
+      : `E no be "${input.answer}" — na "${input.correctAnswer}" be di correct answer.`;
+    return `${open} ${why} Revise ${input.topic} make e stick.`;
+  }
+  const open = input.wasCorrect
+    ? `Correct — the answer is "${input.correctAnswer}".`
+    : `Not "${input.answer}" — the correct answer is "${input.correctAnswer}".`;
+  return `${open} ${why} Worth one more look at ${input.topic}.`;
 }
 
 // --- Theory grading (rough v1 heuristic; LLM-refined later) ------------------

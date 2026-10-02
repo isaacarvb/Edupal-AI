@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { getDb } from "@/lib/db";
-import { getWallet } from "@/lib/credits";
+import { getWallet, subjectLimits } from "@/lib/credits";
 
 // Mastery list + profile summary (countdown, streak, credits) for the dashboard.
 export async function GET(req: Request) {
@@ -22,10 +22,14 @@ export async function GET(req: Request) {
     .get(userId) as Record<string, unknown> | undefined;
   if (!profile) return NextResponse.json({ error: "unknown user" }, { status: 404 });
   const wallet = getWallet(db, userId);
+  const plan = wallet?.plan ?? "FREE";
+  const subjectList = String((profile as Record<string, unknown>).subjects ?? "English").split(",").map((s) => s.trim()).filter(Boolean);
+  const limits = subjectLimits(db, userId, subjectList, plan);
+  const exhaustedAll = plan === "FREE" && limits.length > 0 && limits.every((l) => l.left <= 0);
   const topics = db
     .prepare(
       "SELECT subject, topic, accuracy, label FROM topic_mastery WHERE user_id = ? ORDER BY accuracy ASC"
     )
     .all(userId);
-  return NextResponse.json({ profile: { ...profile, creditsLeft: wallet?.creditsLeft ?? 0, plan: wallet?.plan ?? "FREE" }, topics });
+  return NextResponse.json({ profile: { ...profile, creditsLeft: limits.reduce((s, l) => s + l.left, 0), plan }, topics, subjectLimits: limits, exhaustedAll });
 }

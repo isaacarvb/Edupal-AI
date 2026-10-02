@@ -48,7 +48,7 @@ export default function Login() {
           {busy ? "Signing in…" : "Sign in"}
         </button>
         <p style={{ fontSize: 14, marginTop: 12 }}>
-          <a href="/onboarding" style={{ color: "#0F766E", fontWeight: 700 }}>New here? Start your journey</a>
+          <a href="/signup" style={{ color: "#0F766E", fontWeight: 700 }}>New here? Start your journey</a>
         </p>
         <p style={{ fontSize: 12, color: "#5F6E7F" }}>New accounts are created during onboarding with your level, exam and subjects.</p>
       </div>

@@ -23,6 +23,9 @@ function DashInner() {
   const [parentEmail, setParentEmail] = useState("");
   const [payMsg, setPayMsg] = useState("");
   const [paid, setPaid] = useState(false);
+  const [limits, setLimits] = useState<{ subject: string; left: number }[]>([]);
+  const [exhaustedAll, setExhaustedAll] = useState(false);
+  const limited = params.get("limited") ?? "";
 
   function chipStyle(days: number | null): React.CSSProperties {
     const base: React.CSSProperties = { fontSize: 13, padding: "6px 10px", borderRadius: 999 };
@@ -46,6 +49,8 @@ function DashInner() {
       .then((d) => {
         setProfile(d.profile);
         setTopics(d.topics ?? []);
+        setLimits(d.subjectLimits ?? []);
+        setExhaustedAll(!!d.exhaustedAll);
       });
     fetch(`/api/suggest?userId=${userId}`)
       .then((r) => r.json())
@@ -104,8 +109,27 @@ function DashInner() {
           <p style={{ fontSize: 14, margin: 0 }}>🔔 {reminder}</p>
         </div>
       )}
-      {profile.plan === "FREE" && profile.creditsLeft === 0 && !paid && (
-        <div style={{ background: "#fff", border: "2px solid #0F766E", borderRadius: 16, padding: 12, margin: "8px 0" }}>
+      {limited !== "" && (
+        <div style={{ background: "#FFFBEB", border: "2px solid #F59E0B", borderRadius: 16, padding: 12, margin: "8px 0" }}>
+          <strong>You've reached your free daily limit for {limited}.</strong>
+          <p style={{ fontSize: 14, margin: "4px 0 8px" }}>You can continue practicing other subjects for free, or upgrade to Unlimited for full, uninterrupted access across all subjects!</p>
+          <div style={{ display: "flex", gap: 8 }}>
+            <a href={`/practice?userId=${userId}&subject=${encodeURIComponent((limits.find((l) => l.left > 0) ?? { subject: "English" }).subject)}`} style={{ flex: 1, textAlign: "center", background: "#fff", color: "#1E242E", border: "2px solid #0F766E", borderRadius: 10, height: 44, lineHeight: "40px", fontWeight: 700, fontSize: 14, textDecoration: "none" }}>Practice Another Subject</a>
+            <a href="#upgrade" style={{ flex: 1, textAlign: "center", background: "#0F766E", color: "#fff", borderRadius: 10, height: 44, lineHeight: "44px", fontWeight: 700, fontSize: 14, textDecoration: "none" }}>Upgrade to Unlimited</a>
+          </div>
+        </div>
+      )}
+      {limits.length > 0 && (
+        <div style={{ display: "flex", gap: 6, flexWrap: "wrap", margin: "8px 0" }}>
+          {limits.map((l) => (
+            <span key={l.subject} style={{ fontSize: 12, background: "#F1F5F9", border: "1px solid #E2E8F0", color: "#333A45", padding: "4px 10px", borderRadius: 999 }}>
+              {l.subject}: {profile.plan === "UNLIMITED" ? "∞" : `${l.left} left`}
+            </span>
+          ))}
+        </div>
+      )}
+      {profile.plan === "FREE" && exhaustedAll && !paid && (
+        <div id="upgrade" style={{ background: "#fff", border: "2px solid #0F766E", borderRadius: 16, padding: 12, margin: "8px 0" }}>
           <strong>Out of credits — go unlimited?</strong>
           <p style={{ fontSize: 14 }}>One subscription unlocks unlimited practice + parent dashboard.</p>
           {profile.level === "SECONDARY" && (
