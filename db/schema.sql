@@ -99,6 +99,17 @@ CREATE TABLE IF NOT EXISTS email_outbox (
 );
 CREATE INDEX IF NOT EXISTS idx_outbox_user_day ON email_outbox(user_id, kind, created_at);
 
+-- AI tutor chat history (per user + optional question context).
+CREATE TABLE IF NOT EXISTS chat_messages (
+  id TEXT PRIMARY KEY,
+  user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  question_id TEXT REFERENCES questions(id) ON DELETE CASCADE,
+  role TEXT NOT NULL,
+  content TEXT NOT NULL,
+  created_at TEXT NOT NULL DEFAULT (datetime('now'))
+);
+CREATE INDEX IF NOT EXISTS idx_chat_user_q ON chat_messages(user_id, question_id, created_at);
+
 -- Per-subject daily free usage (one row per user/subject/day).
 CREATE TABLE IF NOT EXISTS subject_usage (
   user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,

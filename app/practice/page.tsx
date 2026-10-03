@@ -116,6 +116,7 @@ function PracticeInner() {
                 </>
               )}
               <p style={{ fontSize: 13, color: "#5F6E7F" }}>{result.mastery.topic}: {result.mastery.accuracy}% • {result.mastery.label}</p>
+              <a href={`/tutor?userId=${userId}&questionId=${q?.id ?? ""}`} style={{ display: "block", textAlign: "center", fontSize: 14, fontWeight: 700, color: "#0F766E", border: "2px solid #0F766E", borderRadius: 10, height: 44, lineHeight: "40px", textDecoration: "none", marginTop: 8 }}>Discuss with AI tutor</a>
               <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginTop: 8 }}>
                 <span style={{ fontSize: 12, background: "#F1F5F9", border: "1px solid #E2E8F0", color: "#333A45", padding: "4px 10px", borderRadius: 999 }}>Topic: {result.mastery.topic}</span>
                 <span style={{ fontSize: 12, background: "#F1F5F9", border: "1px solid #E2E8F0", color: "#333A45", padding: "4px 10px", borderRadius: 999 }}>Mastery: {result.mastery.label}</span>
