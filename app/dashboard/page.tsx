@@ -79,9 +79,20 @@ function DashInner() {
     });
     const data = await res.json();
     if (!res.ok) return setPayMsg(data.needsParent ? "Since you're in secondary school, add a parent or guardian's contact so they can support your subscription and stay updated." : data.error);
+    if (data.mode === "paystack" && data.authorizationUrl) {
+      window.location.href = data.authorizationUrl; // real Paystack page (test mode: no real money)
+      return;
+    }
     setPaid(true);
     refresh();
   }
+
+  useEffect(() => {
+    if (params.get("paid") === "1") {
+      setPaid(true);
+      refresh();
+    }
+  }, [userId]);
 
   if (!userId) return <main style={{ padding: 20 }}>Missing user. Start from <a href="/signup">signup</a>.</main>;
   if (!profile) return <main style={{ padding: 20 }}>Loading…</main>;

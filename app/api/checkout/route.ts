@@ -1,9 +1,10 @@
 import { NextResponse } from "next/server";
-import { getDb, uid } from "@/lib/db";
+import { getDb } from "@/lib/db";
+import { paystackConfigured, initializePayment } from "@/lib/paystack";
+import { registerParentContact, unlockUnlimited } from "@/lib/parent";
 
-// Mock Paystack checkout (local). Prod: replace charge() with Paystack API.
-// Flow: FREE credits exhausted → paywall → parent contact if SECONDARY (no
-// blocking verification) → immediate UNLIMITED + parent welcome email queued.
+// Checkout: parent contact if SECONDARY (never blocks), then real Paystack
+// when configured, otherwise the local mock. Real flow resumes at /api/checkout/callback.
 export async function POST(req: Request) {
   const { userId, parentEmail } = await req.json();
   if (!userId) return NextResponse.json({ error: "userId required" }, { status: 400 });
@@ -17,23 +18,17 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "parent contact required for secondary students", needsParent: true }, { status: 400 });
   }
 
-  // Mock charge — always succeeds locally.
-  const ref = `MOCK-${Date.now()}`;
-  db.prepare("UPDATE wallets SET plan = 'UNLIMITED' WHERE user_id = ?").run(userId);
+  if (parentEmail) registerParentContact(db, userId, parentEmail);
 
-  let magicLink: string | null = null;
-  if (parentEmail) {
-    const token = uid();
-    db.prepare("INSERT INTO parent_links (id, student_id, parent_email, magic_token) VALUES (?, ?, ?, ?)").run(
-      uid(), userId, parentEmail, token
-    );
-    const base = process.env.NEXTAUTH_URL ?? "http://localhost:3000";
-    magicLink = `${base}/parent?token=${token}`;
-    db.prepare("INSERT INTO email_outbox (id, user_id, kind, subject, body) VALUES (?, ?, 'parent-welcome', 'Your child is studying with EduPal AI', ?)").run(
-      uid(),
-      userId,
-      `Since your child is in secondary school, here's their progress view (no action needed): ${magicLink}`
-    );
+  if (paystackConfigured()) {
+    const profile = db.prepare("SELECT email FROM users WHERE id = ?").get(userId) as { email: string | null } | undefined;
+    const email = profile?.email ?? parentEmail ?? "student@edupal.local";
+    const authorizationUrl = await initializePayment(email, { userId });
+    return NextResponse.json({ ok: true, mode: "paystack", authorizationUrl });
   }
-  return NextResponse.json({ ok: true, ref, plan: "UNLIMITED", magicLinkSent: !!parentEmail });
+
+  // Local mock: instant success.
+  const ref = `MOCK-${Date.now()}`;
+  unlockUnlimited(db, userId);
+  return NextResponse.json({ ok: true, mode: "mock", ref, plan: "UNLIMITED", magicLinkSent: !!parentEmail });
 }
