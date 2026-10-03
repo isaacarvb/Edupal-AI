@@ -19,8 +19,11 @@ h1, h2, h3 { color: var(--ink); }
 
 .btn-journey {
   display: block; text-align: center; background: var(--accent); color: #fff;
-  border-radius: 12px; font-weight: 800; font-size: 17px; letter-spacing: 1px;
-  text-decoration: none; margin: 16px auto; padding: 14px 32px; max-width: 420px;
-  transition: box-shadow 180ms ease, transform 120ms ease;
+  border-radius: 12px; font-weight: 800; font-size: 18px; letter-spacing: 1px;
+  text-decoration: none; margin: 16px auto; padding: 16px 32px; max-width: 440px;
+  transition: box-shadow 180ms ease, transform 180ms ease;
 }
-.btn-journey:hover { box-shadow: 0 8px 24px -4px rgb(15 118 110 / 0.45); transform: translateY(-2px); }
+.btn-journey:hover { box-shadow: 0 8px 24px -4px rgb(15 118 110 / 0.45); transform: scale(1.03); }
+
+.feature-card { transition: box-shadow 180ms ease, transform 180ms ease; }
+.feature-card:hover { box-shadow: 0 8px 24px -6px rgb(30 36 46 / 0.15); transform: translateY(-2px); }
