@@ -43,7 +43,8 @@ function TutorInner() {
       });
       const data = await res.json();
       setMsgs((m) => [...m, { role: "assistant", content: data.reply ?? "Hmm, try again." }]);
-      if (data.engine) setEngine(data.engine);
+      // Badge reflects key status (set on load); only upgrade it here, never downgrade.
+      if (data.engine === "groq") setEngine("groq");
     } finally {
       setBusy(false);
     }
