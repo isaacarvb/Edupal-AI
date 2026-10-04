@@ -1,4 +1,4 @@
-import { randomUUID } from "node:crypto";
+import { createHash } from "node:crypto";
 import { DatabaseSync } from "node:sqlite";
 import fs from "node:fs";
 import path from "node:path";
@@ -18,8 +18,9 @@ const insert = db.prepare(
 
 let added = 0;
 for (const q of QUESTIONS) {
+  const id = "q-" + createHash("sha256").update(q.stem).digest("hex").slice(0, 16);
   const r = insert.run(
-    randomUUID(), q.exam, q.subject, q.topic, q.type, q.stem,
+    id, q.exam, q.subject, q.topic, q.type, q.stem,
     JSON.stringify(q.options), q.answer, q.rubric, q.source, q.predicted
   );
   added += Number(r.changes);

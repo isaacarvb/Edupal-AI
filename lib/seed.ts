@@ -1,6 +1,12 @@
 import type { DatabaseSync } from "node:sqlite";
-import { randomUUID } from "node:crypto";
+import { createHash } from "node:crypto";
 import { QUESTIONS } from "./question-bank.mjs";
+
+// Stable IDs = sha256(stem), so every fresh disk seeds IDENTICAL rows.
+// (Random IDs broke serverless: instance A served a question instance B never saw.)
+export function questionId(stem: string): string {
+  return `q-${createHash("sha256").update(stem).digest("hex").slice(0, 16)}`;
+}
 
 // Fills an empty bank (fresh serverless disks). No-op when questions exist.
 export function ensureSeeded(db: DatabaseSync): void {
@@ -17,7 +23,7 @@ export function ensureSeeded(db: DatabaseSync): void {
   }>) {
     const q = raw;
     insert.run(
-      randomUUID(), q.exam, q.subject, q.topic, q.type, q.stem,
+      questionId(q.stem), q.exam, q.subject, q.topic, q.type, q.stem,
       JSON.stringify(q.options), q.answer, q.rubric, q.source, q.predicted
     );
   }
