@@ -5,6 +5,7 @@ import path from "node:path";
 // Zero-dependency local DB (Node built-in SQLite, no downloads).
 // Prod/Postgres stage: replace this module with a pg client; same table names.
 import { randomUUID } from "node:crypto";
+import { ensureSeeded } from "./seed";
 
 let db: DatabaseSync | null = null;
 
@@ -20,6 +21,7 @@ export function getDb(): DatabaseSync {
     const schema = fs.readFileSync(path.join(process.cwd(), "db", "schema.sql"), "utf8");
     db.exec(schema);
     migrate(db);
+    ensureSeeded(db);
   }
   return db;
 }
