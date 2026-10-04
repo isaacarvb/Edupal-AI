@@ -1,0 +1,16 @@
+# Netlify deploys are MANUAL: nothing builds here until you run `netlify deploy --prod`.
+# Local dev/builds never cost Netlify credits.
+[build]
+  command = "npm run build"
+  publish = ".next"
+
+[build.environment]
+  # node:sqlite (local DB) needs Node 22.5+; pin 24 for safety.
+  NODE_VERSION = "24"
+
+# Required dashboard env vars (Site settings → Environment variables):
+#   NEXTAUTH_SECRET = any long random string
+#   NEXTAUTH_URL    = https://YOUR-SITE.netlify.app (set after first deploy, then redeploy)
+#   DB_FILE         = /tmp/dev.db   (Netlify disk is ephemeral; demo data resets between visits)
+#   GROQ_API_KEY    = gsk_...       (optional; tutor falls back to Local mode without it)
+#   PAYSTACK_SECRET_KEY = sk_test_... (optional; checkout falls back to mock without it)
