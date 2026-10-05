@@ -164,7 +164,7 @@ function PracticeInner() {
           )}
           {err && <p style={{ color: "#DC2626" }}>{err}</p>}
           {!result ? (
-            <button style={btnPrimary} onClick={submit} disabled={busy}>{busy ? "Marking…" : `Submit (${q.type === "MCQ" ? "1 credit" : "3 credits"})`}</button>
+            <button style={btnPrimary} onClick={() => submit()} disabled={busy}>{busy ? "Marking…" : `Submit (${q.type === "MCQ" ? "1 credit" : "3 credits"})`}</button>
           ) : (
             <div style={{ background: "#fff", border: "1px solid #E2E8F0", borderRadius: 16, padding: 16, marginTop: 8 }}>
               <p style={{ fontWeight: 700, color: result.correct ? "#16A34A" : "#DC2626" }}>{result.correct ? "Correct ✓" : `Not quite — answer: ${result.correctAnswer}`}</p>
