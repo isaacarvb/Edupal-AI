@@ -10,11 +10,20 @@ type M = {
   gates: { retention70: boolean; note: string };
 };
 
+type Flag = { id: string; response: string; correct: number; at: string; subject: string; topic: string; stem: string; answerKey: string; student: string | null };
+
 export default function Admin() {
   const [m, setM] = useState<M | null>(null);
-  useEffect(() => {
+  const [flags, setFlags] = useState<Flag[]>([]);
+  function load() {
     fetch("/api/metrics").then((r) => r.json()).then(setM);
-  }, []);
+    fetch("/api/flag").then((r) => r.json()).then((d) => setFlags(d.flags ?? []));
+  }
+  useEffect(load, []);
+  async function resolve(id: string) {
+    await fetch("/api/flag", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ resolve: id }) });
+    load();
+  }
   if (!m) return <main style={{ padding: 32 }}>Loading…</main>;
   const row = (k: string, v: string | number) => (
     <div key={k} style={{ display: "flex", justifyContent: "space-between", padding: "8px 0", borderBottom: "1px solid #E2E8F0", fontSize: 14 }}>
@@ -35,6 +44,17 @@ export default function Admin() {
       </div>
       <h2 style={{ fontSize: 18 }}>By subject</h2>
       {m.bySubject.map((s) => <div key={s.subject} style={{ fontSize: 14 }}>{s.subject} — {s.accuracy}% over {s.attempts}</div>)}
+      <h2 style={{ fontSize: 18, marginTop: 16 }}>Flagged explanations ({flags.length})</h2>
+      <p style={{ fontSize: 13, color: "#5F6E7F" }}>Review SLA: 48 hours.</p>
+      {flags.length === 0 && <p style={{ fontSize: 14 }}>Queue clear — nothing flagged.</p>}
+      {flags.map((f) => (
+        <div key={f.id} style={{ background: "#fff", border: "1px solid #FECACA", borderRadius: 12, padding: 12, margin: "8px 0", fontSize: 14 }}>
+          <strong>{f.subject} • {f.topic}</strong>
+          <p style={{ margin: "4px 0" }}>{f.stem}</p>
+          <p style={{ margin: "4px 0", color: "#5F6E7F" }}>Student said: “{f.response}” (key: {f.answerKey}) • {f.student ?? "unknown"} • {f.at.slice(0, 10)}</p>
+          <button onClick={() => resolve(f.id)} style={{ fontSize: 13, fontWeight: 700, background: "#0F766E", color: "#fff", border: 0, borderRadius: 8, padding: "8px 16px", cursor: "pointer" }}>Mark resolved</button>
+        </div>
+      ))}
     </main>
   );
 }

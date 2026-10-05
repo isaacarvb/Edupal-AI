@@ -47,6 +47,7 @@ CREATE TABLE IF NOT EXISTS attempts (
   theory_score INTEGER,
   feedback_json TEXT NOT NULL DEFAULT '{}',
   credits_spent INTEGER NOT NULL DEFAULT 1,
+  flagged INTEGER NOT NULL DEFAULT 0,
   created_at TEXT NOT NULL DEFAULT (datetime('now'))
 );
 CREATE INDEX IF NOT EXISTS idx_attempts_user_question ON attempts(user_id, question_id);

@@ -21,11 +21,13 @@ function PracticeInner() {
   const [busy, setBusy] = useState(false);
   const [alt, setAlt] = useState<null | { explanation: string; engine: string }>(null);
   const [altBusy, setAltBusy] = useState(false);
+  const [flagged, setFlagged] = useState(false);
   const [err, setErr] = useState("");
 
   const load = useCallback(async () => {
     setResult(null);
     setAlt(null);
+    setFlagged(false);
     setAnswer("");
     const res = await fetch(`/api/diagnostic/next?userId=${userId}&subject=${encodeURIComponent(subject)}`);
     const data = await res.json();
@@ -39,6 +41,16 @@ function PracticeInner() {
   useEffect(() => {
     if (userId) load();
   }, [userId, load]);
+
+  async function flag() {
+    if (!q || flagged) return;
+    const res = await fetch("/api/flag", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ userId, questionId: q.id })
+    });
+    if (res.ok) setFlagged(true);
+  }
 
   async function explainDifferently() {
     if (!q || altBusy) return;
@@ -146,6 +158,9 @@ function PracticeInner() {
               )}
               <p style={{ fontSize: 13, color: "#5F6E7F" }}>{result.mastery.topic}: {result.mastery.accuracy}% • {result.mastery.label}</p>
               <a href={`/tutor?userId=${userId}&questionId=${q?.id ?? ""}`} style={{ display: "block", textAlign: "center", fontSize: 14, fontWeight: 700, color: "#0F766E", border: "2px solid #0F766E", borderRadius: 10, height: 44, lineHeight: "40px", textDecoration: "none", marginTop: 8 }}>Discuss with AI tutor</a>
+              <button onClick={flag} disabled={flagged} style={{ display: "block", width: "100%", fontSize: 13, fontWeight: 600, color: flagged ? "#16A34A" : "#5F6E7F", background: "transparent", border: "none", cursor: flagged ? "default" : "pointer", marginTop: 8 }}>
+                {flagged ? "✓ Reported — reviewed within 48 hours" : "⚑ Flag this explanation"}
+              </button>
               <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginTop: 8 }}>
                 <span style={{ fontSize: 12, background: "#F1F5F9", border: "1px solid #E2E8F0", color: "#333A45", padding: "4px 10px", borderRadius: 999 }}>Topic: {result.mastery.topic}</span>
                 <span style={{ fontSize: 12, background: "#F1F5F9", border: "1px solid #E2E8F0", color: "#333A45", padding: "4px 10px", borderRadius: 999 }}>Mastery: {result.mastery.label}</span>
