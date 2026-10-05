@@ -139,6 +139,7 @@ function DashInner() {
               <strong>{suggest.subject} • {suggest.topic}</strong>
               <p style={{ fontSize: 14, margin: "4px 0 8px" }}>{reason}</p>
               <a href={`/practice?userId=${userId}&subject=${encodeURIComponent(suggest.subject)}`} style={{ display: "block", textAlign: "center", background: "#0F766E", color: "#fff", borderRadius: 10, height: 44, lineHeight: "44px", fontWeight: 600, textDecoration: "none" }}>Practice This Topic</a>
+          <a href={`/study-plan?userId=${userId}`} style={{ display: "block", textAlign: "center", background: "#fff", color: "#0F766E", border: "2px solid #0F766E", borderRadius: 10, height: 44, lineHeight: "40px", fontWeight: 700, fontSize: 14, textDecoration: "none", marginTop: 8 }}>View my week plan</a>
             </div>
           ) : (
             <p style={{ fontSize: 14 }}>{reason || "Answer a few questions and I'll pick your weakest topic."}</p>
