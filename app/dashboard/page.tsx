@@ -168,6 +168,7 @@ function DashInner() {
             ))}
           </div>
           <a href={`/practice?userId=${userId}&subject=English`} style={{ display: "block", textAlign: "center", background: "#0F766E", color: "#fff", borderRadius: 10, height: 48, lineHeight: "48px", fontWeight: 600, textDecoration: "none", marginTop: 12 }}>Keep practicing</a>
+          <a href={`/past-paper?userId=${userId}`} style={{ display: "block", textAlign: "center", background: "#fff", color: "#0F766E", border: "2px solid #0F766E", borderRadius: 10, height: 48, lineHeight: "44px", fontWeight: 700, fontSize: 14, textDecoration: "none", marginTop: 8 }}>Past paper mode (Unlimited)</a>
         </div>
 
         {/* SIDE COLUMN */}
