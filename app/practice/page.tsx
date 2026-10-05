@@ -19,6 +19,8 @@ function PracticeInner() {
   const [answer, setAnswer] = useState("");
   const [result, setResult] = useState<null | { correct: boolean; correctAnswer: string; feedback: string; theory: Theory | null; leveledUp: boolean; freezeUsed: boolean; creditsLeft: number; subject: string; mastery: { topic: string; accuracy: number; label: string } }>(null);
   const [busy, setBusy] = useState(false);
+  const [timed, setTimed] = useState(false);
+  const [secs, setSecs] = useState(0);
   const [alt, setAlt] = useState<null | { explanation: string; engine: string }>(null);
   const [altBusy, setAltBusy] = useState(false);
   const [flagged, setFlagged] = useState(false);
@@ -35,12 +37,35 @@ function PracticeInner() {
     else {
       setQ(data.question);
       setAnswered(data.answered);
+      setSecs(data.question.type === "MCQ" ? 60 : 180);
     }
   }, [userId, subject]);
 
   useEffect(() => {
     if (userId) load();
+    setTimed(localStorage.getItem("edupal_timed") === "1");
   }, [userId, load]);
+
+  function toggleTimed() {
+    setTimed((t) => {
+      localStorage.setItem("edupal_timed", t ? "0" : "1");
+      return !t;
+    });
+  }
+
+  // Countdown per question; expiry auto-submits whatever is entered.
+  useEffect(() => {
+    if (!timed || !q || result) return;
+    if (secs <= 0) {
+      submit(true);
+      return;
+    }
+    const t = setTimeout(() => setSecs((s) => s - 1), 1000);
+    return () => clearTimeout(t);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [timed, q, secs, result]);
+
+  const limitFor = (type: string) => (type === "MCQ" ? 60 : 180);
 
   async function flag() {
     if (!q || flagged) return;
@@ -68,15 +93,17 @@ function PracticeInner() {
     }
   }
 
-  async function submit() {
-    if (!q || !answer.trim() || busy) return;
+  async function submit(force = false) {
+    if (!q || busy || result) return;
+    if (!force && !answer.trim()) return;
     setBusy(true);
     setErr("");
+    const limit = q.type === "MCQ" ? 60 : 180;
     try {
       const res = await fetch("/api/practice/attempt", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ userId, questionId: q.id, response: answer })
+        body: JSON.stringify({ userId, questionId: q.id, response: answer, timed, secondsUsed: timed ? limit - secs : null })
       });
       const data = await res.json();
       if (data.duplicate) return load(); // double-click: just move on
@@ -107,7 +134,18 @@ function PracticeInner() {
 
   return (
     <main style={{ maxWidth: 420, margin: "0 auto", padding: 20, color: "#333A45" }}>
-      <p style={{ fontSize: 13, color: "#2F5D7C" }}>{subject} • Diagnostic {Math.min(answered + 1, 10)}/10</p>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+        <p style={{ fontSize: 13, color: "#2F5D7C", margin: 0 }}>{subject} • Diagnostic {Math.min(answered + 1, 10)}/10</p>
+        <button onClick={toggleTimed} style={{ fontSize: 12, fontWeight: 700, borderRadius: 999, padding: "6px 12px", cursor: "pointer",
+          background: timed ? "#1E242E" : "#fff", color: timed ? "#fff" : "#1E242E", border: "1px solid #1E242E" }}>
+          ⏱ {timed ? "Timed ON" : "Timed OFF"}
+        </button>
+      </div>
+      {timed && q && !result && (
+        <p style={{ fontSize: 20, fontWeight: 800, color: secs <= 10 ? "#DC2626" : "#1E242E", margin: "8px 0 0" }}>
+          ⏱ {Math.floor(secs / 60)}:{String(secs % 60).padStart(2, "0")}
+        </p>
+      )}
       {!q ? (
         <p>Loading…</p>
       ) : (

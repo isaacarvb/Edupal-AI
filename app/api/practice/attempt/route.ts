@@ -13,7 +13,7 @@ function labelFor(acc: number): "WEAK" | "NEEDS_WORK" | "STRONG" {
 
 // Grades an answer, spends credits, updates mastery + streak.
 export async function POST(req: Request) {
-  const { userId, questionId, response } = await req.json();
+  const { userId, questionId, response, timed, secondsUsed } = await req.json();
   if (!userId || !questionId) {
     return NextResponse.json({ error: "userId + questionId required" }, { status: 400 });
   }
@@ -67,10 +67,9 @@ export async function POST(req: Request) {
 
   const now = new Date().toISOString();
   const today = now.slice(0, 10);
-  db.prepare("INSERT INTO attempts (id, user_id, question_id, response, correct, theory_score, feedback_json, credits_spent, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)").run(
-    uid(), userId, questionId, response ?? "", correct, theoryScore,
-    JSON.stringify({ feedback, theory }), wallet.plan === "FREE" ? cost : 0, now
-  );
+  db.prepare(
+    "INSERT INTO attempts (id, user_id, question_id, response, correct, theory_score, feedback_json, credits_spent, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)"
+  ).run(uid(), userId, questionId, response ?? "", correct, theoryScore, JSON.stringify({ feedback, theory, timed: !!timed, secondsUsed: secondsUsed ?? null }), wallet.plan === "FREE" ? cost : 0, now);
   if (wallet.plan === "FREE") {
     consumeSubject(db, userId, q.subject, cost);
   }
