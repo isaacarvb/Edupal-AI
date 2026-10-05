@@ -19,10 +19,13 @@ function PracticeInner() {
   const [answer, setAnswer] = useState("");
   const [result, setResult] = useState<null | { correct: boolean; correctAnswer: string; feedback: string; theory: Theory | null; leveledUp: boolean; freezeUsed: boolean; creditsLeft: number; subject: string; mastery: { topic: string; accuracy: number; label: string } }>(null);
   const [busy, setBusy] = useState(false);
+  const [alt, setAlt] = useState<null | { explanation: string; engine: string }>(null);
+  const [altBusy, setAltBusy] = useState(false);
   const [err, setErr] = useState("");
 
   const load = useCallback(async () => {
     setResult(null);
+    setAlt(null);
     setAnswer("");
     const res = await fetch(`/api/diagnostic/next?userId=${userId}&subject=${encodeURIComponent(subject)}`);
     const data = await res.json();
@@ -36,6 +39,22 @@ function PracticeInner() {
   useEffect(() => {
     if (userId) load();
   }, [userId, load]);
+
+  async function explainDifferently() {
+    if (!q || altBusy) return;
+    setAltBusy(true);
+    try {
+      const res = await fetch("/api/explain-differently", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ userId, questionId: q.id, original: result?.feedback ?? "", language: "SIMPLE" })
+      });
+      const data = await res.json();
+      if (res.ok) setAlt(data);
+    } finally {
+      setAltBusy(false);
+    }
+  }
 
   async function submit() {
     if (!q || !answer.trim() || busy) return;
@@ -102,6 +121,16 @@ function PracticeInner() {
               {result.leveledUp && <p style={{ fontWeight: 800, color: "#0F766E" }}>🎉 Level up! {result.mastery.topic} is now {result.mastery.label}.</p>}
               {result.freezeUsed && <p style={{ fontWeight: 700, color: "#2F5D7C" }}>🧊 Your streak freeze saved the streak — one per month.</p>}
               <p style={{ fontSize: 14 }}>{result.feedback}</p>
+              {!alt ? (
+                <button onClick={explainDifferently} disabled={altBusy} style={{ fontSize: 13, fontWeight: 700, color: "#2F5D7C", background: "#E1EBF5", border: "1px solid #B9D2EA", borderRadius: 999, padding: "6px 14px", cursor: "pointer", marginTop: 4 }}>
+                  {altBusy ? "Rephrasing…" : "🔁 Explain this differently"}
+                </button>
+              ) : (
+                <div style={{ fontSize: 14, background: "#F8FAFC", border: "1px dashed #99F6E4", borderRadius: 10, padding: 10, marginTop: 8 }}>
+                  <strong>Another way to see it{alt.engine === "groq" ? " (AI)" : ""}:</strong>
+                  <p style={{ margin: "4px 0 0" }}>{alt.explanation}</p>
+                </div>
+              )}
               {result.theory && (
                 <>
                   <p style={{ fontSize: 14, fontWeight: 700 }}>Score: {result.theory.score}/{result.theory.maxScore}</p>
