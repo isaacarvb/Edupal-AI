@@ -2,7 +2,7 @@
 import { Suspense, useCallback, useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 
-type Q = { id: string; subject: string; topic: string; type: string; stem: string; optionsJson: string; predictedRepeat: number };
+type Q = { id: string; subject: string; topic: string; type: string; stem: string; optionsJson: string; predictedRepeat: number; difficulty: string };
 type Theory = { score: number; maxScore: number; hits: string[]; misses: string[]; tips: string[]; modelAnswer: string };
 
 const btnPrimary: React.CSSProperties = { display: "block", width: "100%", height: 48, borderRadius: 10, border: 0, fontSize: 16, fontWeight: 600, background: "#0F766E", color: "#fff", cursor: "pointer", margin: "8px 0" };
@@ -151,7 +151,14 @@ function PracticeInner() {
       ) : (
         <>
           <h2 style={{ color: "#1E242E", fontSize: 20 }}>{q.topic}</h2>
-          {q.predictedRepeat === 1 && <span style={{ fontSize: 12, fontWeight: 700, background: "#FEF3C7", border: "1px solid #FDE68A", color: "#92400E", padding: "4px 10px", borderRadius: 999 }}>Likely to repeat</span>}
+          <div style={{ display: "flex", gap: 6, marginBottom: 4 }}>
+            <span style={{ fontSize: 11, fontWeight: 800, padding: "4px 10px", borderRadius: 999,
+              background: q.difficulty === "HARD" ? "#FEE2E2" : q.difficulty === "EASY" ? "#DCFCE7" : "#F1F5F9",
+              color: q.difficulty === "HARD" ? "#991B1B" : q.difficulty === "EASY" ? "#166534" : "#475569" }}>
+              {q.difficulty}
+            </span>
+            {q.predictedRepeat === 1 && <span style={{ fontSize: 12, fontWeight: 700, background: "#FEF3C7", border: "1px solid #FDE68A", color: "#92400E", padding: "4px 10px", borderRadius: 999 }}>Likely to repeat</span>}
+          </div>
           <p>{q.stem}</p>
           {q.type === "MCQ" ? (
             JSON.parse(q.optionsJson).map((opt: string) => (

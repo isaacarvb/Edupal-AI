@@ -3,7 +3,10 @@ import { getDb } from "@/lib/db";
 
 const DIAGNOSTIC_CAP = 10;
 
-// Next unattempted question in a subject (curated first). Caps at 10 per subject.
+// Next unattempted question, difficulty-adapted: 3 correct in a row → HARD,
+// 2 wrong in a row → EASY, else MEDIUM. Tiers are derived per topic
+// (first third EASY, middle MEDIUM, last HARD), so this works on any bank
+// with zero data migration.
 export async function GET(req: Request) {
   const { searchParams } = new URL(req.url);
   const userId = searchParams.get("userId");
@@ -20,16 +23,44 @@ export async function GET(req: Request) {
     )
     .get(userId, subject) as { n: number };
   if (done.n >= DIAGNOSTIC_CAP) return NextResponse.json({ done: true, answered: done.n });
-  const q = db
+
+  const recent = db
     .prepare(
-      `SELECT id, exam, subject, topic, type, stem, options_json AS optionsJson,
-              predicted_repeat AS predictedRepeat
-       FROM questions
-       WHERE subject = ? AND id NOT IN (SELECT question_id FROM attempts WHERE user_id = ?)
-       ORDER BY CASE WHEN source = 'CURATED' THEN 0 ELSE 1 END, id
-       LIMIT 1`
+      `SELECT a.correct AS correct FROM attempts a
+       JOIN questions q ON q.id = a.question_id
+       WHERE a.user_id = ? AND q.subject = ?
+       ORDER BY a.created_at DESC LIMIT 3`
     )
-    .get(subject, userId);
+    .all(userId, subject) as { correct: number }[];
+  let target: "EASY" | "MEDIUM" | "HARD" = "MEDIUM";
+  if (recent.length >= 3 && recent.every((r) => r.correct === 1)) target = "HARD";
+  else if (recent.length >= 2 && recent.slice(0, 2).every((r) => r.correct === 0)) target = "EASY";
+
+  const pick = (tier: string) =>
+    db
+      .prepare(
+        `WITH ranked AS (
+           SELECT id, exam, subject, topic, type, stem, options_json AS optionsJson,
+                  predicted_repeat AS predictedRepeat, source,
+                  ROW_NUMBER() OVER (PARTITION BY topic ORDER BY id) AS rn,
+                  COUNT(*) OVER (PARTITION BY topic) AS n
+           FROM questions WHERE subject = ?
+         ),
+         tiered AS (
+           SELECT *, CASE WHEN rn * 3 <= n THEN 'EASY'
+                          WHEN rn * 3 <= n * 2 THEN 'MEDIUM'
+                          ELSE 'HARD' END AS difficulty
+           FROM ranked
+         )
+         SELECT id, exam, subject, topic, type, stem, optionsJson, predictedRepeat, difficulty
+         FROM tiered
+         WHERE difficulty = ? AND id NOT IN (SELECT question_id FROM attempts WHERE user_id = ?)
+         ORDER BY CASE WHEN source = 'CURATED' THEN 0 ELSE 1 END, id
+         LIMIT 1`
+      )
+      .get(subject, tier, userId);
+
+  const q = pick(target) ?? pick("MEDIUM") ?? pick("EASY") ?? pick("HARD");
   if (!q) return NextResponse.json({ done: true, answered: done.n });
-  return NextResponse.json({ done: false, answered: done.n, question: q });
+  return NextResponse.json({ done: false, answered: done.n, difficulty: target, question: q });
 }
