@@ -13,6 +13,8 @@ function PracticeInner() {
   const router = useRouter();
   const userId = params.get("userId") ?? "";
   const subject = params.get("subject") ?? "English";
+  const qotdMode = params.get("qotd") === "1";
+  const [isQotd, setIsQotd] = useState(false);
   const [q, setQ] = useState<Q | null>(null);
   const [answered, setAnswered] = useState(0);
   const [done, setDone] = useState(false);
@@ -26,11 +28,27 @@ function PracticeInner() {
   const [flagged, setFlagged] = useState(false);
   const [err, setErr] = useState("");
 
+  const [qotdServed, setQotdServed] = useState(false);
+
   const load = useCallback(async () => {
     setResult(null);
     setAlt(null);
     setFlagged(false);
     setAnswer("");
+    setIsQotd(false);
+    if (qotdMode && !qotdServed) {
+      const res = await fetch(`/api/qotd?userId=${userId}`);
+      const data = await res.json();
+      if (!data.done && data.question) {
+        setQ(data.question);
+        setIsQotd(true);
+        setQotdServed(true);
+        setAnswered(0);
+        setSecs(data.question.type === "MCQ" ? 60 : 180);
+        return;
+      }
+      setQotdServed(true); // already done today → fall through to normal practice
+    }
     const res = await fetch(`/api/diagnostic/next?userId=${userId}&subject=${encodeURIComponent(subject)}`);
     const data = await res.json();
     if (data.done) setDone(true);
@@ -39,7 +57,7 @@ function PracticeInner() {
       setAnswered(data.answered);
       setSecs(data.question.type === "MCQ" ? 60 : 180);
     }
-  }, [userId, subject]);
+  }, [userId, subject, qotdMode, qotdServed]);
 
   useEffect(() => {
     if (userId) load();
@@ -103,7 +121,7 @@ function PracticeInner() {
       const res = await fetch("/api/practice/attempt", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ userId, questionId: q.id, response: answer, timed, secondsUsed: timed ? limit - secs : null })
+        body: JSON.stringify({ userId, questionId: q.id, response: answer, timed, secondsUsed: timed ? limit - secs : null, qotd: isQotd })
       });
       const data = await res.json();
       if (data.duplicate) return load(); // double-click: just move on
@@ -135,7 +153,9 @@ function PracticeInner() {
   return (
     <main style={{ maxWidth: 420, margin: "0 auto", padding: 20, color: "#333A45" }}>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-        <p style={{ fontSize: 13, color: "#2F5D7C", margin: 0 }}>{subject} • Diagnostic {Math.min(answered + 1, 10)}/10</p>
+        <p style={{ fontSize: 13, color: "#2F5D7C", margin: 0 }}>
+          {isQotd ? "⭐ Question of the Day • FREE" : `${subject} • Diagnostic ${Math.min(answered + 1, 10)}/10`}
+        </p>
         <button onClick={toggleTimed} style={{ fontSize: 12, fontWeight: 700, borderRadius: 999, padding: "6px 12px", cursor: "pointer",
           background: timed ? "#1E242E" : "#fff", color: timed ? "#fff" : "#1E242E", border: "1px solid #1E242E" }}>
           ⏱ {timed ? "Timed ON" : "Timed OFF"}

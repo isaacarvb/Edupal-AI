@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { getDb, uid } from "@/lib/db";
 import { explainAnswer, gradeTheory, type TheoryGrade } from "@/lib/ai";
 import { getWallet, getSubjectLeft, consumeSubject } from "@/lib/credits";
+import { todayQuestion } from "@/lib/qotd";
 
 const COST = { MCQ: 1, THEORY: 3 } as const;
 
@@ -13,7 +14,7 @@ function labelFor(acc: number): "WEAK" | "NEEDS_WORK" | "STRONG" {
 
 // Grades an answer, spends credits, updates mastery + streak.
 export async function POST(req: Request) {
-  const { userId, questionId, response, timed, secondsUsed } = await req.json();
+  const { userId, questionId, response, timed, secondsUsed, qotd } = await req.json();
   if (!userId || !questionId) {
     return NextResponse.json({ error: "userId + questionId required" }, { status: 400 });
   }
@@ -32,8 +33,10 @@ export async function POST(req: Request) {
     .get(userId, questionId);
   if (dupe) return NextResponse.json({ error: "already answered", duplicate: true }, { status: 409 });
   const wallet = getWallet(db, userId);
+  // Question of the Day bypasses the counter — but only today's real pick.
+  const isQotd = !!qotd && todayQuestion(db)?.id === questionId;
   // Per-subject daily free limits (UNLIMITED bypasses). Other subjects stay open.
-  if (wallet && wallet.plan === "FREE" && getSubjectLeft(db, userId, q.subject, "FREE") < cost) {
+  if (!isQotd && wallet && wallet.plan === "FREE" && getSubjectLeft(db, userId, q.subject, "FREE") < cost) {
     return NextResponse.json(
       { error: "subject limit reached", subjectLimit: true, subject: q.subject, creditsLeft: 0 },
       { status: 402 }
@@ -69,8 +72,8 @@ export async function POST(req: Request) {
   const today = now.slice(0, 10);
   db.prepare(
     "INSERT INTO attempts (id, user_id, question_id, response, correct, theory_score, feedback_json, credits_spent, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)"
-  ).run(uid(), userId, questionId, response ?? "", correct, theoryScore, JSON.stringify({ feedback, theory, timed: !!timed, secondsUsed: secondsUsed ?? null }), wallet.plan === "FREE" ? cost : 0, now);
-  if (wallet.plan === "FREE") {
+  ).run(uid(), userId, questionId, response ?? "", correct, theoryScore, JSON.stringify({ feedback, theory, timed: !!timed, secondsUsed: secondsUsed ?? null, qotd: isQotd }), wallet.plan === "FREE" && !isQotd ? cost : 0, now);
+  if (wallet.plan === "FREE" && !isQotd) {
     consumeSubject(db, userId, q.subject, cost);
   }
 

@@ -22,6 +22,7 @@ function DashInner() {
   const [reason, setReason] = useState("");
   const [retention, setRetention] = useState<null | { topic: { subject: string; topic: string } }>(null);
   const [reminder, setReminder] = useState<string | null>(null);
+  const [qotd, setQotd] = useState<null | { subject: string; topic: string }>(null);
   const [parentEmail, setParentEmail] = useState("");
   const [payMsg, setPayMsg] = useState("");
   const [paid, setPaid] = useState(false);
@@ -66,6 +67,9 @@ function DashInner() {
     fetch(`/api/reminders?userId=${userId}`)
       .then((r) => r.json())
       .then((d) => setReminder(d.reminder ?? null));
+    fetch(`/api/qotd?userId=${userId}`)
+      .then((r) => r.json())
+      .then((d) => setQotd(!d.done && d.question ? { subject: d.question.subject, topic: d.question.topic } : null));
   }
 
   useEffect(refresh, [userId]);
@@ -103,6 +107,13 @@ function DashInner() {
   return (
     <main style={{ maxWidth: 1100, margin: "0 auto", padding: 20, color: "#333A45" }}>
       <h1 style={{ color: "#1E242E", fontSize: 24 }}>My dashboard</h1>
+      {qotd && (
+        <div style={{ background: "#ECFDF5", border: "2px solid #10B981", borderRadius: 16, padding: 12, margin: "8px 0" }}>
+          <strong>⭐ Question of the Day: {qotd.subject} • {qotd.topic}</strong>
+          <p style={{ fontSize: 14, margin: "4px 0 8px" }}>Free bonus — doesn't touch your credits, even at zero.</p>
+          <a href={`/practice?userId=${userId}&subject=${encodeURIComponent(qotd.subject)}&qotd=1`} style={{ display: "block", textAlign: "center", background: "#0F766E", color: "#fff", borderRadius: 10, height: 44, lineHeight: "44px", fontWeight: 700, fontSize: 14, textDecoration: "none" }}>Answer today's question</a>
+        </div>
+      )}
       {reminder && (
         <div style={{ background: "#FFFBEB", border: "1px solid #FDE68A", borderRadius: 16, padding: 12, margin: "8px 0" }}>
           <p style={{ fontSize: 14, margin: 0 }}>🔔 {reminder}</p>
