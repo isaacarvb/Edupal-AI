@@ -116,7 +116,7 @@ function DashInner() {
       )}
       {reminder && (
         <div style={{ background: "#FFFBEB", border: "1px solid #FDE68A", borderRadius: 16, padding: 12, margin: "8px 0" }}>
-          <p style={{ fontSize: 14, margin: 0 }}>🔔 {reminder}</p>
+          <p style={{ fontSize: 14, margin: 0 }}><span className="deco">🔔 </span>{reminder}</p>
         </div>
       )}
       {limited !== "" && (

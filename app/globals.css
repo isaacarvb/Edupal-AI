@@ -17,6 +17,12 @@ body {
 }
 h1, h2, h3 { color: var(--ink); }
 
+/* ─── Reduced data mode: flat, text-only, no decoration ─── */
+body.lite { background: #fff; }
+body.lite * { box-shadow: none !important; transition: none !important; animation: none !important; }
+body.lite .deco { display: none !important; }
+body.lite .lite-flat { background: #1E242E !important; }
+
 .btn-journey {
   display: block; text-align: center; background: var(--accent); color: #fff;
   border-radius: 12px; font-weight: 800; font-size: 18px; letter-spacing: 1px;

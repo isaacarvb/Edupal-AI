@@ -1,7 +1,7 @@
 function Feature({ emoji, color, title, text }: { emoji: string; color: string; title: string; text: string }) {
   return (
     <div className="feature-card" style={{ background: "#fff", border: "1px solid #E2E8F0", borderRadius: 12, padding: 20 }}>
-      <span style={{ display: "inline-block", fontSize: 24, background: color, borderRadius: 10, padding: "6px 10px" }}>{emoji}</span>
+      <span className="deco" style={{ display: "inline-block", fontSize: 24, background: color, borderRadius: 10, padding: "6px 10px" }}>{emoji}</span>
       <div style={{ fontWeight: 800, color: "#1E242E", fontSize: 17, marginTop: 10 }}>{title}</div>
       <p style={{ fontSize: 14, margin: "6px 0 0", color: "#333A45" }}>{text}</p>
     </div>
@@ -22,7 +22,7 @@ export default function Landing() {
   return (
     <main style={{ margin: 0, color: "#333A45", fontFamily: "Inter,-apple-system,Segoe UI,Roboto,Arial,sans-serif" }}>
       {/* HERO */}
-      <section style={{ background: "linear-gradient(160deg, #1E242E 0%, #2F5D7C 60%, #0F766E 100%)", color: "#fff", padding: "72px 20px 64px", textAlign: "center" }}>
+      <section className="lite-flat" style={{ background: "linear-gradient(160deg, #1E242E 0%, #2F5D7C 60%, #0F766E 100%)", color: "#fff", padding: "72px 20px 64px", textAlign: "center" }}>
         <div style={{ maxWidth: 1100, margin: "0 auto" }}>
           <span style={{ display: "inline-block", fontSize: 14, fontWeight: 700, letterSpacing: 2, background: "rgba(16,185,129,0.18)", border: "1px solid #10B981", color: "#A7F3D0", padding: "8px 22px", borderRadius: 999 }}>
             WAEC • JAMB • NECO
