@@ -171,6 +171,7 @@ function PracticeInner() {
       ) : (
         <>
           <h2 style={{ color: "#1E242E", fontSize: 20 }}>{q.topic}</h2>
+          <a href={`/glossary?subject=${encodeURIComponent(q.subject)}`} style={{ fontSize: 13, color: "#0F766E", fontWeight: 700 }}>📖 Key terms for {q.topic}</a>
           <div style={{ display: "flex", gap: 6, marginBottom: 4 }}>
             <span style={{ fontSize: 11, fontWeight: 800, padding: "4px 10px", borderRadius: 999,
               background: q.difficulty === "HARD" ? "#FEE2E2" : q.difficulty === "EASY" ? "#DCFCE7" : "#F1F5F9",
