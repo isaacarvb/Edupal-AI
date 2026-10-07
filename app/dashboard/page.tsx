@@ -21,6 +21,7 @@ function DashInner() {
   const [suggest, setSuggest] = useState<null | { subject: string; topic: string; accuracy: number; label: string }>(null);
   const [reason, setReason] = useState("");
   const [retention, setRetention] = useState<null | { topic: { subject: string; topic: string } }>(null);
+  const [patterns, setPatterns] = useState<{ text: string; detail: string }[]>([]);
   const [reminder, setReminder] = useState<string | null>(null);
   const [qotd, setQotd] = useState<null | { subject: string; topic: string }>(null);
   const [parentEmail, setParentEmail] = useState("");
@@ -67,6 +68,9 @@ function DashInner() {
     fetch(`/api/reminders?userId=${userId}`)
       .then((r) => r.json())
       .then((d) => setReminder(d.reminder ?? null));
+    fetch(`/api/patterns?userId=${userId}`)
+      .then((r) => r.json())
+      .then((d) => setPatterns(d.patterns ?? []));
     fetch(`/api/qotd?userId=${userId}`)
       .then((r) => r.json())
       .then((d) => setQotd(!d.done && d.question ? { subject: d.question.subject, topic: d.question.topic } : null));
@@ -159,6 +163,17 @@ function DashInner() {
             <div style={{ ...card, background: "#FFFBEB", border: "1px solid #FDE68A" }}>
               <strong>Retention refresh: {retention.topic.subject} • {retention.topic.topic}</strong>
               <p style={{ fontSize: 14, margin: "4px 0" }}>It's Strong — a quick refresh keeps it there. <a href={`/practice?userId=${userId}&subject=${encodeURIComponent(retention.topic.subject)}`} style={{ color: "#0F766E", fontWeight: 700 }}>Refresh now</a></p>
+            </div>
+          )}
+          {patterns.length > 0 && (
+            <div style={{ ...card, background: "#EFF6FF", border: "1px solid #BFDBFE" }}>
+              <strong>🔍 Patterns I'm noticing</strong>
+              {patterns.map((p, i) => (
+                <div key={i} style={{ fontSize: 14, marginTop: 8, paddingTop: 8, borderTop: "1px solid #BFDBFE" }}>
+                  <div>{p.text}</div>
+                  <div style={{ fontSize: 12, color: "#5F6E7F" }}>{p.detail}</div>
+                </div>
+              ))}
             </div>
           )}
 
