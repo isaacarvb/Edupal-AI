@@ -1,10 +1,11 @@
 import { NextResponse } from "next/server";
 import { getDb, uid } from "@/lib/db";
 import { hashPassword } from "@/lib/password";
+import { referrerByCode, grantReferralBonus } from "@/lib/referral";
 
 // Step 1 of onboarding: create the account. Study plan comes in Step 2.
 export async function POST(req: Request) {
-  const { name, email, password } = await req.json();
+  const { name, email, password, referredBy } = await req.json();
   const cleanName = (name ?? "").trim();
   const cleanEmail = (email ?? "").trim().toLowerCase();
   if (!cleanName) return NextResponse.json({ error: "full name required" }, { status: 400 });
@@ -20,5 +21,9 @@ export async function POST(req: Request) {
   );
   db.prepare("INSERT INTO wallets (user_id, credits_left, reset_at, plan) VALUES (?, 10, ?, 'FREE')").run(id, now);
   db.prepare("INSERT INTO streaks (user_id) VALUES (?)").run(id);
+  if (referredBy) {
+    const referrer = referrerByCode(db, String(referredBy));
+    if (referrer && referrer !== id) grantReferralBonus(db, referrer, cleanEmail);
+  }
   return NextResponse.json({ userId: id });
 }

@@ -19,7 +19,7 @@ function PracticeInner() {
   const [answered, setAnswered] = useState(0);
   const [done, setDone] = useState(false);
   const [answer, setAnswer] = useState("");
-  const [result, setResult] = useState<null | { correct: boolean; correctAnswer: string; feedback: string; theory: Theory | null; leveledUp: boolean; freezeUsed: boolean; creditsLeft: number; subject: string; mastery: { topic: string; accuracy: number; label: string } }>(null);
+  const [result, setResult] = useState<null | { correct: boolean; correctAnswer: string; feedback: string; theory: Theory | null; leveledUp: boolean; freezeUsed: boolean; usedBonus: boolean; creditsLeft: number; subject: string; mastery: { topic: string; accuracy: number; label: string } }>(null);
   const [busy, setBusy] = useState(false);
   const [timed, setTimed] = useState(false);
   const [secs, setSecs] = useState(0);
@@ -198,6 +198,7 @@ function PracticeInner() {
               <p style={{ fontWeight: 700, color: result.correct ? "#16A34A" : "#DC2626" }}>{result.correct ? "Correct ✓" : `Not quite — answer: ${result.correctAnswer}`}</p>
               {result.leveledUp && <p style={{ fontWeight: 800, color: "#0F766E" }}><span className="deco">🎉 </span>Level up! {result.mastery.topic} is now {result.mastery.label}.</p>}
               {result.freezeUsed && <p style={{ fontWeight: 700, color: "#2F5D7C" }}><span className="deco">🧊 </span>Your streak freeze saved the streak — one per month.</p>}
+              {result.usedBonus && <p style={{ fontWeight: 700, color: "#92400E" }}>🎁 Referral bonus covered this question.</p>}
               <p style={{ fontSize: 14 }}>{result.feedback}</p>
               {!alt ? (
                 <button onClick={explainDifferently} disabled={altBusy} style={{ fontSize: 13, fontWeight: 700, color: "#2F5D7C", background: "#E1EBF5", border: "1px solid #B9D2EA", borderRadius: 999, padding: "6px 14px", cursor: "pointer", marginTop: 4 }}>

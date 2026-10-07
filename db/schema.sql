@@ -100,6 +100,21 @@ CREATE TABLE IF NOT EXISTS email_outbox (
 );
 CREATE INDEX IF NOT EXISTS idx_outbox_user_day ON email_outbox(user_id, kind, created_at);
 
+-- Referrals: invite link rewards (+5 bonus questions/day, capped).
+CREATE TABLE IF NOT EXISTS referrals (
+  id TEXT PRIMARY KEY,
+  referrer_user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  referred_email TEXT NOT NULL,
+  converted INTEGER NOT NULL DEFAULT 0,
+  bonus_granted_at TEXT
+);
+CREATE TABLE IF NOT EXISTS bonus_pool (
+  user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  day TEXT NOT NULL,
+  remaining INTEGER NOT NULL DEFAULT 0,
+  PRIMARY KEY (user_id, day)
+);
+
 -- AI tutor chat history (per user + optional question context).
 CREATE TABLE IF NOT EXISTS chat_messages (
   id TEXT PRIMARY KEY,

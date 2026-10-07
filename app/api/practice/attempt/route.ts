@@ -3,6 +3,7 @@ import { getDb, uid } from "@/lib/db";
 import { explainAnswer, gradeTheory, type TheoryGrade } from "@/lib/ai";
 import { getWallet, getSubjectLeft, consumeSubject } from "@/lib/credits";
 import { todayQuestion } from "@/lib/qotd";
+import { consumeBonus } from "@/lib/referral";
 
 const COST = { MCQ: 1, THEORY: 3 } as const;
 
@@ -36,11 +37,17 @@ export async function POST(req: Request) {
   // Question of the Day bypasses the counter — but only today's real pick.
   const isQotd = !!qotd && todayQuestion(db)?.id === questionId;
   // Per-subject daily free limits (UNLIMITED bypasses). Other subjects stay open.
+  // Referral bonus covers the cost when the subject budget is out (capped daily).
+  let usedBonus = false;
   if (!isQotd && wallet && wallet.plan === "FREE" && getSubjectLeft(db, userId, q.subject, "FREE") < cost) {
-    return NextResponse.json(
-      { error: "subject limit reached", subjectLimit: true, subject: q.subject, creditsLeft: 0 },
-      { status: 402 }
-    );
+    if (consumeBonus(db, userId, cost)) {
+      usedBonus = true;
+    } else {
+      return NextResponse.json(
+        { error: "subject limit reached", subjectLimit: true, subject: q.subject, creditsLeft: 0 },
+        { status: 402 }
+      );
+    }
   }
   if (!wallet) {
     return NextResponse.json({ error: "no wallet", creditsLeft: 0 }, { status: 402 });
@@ -72,8 +79,8 @@ export async function POST(req: Request) {
   const today = now.slice(0, 10);
   db.prepare(
     "INSERT INTO attempts (id, user_id, question_id, response, correct, theory_score, feedback_json, credits_spent, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)"
-  ).run(uid(), userId, questionId, response ?? "", correct, theoryScore, JSON.stringify({ feedback, theory, timed: !!timed, secondsUsed: secondsUsed ?? null, qotd: isQotd }), wallet.plan === "FREE" && !isQotd ? cost : 0, now);
-  if (wallet.plan === "FREE" && !isQotd) {
+  ).run(uid(), userId, questionId, response ?? "", correct, theoryScore, JSON.stringify({ feedback, theory, timed: !!timed, secondsUsed: secondsUsed ?? null, qotd: isQotd, usedBonus }), wallet.plan === "FREE" && !isQotd && !usedBonus ? cost : 0, now);
+  if (wallet.plan === "FREE" && !isQotd && !usedBonus) {
     consumeSubject(db, userId, q.subject, cost);
   }
 
@@ -151,6 +158,7 @@ export async function POST(req: Request) {
     creditsLeft,
     leveledUp,
     freezeUsed,
+    usedBonus,
     subject: q.subject,
     mastery: { subject: q.subject, topic: q.topic, accuracy: Math.round(acc), label }
   });

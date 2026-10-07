@@ -29,6 +29,8 @@ function DashInner() {
   const [paid, setPaid] = useState(false);
   const [limits, setLimits] = useState<{ subject: string; left: number }[]>([]);
   const [exhaustedAll, setExhaustedAll] = useState(false);
+  const [referral, setReferral] = useState<null | { code: string; bonusLeft: number; invites: number }>(null);
+  const [copied, setCopied] = useState(false);
   const limited = params.get("limited") ?? "";
 
   function chipStyle(days: number | null): React.CSSProperties {
@@ -71,6 +73,9 @@ function DashInner() {
     fetch(`/api/patterns?userId=${userId}`)
       .then((r) => r.json())
       .then((d) => setPatterns(d.patterns ?? []));
+    fetch(`/api/referral?userId=${userId}`)
+      .then((r) => r.json())
+      .then((d) => setReferral(d.code ? d : null));
     fetch(`/api/qotd?userId=${userId}`)
       .then((r) => r.json())
       .then((d) => setQotd(!d.done && d.question ? { subject: d.question.subject, topic: d.question.topic } : null));
@@ -216,7 +221,7 @@ function DashInner() {
 
           <div id="upgrade" style={card}>
             <h3 style={{ margin: "0 0 8px", fontSize: 16 }}>Subscription &amp; Credits</h3>
-            <p style={{ fontSize: 14, margin: "0 0 8px" }}>Plan: <strong>{profile.plan}</strong></p>
+            <p style={{ fontSize: 14, margin: "0 0 8px" }}>Plan: <strong>{profile.plan}</strong>{referral && referral.bonusLeft > 0 && <span> • 🎁 {referral.bonusLeft} bonus left</span>}</p>
             {profile.plan === "FREE" && exhaustedAll && !paid ? (
               <>
                 <p style={{ fontSize: 14 }}>Out of free questions everywhere today. One subscription unlocks unlimited practice + parent dashboard.</p>
@@ -233,6 +238,19 @@ function DashInner() {
             )}
             {paid && <p style={{ color: "#16A34A", fontWeight: 700 }}>✓ Unlimited unlocked. Parent link sent.</p>}
           </div>
+
+          {referral && (
+            <div style={card}>
+              <h3 style={{ margin: "0 0 8px", fontSize: 16 }}>Invite a classmate</h3>
+              <p style={{ fontSize: 14, margin: "0 0 8px" }}>Share your link — you earn <strong>5 extra free questions today</strong> when they join. ({referral.invites} joined so far)</p>
+              <div style={{ display: "flex", gap: 8 }}>
+                <input readOnly value={typeof window !== "undefined" ? `${window.location.origin}/signup?ref=${referral.code}` : ""} style={{ flex: 1, height: 44, borderRadius: 10, border: "1px solid #CBD5E1", padding: "0 10px", fontSize: 12, minWidth: 0 }} />
+                <button onClick={() => { navigator.clipboard?.writeText(`${window.location.origin}/signup?ref=${referral.code}`); setCopied(true); }} style={{ height: 44, borderRadius: 10, border: 0, background: "#0F766E", color: "#fff", fontWeight: 700, padding: "0 16px", cursor: "pointer" }}>
+                  {copied ? "Copied ✓" : "Copy"}
+                </button>
+              </div>
+            </div>
+          )}
         </div>
       </div>
     </main>
