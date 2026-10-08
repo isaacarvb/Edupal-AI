@@ -11,6 +11,7 @@ export default function Shell({ children }: { children: React.ReactNode }) {
   const path = usePathname();
   const search = useSearchParams();
   const [userId, setUserId] = useState<string | null>(null);
+  const [role, setRole] = useState("STUDENT");
   const [name, setName] = useState("Student");
   const [mobile, setMobile] = useState(false);
   const [open, setOpen] = useState(false);
@@ -26,6 +27,7 @@ export default function Shell({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     const id = localStorage.getItem("edupal_user");
     setUserId(id);
+    setRole(localStorage.getItem("edupal_role") ?? "STUDENT");
     setOpen(false);
     if (id) {
       fetch(`/api/topics?userId=${id}`)
@@ -51,7 +53,11 @@ export default function Shell({ children }: { children: React.ReactNode }) {
   const here = `${path}${hash}`;
   // Exact match on path + anchor: /dashboard lights only Dashboard, not #topics/#upgrade.
   const isActive = (match: string) => match === here;
-  const links = [
+  const links = role === "TEACHER" ? [
+    { href: userId ? `/teacher?userId=${userId}` : "/login", match: "/teacher", label: "My Classes", emoji: "🏫" },
+    { href: "/admin", match: "/admin", label: "Progress Analytics", emoji: "📊" },
+    { href: userId ? `/teacher?userId=${userId}` : "/login", match: "/teacher#billing", label: "Billing", emoji: "💳" }
+  ] : [
     { href: userId ? `/dashboard${q}` : "/onboarding", match: "/dashboard", label: "Dashboard", emoji: "🏠" },
     { href: userId ? `/practice${q}&subject=English` : "/onboarding", match: "/practice", label: "Practice & Diagnostics", emoji: "📝" },
     { href: userId ? `/dashboard${q}#topics` : "/onboarding", match: "/dashboard#topics", label: "Weak Topics", emoji: "🎯" },
@@ -59,7 +65,7 @@ export default function Shell({ children }: { children: React.ReactNode }) {
     { href: "/parent", match: "/parent", label: "Parent Portal", emoji: "👨‍👩‍👧" },
     { href: userId ? `/dashboard${q}#upgrade` : "/onboarding", match: "/dashboard#upgrade", label: "Subscription & Credits", emoji: "💳" }
   ];
-  const homeHref = userId ? `/dashboard${q}` : "/";
+  const homeHref = role === "TEACHER" && userId ? `/teacher?userId=${userId}` : userId ? `/dashboard${q}` : "/";
 
   const sidebar = (
     <aside

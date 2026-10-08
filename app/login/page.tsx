@@ -19,13 +19,15 @@ export default function Login() {
       if (!res?.ok) return setErr("Wrong email or password. Try again or start your journey below.");
       const session = await fetch("/api/auth/session").then((r) => r.json());
       const id = session?.user?.id as string | undefined;
+      const role = (session?.user as { role?: string } | undefined)?.role ?? "STUDENT";
       if (!id || id === "local-amina") {
         // Dev seed user has no real dashboard data.
         localStorage.removeItem("edupal_user");
         return setErr("Dev account has no dashboard yet — create yours via Start your journey.");
       }
       localStorage.setItem("edupal_user", id);
-      router.push(`/dashboard?userId=${id}`);
+      localStorage.setItem("edupal_role", role);
+      router.push(role === "TEACHER" ? `/teacher?userId=${id}` : `/dashboard?userId=${id}`);
     } finally {
       setBusy(false);
     }

@@ -33,7 +33,7 @@ export async function initializePayment(email: string, metadata: Record<string, 
   return data.data.authorization_url as string;
 }
 
-export async function verifyPayment(reference: string): Promise<{ paid: boolean; email?: string; userId?: string }> {
+export async function verifyPayment(reference: string): Promise<{ paid: boolean; email?: string; userId?: string; classId?: string }> {
   const key = process.env.PAYSTACK_SECRET_KEY;
   if (!key) throw new Error("PAYSTACK_SECRET_KEY missing");
   const res = await fetch(`${BASE}/transaction/verify/${encodeURIComponent(reference)}`, {
@@ -44,5 +44,5 @@ export async function verifyPayment(reference: string): Promise<{ paid: boolean;
     console.error(`Paystack verify error: ${res.status}`);
     return { paid: false };
   }
-  return { paid: data.data?.status === "success", email: data.data?.customer?.email, userId: data.data?.metadata?.userId };
+  return { paid: data.data?.status === "success", email: data.data?.customer?.email, userId: data.data?.metadata?.userId, classId: data.data?.metadata?.classId };
 }

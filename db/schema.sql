@@ -115,6 +115,40 @@ CREATE TABLE IF NOT EXISTS bonus_pool (
   PRIMARY KEY (user_id, day)
 );
 
+-- Classes, memberships, assignments, live sessions (teacher/B2B + LIVE CLASS).
+CREATE TABLE IF NOT EXISTS classes (
+  id TEXT PRIMARY KEY,
+  teacher_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  name TEXT NOT NULL,
+  invite_code TEXT NOT NULL UNIQUE,
+  term TEXT NOT NULL DEFAULT 'First Term',
+  plan TEXT NOT NULL DEFAULT 'FREE',
+  created_at TEXT NOT NULL DEFAULT (datetime('now'))
+);
+CREATE TABLE IF NOT EXISTS class_members (
+  class_id TEXT NOT NULL REFERENCES classes(id) ON DELETE CASCADE,
+  student_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  joined_at TEXT NOT NULL DEFAULT (datetime('now')),
+  PRIMARY KEY (class_id, student_id)
+);
+CREATE TABLE IF NOT EXISTS assignments (
+  id TEXT PRIMARY KEY,
+  class_id TEXT NOT NULL REFERENCES classes(id) ON DELETE CASCADE,
+  subject TEXT NOT NULL,
+  topic TEXT NOT NULL,
+  note TEXT NOT NULL DEFAULT '',
+  created_at TEXT NOT NULL DEFAULT (datetime('now'))
+);
+CREATE TABLE IF NOT EXISTS class_sessions (
+  id TEXT PRIMARY KEY,
+  class_id TEXT NOT NULL REFERENCES classes(id) ON DELETE CASCADE,
+  title TEXT NOT NULL,
+  starts_at TEXT NOT NULL,
+  meet_url TEXT NOT NULL DEFAULT '',
+  created_at TEXT NOT NULL DEFAULT (datetime('now'))
+);
+CREATE INDEX IF NOT EXISTS idx_members_student ON class_members(student_id);
+
 -- Deadlines & scholarships board (curated; unverified dates stay NULL = TBC).
 CREATE TABLE IF NOT EXISTS deadlines (
   id TEXT PRIMARY KEY,

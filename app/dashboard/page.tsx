@@ -32,6 +32,10 @@ function DashInner() {
   const [exhaustedAll, setExhaustedAll] = useState(false);
   const [referral, setReferral] = useState<null | { code: string; bonusLeft: number; invites: number }>(null);
   const [copied, setCopied] = useState(false);
+  const [live, setLive] = useState<{ title: string; startsAt: string; meetUrl: string; className: string; liveNow: boolean }[]>([]);
+  const [myClasses, setMyClasses] = useState<{ id: string; name: string }[]>([]);
+  const [joinCode, setJoinCode] = useState("");
+  const [joinMsg, setJoinMsg] = useState("");
   const limited = params.get("limited") ?? "";
 
   function chipStyle(days: number | null): React.CSSProperties {
@@ -80,12 +84,38 @@ function DashInner() {
     fetch(`/api/referral?userId=${userId}`)
       .then((r) => r.json())
       .then((d) => setReferral(d.code ? d : null));
+    fetch(`/api/classes?userId=${userId}`)
+      .then((r) => r.json())
+      .then((d) => {
+        if (d.role !== "TEACHER") {
+          setMyClasses(d.classes ?? []);
+          const now = Date.now();
+          setLive((d.live ?? []).map((s: { title: string; startsAt: string; meetUrl: string; className: string }) => ({
+            ...s,
+            liveNow: Date.parse(s.startsAt) <= now + 3600000 && Date.parse(s.startsAt) >= now - 7200000
+          })));
+        }
+      });
     fetch(`/api/qotd?userId=${userId}`)
       .then((r) => r.json())
       .then((d) => setQotd(!d.done && d.question ? { subject: d.question.subject, topic: d.question.topic } : null));
   }
 
   useEffect(refresh, [userId]);
+
+  async function joinClass() {
+    setJoinMsg("");
+    if (!joinCode.trim()) return;
+    const res = await fetch("/api/classes/join", {
+      method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ userId, code: joinCode.trim() })
+    });
+    const data = await res.json();
+    if (!res.ok) return setJoinMsg(data.error || "Could not join.");
+    setJoinCode("");
+    setJoinMsg(`Joined ${data.class.name} ✓`);
+    refresh();
+  }
 
   async function pay() {
     setPayMsg("");
@@ -166,7 +196,26 @@ function DashInner() {
             </div>
           </div>
 
-          <h2 style={{ color: "#1E242E", fontSize: 18 }}>Next up for you</h2>
+          <h2 style={{ color: "#1E242E", fontSize: 18 }}>Live class</h2>
+      <div style={card}>
+        {live.filter((s) => s.liveNow && s.meetUrl).map((s, i) => (
+          <div key={i} style={{ marginBottom: 8 }}>
+            <span style={{ fontWeight: 800, color: "#DC2626" }}>🔴 LIVE NOW:</span> <strong>{s.title}</strong> ({s.className})
+            <a href={s.meetUrl} target="_blank" rel="noreferrer" style={{ display: "block", textAlign: "center", background: "#DC2626", color: "#fff", borderRadius: 10, height: 44, lineHeight: "44px", fontWeight: 800, textDecoration: "none", marginTop: 6 }}>Join live</a>
+          </div>
+        ))}
+        {live.filter((s) => !s.liveNow).slice(0, 3).map((s, i) => (
+          <div key={i} style={{ fontSize: 14, padding: "4px 0" }}>⏰ {s.title} ({s.className}) — {s.startsAt.slice(0, 16).replace("T", " ")}</div>
+        ))}
+        {live.length === 0 && <p style={{ fontSize: 14, margin: "0 0 8px" }}>No live sessions. Join your teacher's class with their code:</p>}
+        {myClasses.length > 0 && <p style={{ fontSize: 13, color: "#5F6E7F", margin: "0 0 8px" }}>My classes: {myClasses.map((c) => c.name).join(", ")}</p>}
+        <div style={{ display: "flex", gap: 8 }}>
+          <input value={joinCode} onChange={(e) => setJoinCode(e.target.value)} placeholder="Class code e.g. ABC-1234" style={{ flex: 1, height: 44, borderRadius: 10, border: "1px solid #CBD5E1", padding: "0 10px", fontSize: 14 }} />
+          <button onClick={joinClass} style={{ height: 44, borderRadius: 10, border: 0, background: "#1E242E", color: "#fff", fontWeight: 700, padding: "0 18px", cursor: "pointer" }}>Join</button>
+        </div>
+        {joinMsg && <p style={{ fontSize: 13, marginTop: 6 }}>{joinMsg}</p>}
+      </div>
+      <h2 style={{ color: "#1E242E", fontSize: 18 }}>Next up for you</h2>
           {suggest ? (
             <div style={{ ...card, background: "#CCFBF1", border: "1px solid #99F6E4" }}>
               <strong>{suggest.subject} • {suggest.topic}</strong>

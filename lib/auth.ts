@@ -18,10 +18,10 @@ export const authOptions = {
         if (!email || !password) return null;
         const db = getDb();
         const row = db
-          .prepare("SELECT id, email, password_hash AS hash FROM users WHERE email = ?")
-          .get(email) as { id: string; email: string; hash: string | null } | undefined;
+          .prepare("SELECT id, email, role, password_hash AS hash FROM users WHERE email = ?")
+          .get(email) as { id: string; email: string; role: string; hash: string | null } | undefined;
         if (row?.hash && verifyPassword(password, row.hash)) {
-          return { id: row.id, email: row.email, name: "Student" };
+          return { id: row.id, email: row.email, name: "EduPal user", role: row.role };
         }
         // Legacy dev seed (pre-password accounts).
         if (
@@ -35,12 +35,14 @@ export const authOptions = {
     })
   ],
   callbacks: {
-    async jwt({ token, user }: { token: Record<string, unknown>; user?: { id?: string } }) {
+    async jwt({ token, user }: { token: Record<string, unknown>; user?: { id?: string; role?: string } }) {
       if (user?.id) token.uid = user.id;
+      if ((user as { role?: string })?.role) token.role = (user as { role?: string }).role;
       return token;
     },
     async session({ session, token }: { session: { user?: Record<string, unknown> }; token: Record<string, unknown> }) {
       if (session.user && token.uid) session.user.id = token.uid;
+      if (session.user && token.role) session.user.role = token.role;
       return session;
     }
   },
