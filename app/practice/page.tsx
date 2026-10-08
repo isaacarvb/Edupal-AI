@@ -23,6 +23,7 @@ function PracticeInner() {
   const [busy, setBusy] = useState(false);
   const [timed, setTimed] = useState(false);
   const [secs, setSecs] = useState(0);
+  const [switcher, setSwitcher] = useState<{ subject: string; left: number }[]>([]);
   const [alt, setAlt] = useState<null | { explanation: string; engine: string }>(null);
   const [altBusy, setAltBusy] = useState(false);
   const [flagged, setFlagged] = useState(false);
@@ -62,6 +63,11 @@ function PracticeInner() {
   useEffect(() => {
     if (userId) load();
     setTimed(localStorage.getItem("edupal_timed") === "1");
+    if (userId) {
+      fetch(`/api/topics?userId=${userId}`)
+        .then((r) => r.json())
+        .then((d) => setSwitcher(d.subjectLimits ?? []));
+    }
   }, [userId, load]);
 
   function toggleTimed() {
@@ -144,9 +150,17 @@ function PracticeInner() {
   if (done)
     return (
       <main style={{ maxWidth: 420, margin: "0 auto", padding: 20, color: "#333A45" }}>
-        <h1 style={{ color: "#1E242E" }}>Diagnostic complete</h1>
-        <p>{subject}: {answered} questions answered. Your baseline is saved.</p>
-        <button style={btnPrimary} onClick={() => router.push(`/dashboard?userId=${userId}`)}>See my dashboard</button>
+        <h1 style={{ color: "#1E242E" }}>Done with {subject} for now</h1>
+        <p>You've answered the available {subject} questions. Pick another subject to keep going:</p>
+        <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginBottom: 12 }}>
+          {(switcher.length ? switcher : [{ subject: "English", left: 10 }]).filter((s) => s.subject !== subject).map((s) => (
+            <a key={s.subject} href={`/practice?userId=${userId}&subject=${encodeURIComponent(s.subject)}`}
+              style={{ fontSize: 13, fontWeight: 700, padding: "10px 14px", borderRadius: 999, textDecoration: "none", background: "#0F766E", color: "#fff" }}>
+              {s.subject}{s.left !== undefined ? ` • ${s.left}` : ""}
+            </a>
+          ))}
+        </div>
+        <button style={btnPrimary} onClick={() => router.push(`/dashboard?userId=${userId}`)}>Back to dashboard</button>
       </main>
     );
 
@@ -165,6 +179,16 @@ function PracticeInner() {
         <p style={{ fontSize: 20, fontWeight: 800, color: secs <= 10 ? "#DC2626" : "#1E242E", margin: "8px 0 0" }}>
           ⏱ {Math.floor(secs / 60)}:{String(secs % 60).padStart(2, "0")}
         </p>
+      )}
+      {switcher.length > 1 && !result && (
+        <div style={{ display: "flex", gap: 6, flexWrap: "wrap", margin: "8px 0" }}>
+          {switcher.filter((s) => s.subject !== subject).map((s) => (
+            <a key={s.subject} href={`/practice?userId=${userId}&subject=${encodeURIComponent(s.subject)}`}
+              style={{ fontSize: 12, fontWeight: 700, padding: "8px 12px", borderRadius: 999, textDecoration: "none", background: "#F1F5F9", color: "#1E242E", border: "1px solid #CBD5E1" }}>
+              {s.subject} • {s.left}
+            </a>
+          ))}
+        </div>
       )}
       {!q ? (
         <p>Loading…</p>
