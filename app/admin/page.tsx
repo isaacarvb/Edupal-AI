@@ -15,6 +15,10 @@ type Flag = { id: string; response: string; correct: number; at: string; subject
 export default function Admin() {
   const [m, setM] = useState<M | null>(null);
   const [flags, setFlags] = useState<Flag[]>([]);
+  const [dkind, setDkind] = useState("exam");
+  const [dtitle, setDtitle] = useState("");
+  const [dcloses, setDcloses] = useState("");
+  const [dmsg, setDmsg] = useState("");
   function load() {
     fetch("/api/metrics").then((r) => r.json()).then(setM);
     fetch("/api/flag").then((r) => r.json()).then((d) => setFlags(d.flags ?? []));
@@ -23,6 +27,19 @@ export default function Admin() {
   async function resolve(id: string) {
     await fetch("/api/flag", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ resolve: id }) });
     load();
+  }
+
+  async function addDeadline() {
+    setDmsg("");
+    if (!dtitle.trim()) return setDmsg("Title required.");
+    const res = await fetch("/api/deadlines", {
+      method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ kind: dkind, title: dtitle.trim(), closesOn: dcloses || null })
+    });
+    if (!res.ok) return setDmsg("Failed to add.");
+    setDtitle("");
+    setDcloses("");
+    setDmsg("Added. Only add dates verified against official sources.");
   }
   if (!m) return <main style={{ padding: 32 }}>Loading…</main>;
   const row = (k: string, v: string | number) => (
@@ -44,6 +61,20 @@ export default function Admin() {
       </div>
       <h2 style={{ fontSize: 18 }}>By subject</h2>
       {m.bySubject.map((s) => <div key={s.subject} style={{ fontSize: 14 }}>{s.subject} — {s.accuracy}% over {s.attempts}</div>)}
+      <h2 style={{ fontSize: 18, marginTop: 16 }}>Add deadline window</h2>
+      <div style={{ background: "#fff", border: "1px solid #E2E8F0", borderRadius: 12, padding: 12 }}>
+        <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+          <select value={dkind} onChange={(e) => setDkind(e.target.value)} style={{ height: 44, borderRadius: 10, border: "1px solid #CBD5E1", fontSize: 14 }}>
+            <option value="exam">Exam</option>
+            <option value="scholarship">Scholarship</option>
+            <option value="admission">Admission</option>
+          </select>
+          <input value={dtitle} onChange={(e) => setDtitle(e.target.value)} placeholder="e.g. JAMB UTME 2027 registration" style={{ flex: "2 1 200px", height: 44, borderRadius: 10, border: "1px solid #CBD5E1", padding: "0 10px", fontSize: 14 }} />
+          <input value={dcloses} onChange={(e) => setDcloses(e.target.value)} type="date" style={{ height: 44, borderRadius: 10, border: "1px solid #CBD5E1", padding: "0 10px", fontSize: 14 }} />
+        </div>
+        {dmsg && <p style={{ fontSize: 13 }}>{dmsg}</p>}
+        <button onClick={addDeadline} style={{ marginTop: 8, height: 44, borderRadius: 10, border: 0, background: "#0F766E", color: "#fff", fontWeight: 700, padding: "0 20px", cursor: "pointer" }}>Add window</button>
+      </div>
       <h2 style={{ fontSize: 18, marginTop: 16 }}>Flagged explanations ({flags.length})</h2>
       <p style={{ fontSize: 13, color: "#5F6E7F" }}>Review SLA: 48 hours.</p>
       {flags.length === 0 && <p style={{ fontSize: 14 }}>Queue clear — nothing flagged.</p>}

@@ -115,6 +115,18 @@ CREATE TABLE IF NOT EXISTS bonus_pool (
   PRIMARY KEY (user_id, day)
 );
 
+-- Deadlines & scholarships board (curated; unverified dates stay NULL = TBC).
+CREATE TABLE IF NOT EXISTS deadlines (
+  id TEXT PRIMARY KEY,
+  kind TEXT NOT NULL,
+  title TEXT NOT NULL,
+  detail TEXT NOT NULL DEFAULT '',
+  source_url TEXT,
+  opens_on TEXT,
+  closes_on TEXT,
+  created_at TEXT NOT NULL DEFAULT (datetime('now'))
+);
+
 -- AI tutor chat history (per user + optional question context).
 CREATE TABLE IF NOT EXISTS chat_messages (
   id TEXT PRIMARY KEY,

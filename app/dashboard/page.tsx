@@ -23,6 +23,7 @@ function DashInner() {
   const [retention, setRetention] = useState<null | { topic: { subject: string; topic: string } }>(null);
   const [patterns, setPatterns] = useState<{ text: string; detail: string }[]>([]);
   const [reminder, setReminder] = useState<string | null>(null);
+  const [deadline, setDeadline] = useState<null | { title: string; closesOn: string }>(null);
   const [qotd, setQotd] = useState<null | { subject: string; topic: string }>(null);
   const [parentEmail, setParentEmail] = useState("");
   const [payMsg, setPayMsg] = useState("");
@@ -70,6 +71,9 @@ function DashInner() {
     fetch(`/api/reminders?userId=${userId}`)
       .then((r) => r.json())
       .then((d) => setReminder(d.reminder ?? null));
+    fetch("/api/deadlines")
+      .then((r) => r.json())
+      .then((d) => setDeadline(d.upcoming ? { title: d.upcoming.title, closesOn: d.upcoming.closesOn } : null));
     fetch(`/api/patterns?userId=${userId}`)
       .then((r) => r.json())
       .then((d) => setPatterns(d.patterns ?? []));
@@ -121,6 +125,15 @@ function DashInner() {
           <strong>⭐ Question of the Day: {qotd.subject} • {qotd.topic}</strong>
           <p style={{ fontSize: 14, margin: "4px 0 8px" }}>Free bonus — doesn't touch your credits, even at zero.</p>
           <a href={`/practice?userId=${userId}&subject=${encodeURIComponent(qotd.subject)}&qotd=1`} style={{ display: "block", textAlign: "center", background: "#0F766E", color: "#fff", borderRadius: 10, height: 44, lineHeight: "44px", fontWeight: 700, fontSize: 14, textDecoration: "none" }}>Answer today's question</a>
+        </div>
+      )}
+      {deadline ? (
+        <div style={{ background: "#EFF6FF", border: "1px solid #BFDBFE", borderRadius: 16, padding: 12, margin: "8px 0" }}>
+          <p style={{ fontSize: 14, margin: 0 }}>📅 <strong>{deadline.title}</strong> — closes {deadline.closesOn}. <a href="/deadlines" style={{ color: "#0F766E", fontWeight: 700 }}>All deadlines</a></p>
+        </div>
+      ) : (
+        <div style={{ background: "#F8FAFC", border: "1px solid #E2E8F0", borderRadius: 16, padding: 12, margin: "8px 0" }}>
+          <p style={{ fontSize: 14, margin: 0 }}>📅 No dated deadlines right now — new cycles appear here. <a href="/deadlines" style={{ color: "#0F766E", fontWeight: 700 }}>Watchlist</a></p>
         </div>
       )}
       {reminder && (
