@@ -281,6 +281,11 @@ function DashInner() {
             </div>
           </div>
 
+          <div id="resources" style={card}>
+            <h3 style={{ margin: "0 0 8px", fontSize: 16 }}>Study resources</h3>
+            <a href={`/dashboard/curriculum?userId=${userId}`} style={{ display: "block", textAlign: "center", background: "#fff", color: "#0F766E", border: "2px solid #0F766E", borderRadius: 10, height: 44, lineHeight: "40px", fontWeight: 700, fontSize: 14, textDecoration: "none" }}>Curriculum &amp; Notes</a>
+          </div>
+
           <div id="upgrade" style={card}>
             <h3 style={{ margin: "0 0 8px", fontSize: 16 }}>Subscription &amp; Credits</h3>
             <p style={{ fontSize: 14, margin: "0 0 8px" }}>Plan: <strong>{profile.plan}</strong>{referral && referral.bonusLeft > 0 && <span> • 🎁 {referral.bonusLeft} bonus left</span>}</p>

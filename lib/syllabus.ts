@@ -31,6 +31,51 @@ export function topicAllowed(subject: string, topic: string): boolean {
   return !!list && list.includes(topic);
 }
 
+// Junior Secondary tier (curriculum hub). Question banks grow here next.
+export const JSS_SUBJECTS = [
+  "Mathematics",
+  "English",
+  "Intermediate Science",
+  "Citizenship Education",
+  "Physical Health Education"
+] as const;
+
+export const JSS_SYLLABUS: Record<string, string[]> = {
+  Mathematics: ["Fractions", "Basic Algebra", "Geometry Basics"],
+  English: ["Parts of Speech", "Comprehension", "Tenses"],
+  "Intermediate Science": ["Living Things", "Matter", "Energy"],
+  "Citizenship Education": ["Rights & Duties", "National Symbols", "Honesty"],
+  "Physical Health Education": ["Fitness", "Safety", "Nutrition"]
+};
+
+export const JSS_GLOSSARY: Record<string, Record<string, { term: string; definition: string }[]>> = {
+  Mathematics: {
+    Fractions: [{ term: "Numerator", definition: "Top number of a fraction; counts the parts taken." }, { term: "Equivalent fractions", definition: "Different fractions with equal value, e.g. 1/2 = 2/4." }],
+    "Basic Algebra": [{ term: "Variable", definition: "A letter standing for an unknown number." }, { term: "Simplify", definition: "Collect like terms into the shortest form." }],
+    "Geometry Basics": [{ term: "Angle", definition: "Amount of turn between two lines meeting at a point." }, { term: "Perimeter", definition: "Total distance round a shape." }]
+  },
+  English: {
+    "Parts of Speech": [{ term: "Noun", definition: "Naming word for people, places, things." }, { term: "Verb", definition: "Action or doing word." }],
+    Comprehension: [{ term: "Main idea", definition: "What the passage is mostly about." }, { term: "Title", definition: "A short name capturing the passage's message." }],
+    Tenses: [{ term: "Present tense", definition: "Happening now, e.g. she goes." }, { term: "Past tense", definition: "Already happened, e.g. she went." }]
+  },
+  "Intermediate Science": {
+    "Living Things": [{ term: "Organism", definition: "Any living thing, plant or animal." }, { term: "Habitat", definition: "Where an organism naturally lives." }],
+    Matter: [{ term: "Solid", definition: "Fixed shape and volume." }, { term: "Evaporation", definition: "Liquid turning to gas at the surface." }],
+    Energy: [{ term: "Energy", definition: "Ability to do work." }, { term: "Solar energy", definition: "Energy from the sun." }]
+  },
+  "Citizenship Education": {
+    "Rights & Duties": [{ term: "Right", definition: "What the law allows you to enjoy." }, { term: "Duty", definition: "What the law expects from you." }],
+    "National Symbols": [{ term: "Coat of arms", definition: "Nigeria's official emblem of authority." }, { term: "Anthem", definition: "The national song of unity." }],
+    Honesty: [{ term: "Integrity", definition: "Doing right even when unseen." }, { term: "Corruption", definition: "Dishonest use of position for gain." }]
+  },
+  "Physical Health Education": {
+    Fitness: [{ term: "Warm-up", definition: "Gentle exercise preparing the body." }, { term: "Stamina", definition: "Ability to keep going without tiring fast." }],
+    Safety: [{ term: "First aid", definition: "Immediate help given before a doctor arrives." }, { term: "Posture", definition: "How you hold your body sitting or standing." }],
+    Nutrition: [{ term: "Balanced diet", definition: "Food with all nutrients in right amounts." }, { term: "Malnutrition", definition: "Sickness from poor feeding." }]
+  }
+};
+
 export type GlossaryTerm = { term: string; definition: string };
 
 // Built-in key terms per topic (PRD: glossary lives in the syllabus map).

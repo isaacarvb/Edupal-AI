@@ -13,8 +13,8 @@ export async function POST(req: Request) {
   if (!["SECONDARY", "UNIVERSITY"].includes(level)) {
     return NextResponse.json({ error: "bad level" }, { status: 400 });
   }
-  if (!["WAEC", "JAMB"].includes(exam)) {
-    return NextResponse.json({ error: "exam must be WAEC or JAMB in v1.0" }, { status: 400 });
+  if (!["WAEC", "JAMB", "NECO", "GCE"].includes(exam)) {
+    return NextResponse.json({ error: "exam must be WAEC, JAMB, NECO or GCE" }, { status: 400 });
   }
   const db = getDb();
   const user = db.prepare("SELECT 1 FROM users WHERE id = ?").get(userId);

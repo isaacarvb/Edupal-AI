@@ -36,6 +36,7 @@ function migrate(db: DatabaseSync): void {
     (db.prepare("PRAGMA table_info(users)").all() as { name: string }[]).map((c) => c.name)
   );
   if (!userCols.has("name")) db.exec("ALTER TABLE users ADD COLUMN name TEXT");
+  if (!userCols.has("avatar")) db.exec("ALTER TABLE users ADD COLUMN avatar TEXT");
   const cols = new Set(
     (db.prepare("PRAGMA table_info(topic_mastery)").all() as { name: string }[]).map((c) => c.name)
   );

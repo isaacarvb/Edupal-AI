@@ -33,3 +33,13 @@ body.lite .lite-flat { background: #1E242E !important; }
 
 .feature-card { transition: box-shadow 180ms ease, transform 180ms ease; }
 .feature-card:hover { box-shadow: 0 8px 24px -6px rgb(30 36 46 / 0.15); transform: translateY(-2px); }
+
+/* ─── Sidebar nav links ─── */
+.nav-link { transition: all 0.2s ease; }
+.nav-link:hover { background: #333A45 !important; font-weight: 700; }
+.nav-link-active { background: #0F766E !important; color: #fff !important; font-weight: 800; }
+
+/* ─── Global micro-interactions ─── */
+button, a { transition: all 0.2s ease; }
+button:hover:not(:disabled) { filter: brightness(1.08); }
+a:hover { filter: brightness(1.1); }

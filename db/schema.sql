@@ -4,6 +4,7 @@
 CREATE TABLE IF NOT EXISTS users (
   id TEXT PRIMARY KEY,
   name TEXT,
+  avatar TEXT,
   email TEXT UNIQUE,
   phone TEXT UNIQUE,
   password_hash TEXT,

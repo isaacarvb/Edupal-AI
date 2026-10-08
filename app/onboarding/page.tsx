@@ -60,6 +60,8 @@ function OnboardingInner() {
             <select style={input} value={exam} onChange={(e) => setExam(e.target.value)}>
               <option value="JAMB">JAMB</option>
               <option value="WAEC">WAEC</option>
+              <option value="NECO">NECO</option>
+              <option value="GCE">GCE</option>
             </select>
           </div>
         </div>

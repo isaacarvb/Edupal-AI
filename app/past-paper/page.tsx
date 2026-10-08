@@ -98,6 +98,8 @@ function PaperInner() {
           <select value={exam} onChange={(e) => setExam(e.target.value)} style={{ width: "100%", height: 48, borderRadius: 10, border: "1px solid #CBD5E1", padding: "0 12px", fontSize: 16, margin: "6px 0 12px" }}>
             <option value="WAEC">WAEC</option>
             <option value="JAMB">JAMB</option>
+            <option value="NECO">NECO</option>
+            <option value="GCE">GCE</option>
           </select>
           <label>Subject</label>
           <select value={subject} onChange={(e) => setSubject(e.target.value)} style={{ width: "100%", height: 48, borderRadius: 10, border: "1px solid #CBD5E1", padding: "0 12px", fontSize: 16, margin: "6px 0 12px" }}>
