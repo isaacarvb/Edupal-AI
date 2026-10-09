@@ -1,8 +1,8 @@
-import type { DatabaseSync } from "node:sqlite";
+import type { Db } from "./db";
 
 // Deterministic daily pick: same question for everyone, all day, zero storage.
-export function todayQuestion(db: DatabaseSync) {
-  const rows = db
+export async function todayQuestion(db: Db) {
+  const rows = await db
     .prepare(
       `SELECT id, subject, topic, type, stem, options_json AS optionsJson,
               predicted_repeat AS predictedRepeat
@@ -15,9 +15,9 @@ export function todayQuestion(db: DatabaseSync) {
   return rows[dayOfYear % rows.length];
 }
 
-export function qotdDone(db: DatabaseSync, userId: string, questionId: string): boolean {
+export async function qotdDone(db: Db, userId: string, questionId: string): Promise<boolean> {
   const today = new Date().toISOString().slice(0, 10);
-  return !!db
-    .prepare("SELECT 1 FROM attempts WHERE user_id = ? AND question_id = ? AND substr(created_at, 1, 10) = ? LIMIT 1")
+  return !!await db
+    .prepare("SELECT 1 FROM attempts WHERE user_id = ? AND question_id = ? AND SUBSTRING(created_at, 1, 10) = ? LIMIT 1")
     .get(userId, questionId, today);
 }

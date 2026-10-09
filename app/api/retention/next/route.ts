@@ -6,8 +6,8 @@ export async function GET(req: Request) {
   const { searchParams } = new URL(req.url);
   const userId = searchParams.get("userId");
   if (!userId) return NextResponse.json({ error: "userId required" }, { status: 400 });
-  const db = getDb();
-  const topic = db
+  const db = await getDb();
+  const topic = await db
     .prepare(
       `SELECT m.subject, m.topic, MAX(a.created_at) AS last
        FROM topic_mastery m
@@ -20,7 +20,7 @@ export async function GET(req: Request) {
     )
     .get(userId) as { subject: string; topic: string; last: string | null } | undefined;
   if (!topic) return NextResponse.json({ question: null, reason: "No Strong topics yet — earn one first." });
-  const q = db
+  const q = await db
     .prepare(
       `SELECT id, exam, subject, topic, type, stem, options_json AS optionsJson
        FROM questions WHERE subject = ? AND topic = ? ORDER BY RANDOM() LIMIT 1`

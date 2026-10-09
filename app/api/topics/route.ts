@@ -7,8 +7,8 @@ export async function GET(req: Request) {
   const { searchParams } = new URL(req.url);
   const userId = searchParams.get("userId");
   if (!userId) return NextResponse.json({ error: "userId required" }, { status: 400 });
-  const db = getDb();
-  const profile = db
+  const db = await getDb();
+  const profile = await db
     .prepare(
       `SELECT u.name, u.level, p.exam, p.exam_date AS examDate, p.subjects, p.language,
               w.plan,
@@ -21,12 +21,12 @@ export async function GET(req: Request) {
     )
     .get(userId) as Record<string, unknown> | undefined;
   if (!profile) return NextResponse.json({ error: "unknown user" }, { status: 404 });
-  const wallet = getWallet(db, userId);
+  const wallet = await getWallet(db, userId);
   const plan = wallet?.plan ?? "FREE";
   const subjectList = String((profile as Record<string, unknown>).subjects ?? "English").split(",").map((s) => s.trim()).filter(Boolean);
-  const limits = subjectLimits(db, userId, subjectList, plan);
+  const limits = await subjectLimits(db, userId, subjectList, plan);
   const exhaustedAll = plan === "FREE" && limits.length > 0 && limits.every((l) => l.left <= 0);
-  const topics = db
+  const topics = await db
     .prepare(
       "SELECT subject, topic, accuracy, label FROM topic_mastery WHERE user_id = ? ORDER BY accuracy ASC"
     )

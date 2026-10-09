@@ -11,15 +11,15 @@ export async function POST(req: Request) {
   if (!["WEAK", "NEEDS_WORK", "STRONG", "AUTO"].includes(label)) {
     return NextResponse.json({ error: "bad label" }, { status: 400 });
   }
-  const db = getDb();
+  const db = await getDb();
   const now = new Date().toISOString();
   if (label === "AUTO") {
-    db.prepare("UPDATE topic_mastery SET overridden = 0, updated_at = ? WHERE user_id = ? AND subject = ? AND topic = ?").run(
+    await db.prepare("UPDATE topic_mastery SET overridden = 0, updated_at = ? WHERE user_id = ? AND subject = ? AND topic = ?").run(
       now, userId, subject, topic
     );
     return NextResponse.json({ ok: true, mode: "auto" });
   }
-  db.prepare(
+  await db.prepare(
     `INSERT INTO topic_mastery (id, user_id, subject, topic, accuracy, label, streak_count, consecutive_correct, overridden, updated_at)
      VALUES (?, ?, ?, ?, 0, ?, 0, 0, 1, ?)
      ON CONFLICT(user_id, subject, topic)

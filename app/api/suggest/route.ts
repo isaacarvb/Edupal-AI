@@ -7,8 +7,8 @@ export async function GET(req: Request) {
   const { searchParams } = new URL(req.url);
   const userId = searchParams.get("userId");
   if (!userId) return NextResponse.json({ error: "userId required" }, { status: 400 });
-  const db = getDb();
-  const rows = db
+  const db = await getDb();
+  const rows = await db
     .prepare(
       `SELECT m.subject, m.topic, m.accuracy, m.label,
               MAX(CASE WHEN q.predicted_repeat = 1 THEN 1 ELSE 0 END) AS hot

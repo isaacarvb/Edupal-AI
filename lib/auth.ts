@@ -16,8 +16,8 @@ export const authOptions = {
         const email = credentials?.email?.trim().toLowerCase();
         const password = credentials?.password ?? "";
         if (!email || !password) return null;
-        const db = getDb();
-        const row = db
+        const db = await getDb();
+        const row = await db
           .prepare("SELECT id, email, role, password_hash AS hash FROM users WHERE email = ?")
           .get(email) as { id: string; email: string; role: string; hash: string | null } | undefined;
         if (row?.hash && verifyPassword(password, row.hash)) {

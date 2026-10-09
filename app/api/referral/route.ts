@@ -7,13 +7,13 @@ export async function GET(req: Request) {
   const { searchParams } = new URL(req.url);
   const userId = searchParams.get("userId");
   if (!userId) return NextResponse.json({ error: "userId required" }, { status: 400 });
-  const db = getDb();
-  const count = db
+  const db = await getDb();
+  const count = await db
     .prepare("SELECT COUNT(*) AS n FROM referrals WHERE referrer_user_id = ?")
     .get(userId) as { n: number };
   return NextResponse.json({
     code: inviteCode(userId),
-    bonusLeft: bonusLeft(db, userId),
+    bonusLeft: await bonusLeft(db, userId),
     invites: count.n
   });
 }

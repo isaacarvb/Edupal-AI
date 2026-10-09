@@ -7,11 +7,11 @@ export async function POST(req: Request) {
   if (!userId || !classId || !title?.trim() || !startsAt) {
     return NextResponse.json({ error: "userId, classId, title, startsAt required" }, { status: 400 });
   }
-  const db = getDb();
-  const c = db.prepare("SELECT teacher_id AS t FROM classes WHERE id = ?").get(classId) as { t: string } | undefined;
+  const db = await getDb();
+  const c = await db.prepare("SELECT teacher_id AS t FROM classes WHERE id = ?").get(classId) as { t: string } | undefined;
   if (c?.t !== userId) return NextResponse.json({ error: "class owner only" }, { status: 403 });
   const id = uid();
-  db.prepare("INSERT INTO class_sessions (id, class_id, title, starts_at, meet_url) VALUES (?, ?, ?, ?, ?)").run(
+  await db.prepare("INSERT INTO class_sessions (id, class_id, title, starts_at, meet_url) VALUES (?, ?, ?, ?, ?)").run(
     id, classId, title.trim(), startsAt, meetUrl ?? ""
   );
   return NextResponse.json({ ok: true, id });

@@ -19,8 +19,8 @@ export async function POST(req: Request) {
   if (!userId || !questionId) {
     return NextResponse.json({ error: "userId + questionId required" }, { status: 400 });
   }
-  const db = getDb();
-  const q = db
+  const db = await getDb();
+  const q = await db
     .prepare("SELECT id, subject, topic, type, stem, answer_key AS answerKey, marking_rubric AS markingRubric FROM questions WHERE id = ?")
     .get(questionId) as
     | { id: string; subject: string; topic: string; type: "MCQ" | "THEORY"; stem: string; answerKey: string; markingRubric: string }
@@ -29,18 +29,19 @@ export async function POST(req: Request) {
 
   const cost = COST[q.type];
   // Idempotency: ignore accidental double-submits (double-clicks) within 60s.
-  const dupe = db
-    .prepare("SELECT id FROM attempts WHERE user_id = ? AND question_id = ? AND created_at >= datetime('now', '-60 seconds') LIMIT 1")
-    .get(userId, questionId);
+  const minuteAgo = new Date(Date.now() - 60000).toISOString();
+  const dupe = await db
+    .prepare("SELECT id FROM attempts WHERE user_id = ? AND question_id = ? AND created_at >= ? LIMIT 1")
+    .get(userId, questionId, minuteAgo);
   if (dupe) return NextResponse.json({ error: "already answered", duplicate: true }, { status: 409 });
-  const wallet = getWallet(db, userId);
+  const wallet = await getWallet(db, userId);
   // Question of the Day bypasses the counter — but only today's real pick.
-  const isQotd = !!qotd && todayQuestion(db)?.id === questionId;
+  const isQotd = !!qotd && (await todayQuestion(db))?.id === questionId;
   // Per-subject daily free limits (UNLIMITED bypasses). Other subjects stay open.
   // Referral bonus covers the cost when the subject budget is out (capped daily).
   let usedBonus = false;
-  if (!isQotd && wallet && wallet.plan === "FREE" && getSubjectLeft(db, userId, q.subject, "FREE") < cost) {
-    if (consumeBonus(db, userId, cost)) {
+  if (!isQotd && wallet && wallet.plan === "FREE" && await getSubjectLeft(db, userId, q.subject, "FREE") < cost) {
+    if (await consumeBonus(db, userId, cost)) {
       usedBonus = true;
     } else {
       return NextResponse.json(
@@ -53,7 +54,7 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "no wallet", creditsLeft: 0 }, { status: 402 });
   }
 
-  const profile = db.prepare("SELECT language FROM profiles WHERE user_id = ?").get(userId) as
+  const profile = await db.prepare("SELECT language FROM profiles WHERE user_id = ?").get(userId) as
     | { language: "SIMPLE" | "PIDGIN" }
     | undefined;
   const language = profile?.language ?? "SIMPLE";
@@ -77,15 +78,15 @@ export async function POST(req: Request) {
 
   const now = new Date().toISOString();
   const today = now.slice(0, 10);
-  db.prepare(
+  await db.prepare(
     "INSERT INTO attempts (id, user_id, question_id, response, correct, theory_score, feedback_json, credits_spent, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)"
   ).run(uid(), userId, questionId, response ?? "", correct, theoryScore, JSON.stringify({ feedback, theory, timed: !!timed, secondsUsed: secondsUsed ?? null, qotd: isQotd, usedBonus }), wallet.plan === "FREE" && !isQotd && !usedBonus ? cost : 0, now);
   if (wallet.plan === "FREE" && !isQotd && !usedBonus) {
-    consumeSubject(db, userId, q.subject, cost);
+    await consumeSubject(db, userId, q.subject, cost);
   }
 
   // Recompute mastery: accuracy + consecutive-correct level-up + hysteresis.
-  const rows = db
+  const rows = await db
     .prepare(
       `SELECT a.correct AS correct FROM attempts a
        JOIN questions qq ON qq.id = a.question_id
@@ -93,7 +94,7 @@ export async function POST(req: Request) {
     )
     .all(userId, q.subject, q.topic) as { correct: number }[];
   const acc = rows.length ? (rows.reduce((s, r) => s + r.correct, 0) / rows.length) * 100 : 0;
-  const prev = db
+  const prev = await db
     .prepare("SELECT label, consecutive_correct AS consec, overridden FROM topic_mastery WHERE user_id = ? AND subject = ? AND topic = ?")
     .get(userId, q.subject, q.topic) as
     | { label: "WEAK" | "NEEDS_WORK" | "STRONG"; consec: number; overridden: number }
@@ -106,7 +107,7 @@ export async function POST(req: Request) {
   if (prev?.overridden) label = prev.label; // manual override sticks
   const rank = { WEAK: 0, NEEDS_WORK: 1, STRONG: 2 } as const;
   const leveledUp = !!prev && rank[label] > rank[prev.label];
-  db.prepare(
+  await db.prepare(
     `INSERT INTO topic_mastery (id, user_id, subject, topic, accuracy, label, streak_count, consecutive_correct, overridden, updated_at)
      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
      ON CONFLICT(user_id, subject, topic)
@@ -116,7 +117,7 @@ export async function POST(req: Request) {
   ).run(uid(), userId, q.subject, q.topic, acc, label, correct, consec, prev?.overridden ?? 0, now, correct);
 
   // Streak: +1 per active day; a missed day consumes the monthly freeze instead of resetting.
-  const st = db.prepare("SELECT current, longest, last_study_date AS last, freeze_available AS freeze FROM streaks WHERE user_id = ?").get(userId) as
+  const st = await db.prepare('SELECT "current", longest, last_study_date AS last, freeze_available AS freeze FROM streaks WHERE user_id = ?').get(userId) as
     | { current: number; longest: number; last: string | null; freeze: number }
     | undefined;
   let freezeUsed = false;
@@ -140,16 +141,17 @@ export async function POST(req: Request) {
         current = 1; // streak lost
       }
     }
-    db.prepare("UPDATE streaks SET current = ?, longest = MAX(longest, ?), last_study_date = ?, freeze_available = ? WHERE user_id = ?").run(
+    const longest = Math.max(st.longest, current);
+    await db.prepare('UPDATE streaks SET "current" = ?, longest = ?, last_study_date = ?, freeze_available = ? WHERE user_id = ?').run(
       current,
-      current,
+      longest,
       now,
       freeze,
       userId
     );
   }
 
-  const creditsLeft = wallet.plan === "UNLIMITED" ? wallet.creditsLeft : getSubjectLeft(db, userId, q.subject, "FREE");
+  const creditsLeft = wallet.plan === "UNLIMITED" ? wallet.creditsLeft : await getSubjectLeft(db, userId, q.subject, "FREE");
   return NextResponse.json({
     correct: Boolean(correct),
     correctAnswer: q.answerKey,

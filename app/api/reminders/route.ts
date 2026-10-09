@@ -7,12 +7,12 @@ export async function GET(req: Request) {
   const { searchParams } = new URL(req.url);
   const userId = searchParams.get("userId");
   if (!userId) return NextResponse.json({ error: "userId required" }, { status: 400 });
-  const db = getDb();
-  const profile = db.prepare("SELECT language FROM profiles WHERE user_id = ?").get(userId) as
+  const db = await getDb();
+  const profile = await db.prepare("SELECT language FROM profiles WHERE user_id = ?").get(userId) as
     | { language: "SIMPLE" | "PIDGIN" }
     | undefined;
-  const reminder = ensureDailyReminder(db, userId, profile?.language ?? "SIMPLE");
-  const outbox = db
+  const reminder = await ensureDailyReminder(db, userId, profile?.language ?? "SIMPLE");
+  const outbox = await db
     .prepare("SELECT kind, subject, body, created_at AS at FROM email_outbox WHERE user_id = ? ORDER BY created_at DESC LIMIT 5")
     .all(userId);
   return NextResponse.json({ reminder, outbox });

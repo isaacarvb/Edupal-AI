@@ -1,5 +1,4 @@
-import type { DatabaseSync } from "node:sqlite";
-import { uid } from "./db";
+import { uid , Db} from "./db";
 
 export const REFERRAL_BONUS = 5;
 
@@ -8,41 +7,43 @@ export function inviteCode(userId: string): string {
   return userId.slice(0, 8);
 }
 
-export function referrerByCode(db: DatabaseSync, code: string): string | null {
+export async function referrerByCode(db: Db, code: string): Promise<string | null> {
   if (!code || code.length < 4) return null;
-  const row = db
-    .prepare("SELECT id FROM users WHERE substr(id, 1, 8) = ? LIMIT 1")
+  const row = await db
+    .prepare("SELECT id FROM users WHERE SUBSTRING(id, 1, 8) = ? LIMIT 1")
     .get(code) as { id: string } | undefined;
   return row?.id ?? null;
 }
 
-export function bonusLeft(db: DatabaseSync, userId: string): number {
+export async function bonusLeft(db: Db, userId: string): Promise<number> {
   const today = new Date().toISOString().slice(0, 10);
-  const row = db
+  const row = await db
     .prepare("SELECT remaining FROM bonus_pool WHERE user_id = ? AND day = ?")
     .get(userId, today) as { remaining: number } | undefined;
   return row?.remaining ?? 0;
 }
 
 // Grant bonus on conversion, capped so free rewards never cannibalize conversion.
-export function grantReferralBonus(db: DatabaseSync, referrerId: string, referredEmail: string): void {
+export async function grantReferralBonus(db: Db, referrerId: string, referredEmail: string): Promise<void> {
   const today = new Date().toISOString().slice(0, 10);
   const now = new Date().toISOString();
-  db.prepare(
+  await db.prepare(
     "INSERT INTO referrals (id, referrer_user_id, referred_email, converted, bonus_granted_at) VALUES (?, ?, ?, 1, ?)"
   ).run(uid(), referrerId, referredEmail, now);
-  db.prepare(
+  const cur = (await db.prepare("SELECT remaining FROM bonus_pool WHERE user_id = ? AND day = ?").get(referrerId, today) as { remaining: number } | undefined)?.remaining ?? 0;
+  const topped = Math.min(5, cur + REFERRAL_BONUS);
+  await db.prepare(
     `INSERT INTO bonus_pool (user_id, day, remaining) VALUES (?, ?, ?)
-     ON CONFLICT(user_id, day) DO UPDATE SET remaining = MIN(5, bonus_pool.remaining + excluded.remaining)`
-  ).run(referrerId, today, REFERRAL_BONUS);
+     ON CONFLICT(user_id, day) DO UPDATE SET remaining = ?`
+  ).run(referrerId, today, topped, topped);
 }
 
-export function consumeBonus(db: DatabaseSync, userId: string, cost: number): boolean {
+export async function consumeBonus(db: Db, userId: string, cost: number): Promise<boolean> {
   const today = new Date().toISOString().slice(0, 10);
-  const row = db
+  const row = await db
     .prepare("SELECT remaining FROM bonus_pool WHERE user_id = ? AND day = ?")
     .get(userId, today) as { remaining: number } | undefined;
   if (!row || row.remaining < cost) return false;
-  db.prepare("UPDATE bonus_pool SET remaining = remaining - ? WHERE user_id = ? AND day = ?").run(cost, userId, today);
+  await db.prepare("UPDATE bonus_pool SET remaining = remaining - ? WHERE user_id = ? AND day = ?").run(cost, userId, today);
   return true;
 }

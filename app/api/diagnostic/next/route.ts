@@ -14,8 +14,8 @@ export async function GET(req: Request) {
   if (!userId || !subject) {
     return NextResponse.json({ error: "userId + subject required" }, { status: 400 });
   }
-  const db = getDb();
-  const done = db
+  const db = await getDb();
+  const done = await db
     .prepare(
       `SELECT COUNT(*) AS n FROM attempts a
        JOIN questions q ON q.id = a.question_id
@@ -24,7 +24,7 @@ export async function GET(req: Request) {
     .get(userId, subject) as { n: number };
   if (done.n >= DIAGNOSTIC_CAP) return NextResponse.json({ done: true, answered: done.n });
 
-  const recent = db
+  const recent = await db
     .prepare(
       `SELECT a.correct AS correct FROM attempts a
        JOIN questions q ON q.id = a.question_id
@@ -36,8 +36,8 @@ export async function GET(req: Request) {
   if (recent.length >= 3 && recent.every((r) => r.correct === 1)) target = "HARD";
   else if (recent.length >= 2 && recent.slice(0, 2).every((r) => r.correct === 0)) target = "EASY";
 
-  const pick = (tier: string) =>
-    db
+  const pick = async (tier: string) =>
+    await db
       .prepare(
         `WITH ranked AS (
            SELECT id, exam, subject, topic, type, stem, options_json AS optionsJson,
@@ -60,7 +60,7 @@ export async function GET(req: Request) {
       )
       .get(subject, tier, userId);
 
-  const q = pick(target) ?? pick("MEDIUM") ?? pick("EASY") ?? pick("HARD");
+  const q = (await pick(target)) ?? (await pick("MEDIUM")) ?? (await pick("EASY")) ?? (await pick("HARD"));
   if (!q) return NextResponse.json({ done: true, answered: done.n });
   return NextResponse.json({ done: false, answered: done.n, difficulty: target, question: q });
 }

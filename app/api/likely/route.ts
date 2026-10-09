@@ -9,8 +9,8 @@ export async function GET(req: Request) {
   const { searchParams } = new URL(req.url);
   const userId = searchParams.get("userId");
   if (!userId) return NextResponse.json({ error: "userId required" }, { status: 400 });
-  const db = getDb();
-  const profile = db.prepare("SELECT exam, exam_date AS examDate FROM profiles WHERE user_id = ?").get(userId) as
+  const db = await getDb();
+  const profile = await db.prepare("SELECT exam, exam_date AS examDate FROM profiles WHERE user_id = ?").get(userId) as
     | { exam: string; examDate: string | null }
     | undefined;
   if (!profile?.examDate) {
@@ -22,7 +22,7 @@ export async function GET(req: Request) {
   }
 
   // Evidence pack: predicted-repeat topics with bank depth + cohort miss rates.
-  const topics = db
+  const topics = await db
     .prepare(
       `SELECT q.subject AS subject, q.topic AS topic,
               SUM(CASE WHEN q.predicted_repeat = 1 THEN 1 ELSE 0 END) AS flagged,
@@ -41,7 +41,7 @@ export async function GET(req: Request) {
   // Representative questions (flagged first, unattempted by this student preferred).
   const recs: { id: string; subject: string; topic: string; type: string; stem: string; optionsJson: string }[] = [];
   for (const p of picks) {
-    const q = db
+    const q = await db
       .prepare(
         `SELECT id, subject, topic, type, stem, options_json AS optionsJson FROM questions
          WHERE exam = ? AND subject = ? AND topic = ?

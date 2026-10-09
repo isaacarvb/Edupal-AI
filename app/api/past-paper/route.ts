@@ -11,12 +11,12 @@ export async function GET(req: Request) {
   const exam = searchParams.get("exam") ?? "WAEC";
   const subject = searchParams.get("subject") ?? "English";
   if (!userId) return NextResponse.json({ error: "userId required" }, { status: 400 });
-  const db = getDb();
-  const wallet = getWallet(db, userId);
+  const db = await getDb();
+  const wallet = await getWallet(db, userId);
   if (!wallet || wallet.plan !== "UNLIMITED") {
     return NextResponse.json({ error: "past paper mode needs Unlimited", needsUpgrade: true }, { status: 402 });
   }
-  const rows = db
+  const rows = await db
     .prepare(
       `SELECT id, subject, topic, type, stem, options_json AS optionsJson
        FROM questions WHERE exam = ? AND subject = ? ORDER BY id LIMIT 10`
@@ -33,12 +33,12 @@ export async function POST(req: Request) {
   if (!userId || !Array.isArray(answers)) {
     return NextResponse.json({ error: "userId + answers required" }, { status: 400 });
   }
-  const db = getDb();
-  const wallet = getWallet(db, userId);
+  const db = await getDb();
+  const wallet = await getWallet(db, userId);
   if (!wallet || wallet.plan !== "UNLIMITED") {
     return NextResponse.json({ error: "past paper mode needs Unlimited", needsUpgrade: true }, { status: 402 });
   }
-  const profile = db.prepare("SELECT language FROM profiles WHERE user_id = ?").get(userId) as
+  const profile = await db.prepare("SELECT language FROM profiles WHERE user_id = ?").get(userId) as
     | { language: "SIMPLE" | "PIDGIN" }
     | undefined;
   const language = profile?.language ?? "SIMPLE";
@@ -47,7 +47,7 @@ export async function POST(req: Request) {
   let correct = 0;
   const perTopic: Record<string, { correct: number; total: number; subject: string }> = {};
   for (const a of answers) {
-    const q = db
+    const q = await db
       .prepare("SELECT id, subject, topic, type, answer_key AS answerKey, marking_rubric AS markingRubric FROM questions WHERE id = ?")
       .get(a.questionId) as
       | { id: string; subject: string; topic: string; type: "MCQ" | "THEORY"; answerKey: string; markingRubric: string }
@@ -63,7 +63,7 @@ export async function POST(req: Request) {
       ok = g.score >= 6 ? 1 : 0;
     }
     correct += ok;
-    db.prepare(
+    await db.prepare(
       "INSERT INTO attempts (id, user_id, question_id, response, correct, theory_score, feedback_json, credits_spent, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, 0, ?)"
     ).run(uid(), userId, q.id, a.response ?? "", ok, score, JSON.stringify({ pastPaper: true }), now);
     const t = (perTopic[q.topic] ??= { correct: 0, total: 0, subject: q.subject });

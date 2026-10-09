@@ -1,4 +1,4 @@
-import type { DatabaseSync } from "node:sqlite";
+import type { Db } from "./db";
 
 export type PlanDay = {
   day: string;
@@ -17,8 +17,8 @@ const DAY_NAMES = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Frid
 
 // Deterministic weekly plan from live mastery + countdown (no LLM needed;
 // Groq can later rewrite the wording via the same shape).
-export function buildStudyPlan(db: DatabaseSync, userId: string): StudyPlan {
-  const profile = db.prepare("SELECT exam, exam_date AS examDate FROM profiles WHERE user_id = ?").get(userId) as
+export async function buildStudyPlan(db: Db, userId: string): Promise<StudyPlan> {
+  const profile = await db.prepare("SELECT exam, exam_date AS examDate FROM profiles WHERE user_id = ?").get(userId) as
     | { exam: string; examDate: string | null }
     | undefined;
   const exam = profile?.exam ?? "WAEC";
@@ -26,7 +26,7 @@ export function buildStudyPlan(db: DatabaseSync, userId: string): StudyPlan {
     ? Math.max(0, Math.ceil((Date.parse(profile.examDate) - Date.now()) / 86400000))
     : null;
 
-  const topics = db
+  const topics = await db
     .prepare("SELECT subject, topic, accuracy, label FROM topic_mastery WHERE user_id = ? ORDER BY accuracy ASC")
     .all(userId) as { subject: string; topic: string; accuracy: number; label: string }[];
 

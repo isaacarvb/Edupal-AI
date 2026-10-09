@@ -12,13 +12,13 @@ export async function GET(req: Request) {
   if (!paid || !userId) {
     return NextResponse.json({ error: "payment not confirmed", reference }, { status: 402 });
   }
-  const db = getDb();
+  const db = await getDb();
   if (classId) {
-    db.prepare("UPDATE classes SET plan = 'PAID' WHERE id = ? AND teacher_id = ?").run(classId, userId);
+    await db.prepare("UPDATE classes SET plan = 'PAID' WHERE id = ? AND teacher_id = ?").run(classId, userId);
     const base = process.env.NEXTAUTH_URL ?? "http://localhost:3000";
     return NextResponse.redirect(`${base}/teacher?userId=${userId}&paid=1`);
   }
-  unlockUnlimited(db, userId);
+  await unlockUnlimited(db, userId);
   const base = process.env.NEXTAUTH_URL ?? "http://localhost:3000";
   return NextResponse.redirect(`${base}/dashboard?userId=${userId}&paid=1`);
 }

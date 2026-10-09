@@ -12,21 +12,21 @@ export async function POST(req: Request) {
   if (!cleanEmail || !cleanEmail.includes("@")) return NextResponse.json({ error: "valid email required" }, { status: 400 });
   if (!password || password.length < 6) return NextResponse.json({ error: "password of 6+ characters required" }, { status: 400 });
   const cleanRole = role === "TEACHER" ? "TEACHER" : "STUDENT";
-  const db = getDb();
-  const taken = db.prepare("SELECT 1 FROM users WHERE email = ?").get(cleanEmail);
+  const db = await getDb();
+  const taken = await db.prepare("SELECT 1 FROM users WHERE email = ?").get(cleanEmail);
   if (taken) return NextResponse.json({ error: "email already used — sign in instead" }, { status: 409 });
   const id = uid();
   const now = new Date().toISOString();
-  db.prepare("INSERT INTO users (id, name, email, password_hash, role, level) VALUES (?, ?, ?, ?, ?, 'SECONDARY')").run(
+  await db.prepare("INSERT INTO users (id, name, email, password_hash, role, level) VALUES (?, ?, ?, ?, ?, 'SECONDARY')").run(
     id, cleanName, cleanEmail, hashPassword(password), cleanRole
   );
   if (cleanRole === "STUDENT") {
-    db.prepare("INSERT INTO wallets (user_id, credits_left, reset_at, plan) VALUES (?, 10, ?, 'FREE')").run(id, now);
-    db.prepare("INSERT INTO streaks (user_id) VALUES (?)").run(id);
+    await db.prepare("INSERT INTO wallets (user_id, credits_left, reset_at, plan) VALUES (?, 10, ?, 'FREE')").run(id, now);
+    await db.prepare("INSERT INTO streaks (user_id) VALUES (?)").run(id);
   }
   if (referredBy) {
-    const referrer = referrerByCode(db, String(referredBy));
-    if (referrer && referrer !== id) grantReferralBonus(db, referrer, cleanEmail);
+    const referrer = await referrerByCode(db, String(referredBy));
+    if (referrer && referrer !== id) await grantReferralBonus(db, referrer, cleanEmail);
   }
   return NextResponse.json({ userId: id, role: cleanRole });
 }

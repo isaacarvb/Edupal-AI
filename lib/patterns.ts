@@ -1,4 +1,4 @@
-import type { DatabaseSync } from "node:sqlite";
+import type { Db } from "./db";
 
 export type Pattern = { text: string; detail: string };
 
@@ -15,9 +15,9 @@ function keywords(s: string): string[] {
 }
 
 // Behavioral patterns from wrong answers — beyond topic labels.
-export function findPatterns(db: DatabaseSync, userId: string): Pattern[] {
+export async function findPatterns(db: Db, userId: string): Promise<Pattern[]> {
   const out: Pattern[] = [];
-  const wrong = db
+  const wrong = await db
     .prepare(
       `SELECT a.question_id AS qid, a.response AS resp, q.stem AS stem, q.topic AS topic,
               q.subject AS subject, q.type AS type, q.options_json AS optionsJson, a.theory_score AS theory
