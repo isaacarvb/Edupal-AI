@@ -60,18 +60,19 @@ async function sqliteMigrate(): Promise<void> {
 }
 
 // ---- Postgres branch (Supabase, incl. pooler on :6543) ----
-let pgPool: Pool | null = null;
-let pgReady = false;
 
 function pgDb(): Db {
-  if (!pgPool) {
-    pgPool = new Pool({
+  const g = globalThis as unknown as { __edupalPg?: import("pg").Pool };
+  if (!g.__edupalPg) {
+    g.__edupalPg = new Pool({
       connectionString: process.env.DATABASE_URL,
       ssl: { rejectUnauthorized: false },
-      max: 5
+      max: 3,
+      idleTimeoutMillis: 10000,
+      connectionTimeoutMillis: 10000
     });
   }
-  const pool = pgPool;
+  const pool = g.__edupalPg;
   const toPg = (sql: string) => {
     let i = 0;
     return sql.replace(/\?/g, () => `$${++i}`);
@@ -99,12 +100,14 @@ async function pgMigrate(): Promise<void> {
   // Later additive columns land here via information_schema checks.
 }
 
+const gflag = globalThis as unknown as { __edupalPgReady?: boolean };
+
 // ---- Entry point ----
 export async function getDb(): Promise<Db> {
   if (usingPostgres()) {
-    if (!pgReady) {
+    if (!gflag.__edupalPgReady) {
       await pgMigrate();
-      pgReady = true;
+      gflag.__edupalPgReady = true;
     }
     return pgDb();
   }
