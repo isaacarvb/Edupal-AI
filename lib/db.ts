@@ -61,6 +61,7 @@ async function sqliteMigrate(): Promise<void> {
 
 // ---- Postgres branch (Supabase, incl. pooler on :6543) ----
 let pgPool: Pool | null = null;
+let pgReady = false;
 
 function pgDb(): Db {
   if (!pgPool) {
@@ -101,7 +102,10 @@ async function pgMigrate(): Promise<void> {
 // ---- Entry point ----
 export async function getDb(): Promise<Db> {
   if (usingPostgres()) {
-    await pgMigrate();
+    if (!pgReady) {
+      await pgMigrate();
+      pgReady = true;
+    }
     return pgDb();
   }
   const db = sqliteDb();
