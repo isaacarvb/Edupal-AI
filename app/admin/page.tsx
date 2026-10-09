@@ -1,6 +1,23 @@
 "use client";
 import { useEffect, useState } from "react";
 
+function BankCount() {
+  const [counts, setCounts] = useState<{ subject: string; n: number }[] | null>(null);
+  useEffect(() => {
+    fetch("/api/admin-bank")
+      .then((r) => (r.ok ? r.json() : null))
+      .then((d) => setCounts(d?.counts ?? []));
+  }, []);
+  if (!counts) return <p style={{ fontSize: 14 }}>Loading bank…</p>;
+  const total = counts.reduce((s, c) => s + c.n, 0);
+  return (
+    <div style={{ fontSize: 14 }}>
+      <p><strong>Total: {total} questions</strong> (diagnostic cap is 10 per subject — thin subjects run dry fast)</p>
+      {counts.map((c) => <div key={c.subject}>{c.subject} — {c.n}</div>)}
+    </div>
+  );
+}
+
 // Internal pilot evidence board (owner only in prod). Student view lives at /metrics.
 type M = {
   students: number; attempts: number; retentionPct: number; retained: number;
@@ -61,6 +78,8 @@ export default function Admin() {
       </div>
       <h2 style={{ fontSize: 18 }}>By subject</h2>
       {m.bySubject.map((s) => <div key={s.subject} style={{ fontSize: 14 }}>{s.subject} — {s.accuracy}% over {s.attempts}</div>)}
+      <h2 style={{ fontSize: 18, marginTop: 16 }}>Question bank</h2>
+      <BankCount />
       <h2 style={{ fontSize: 18, marginTop: 16 }}>Add deadline window</h2>
       <div style={{ background: "#fff", border: "1px solid #E2E8F0", borderRadius: 12, padding: 12 }}>
         <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>

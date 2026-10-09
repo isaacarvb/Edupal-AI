@@ -80,7 +80,7 @@ export default function Shell({ children }: { children: React.ReactNode }) {
     { href: userId ? `/teacher?userId=${userId}` : "/login", match: "/teacher#billing", label: "Billing", emoji: "💳", badge: "" }
   ] : [
     { href: userId ? `/dashboard${q}` : "/onboarding", match: "/dashboard", label: "Dashboard", emoji: "🏠", badge: "" },
-    { href: userId ? `/practice${q}&subject=English` : "/onboarding", match: "/practice", label: "Practice & Diagnostics", emoji: "📝", badge: "" },
+    { href: userId ? `/practice?userId=${userId}` : "/onboarding", match: "/practice", label: "Practice & Diagnostics", emoji: "📝", badge: "" },
     { href: userId ? `/weak-topics?userId=${userId}` : "/onboarding", match: "/weak-topics", label: "Weak Topics", emoji: "🎯", badge: "" },
     { href: userId ? `/dashboard/curriculum${q}` : "/onboarding", match: "/dashboard/curriculum", label: "Curriculum & Notes", emoji: "📚", badge: "" },
     { href: userId ? `/likely-questions${q}` : "/onboarding", match: "/likely-questions", label: "Likely Questions", emoji: "🔥", badge: userId ? likelyBadge : "" },

@@ -12,7 +12,8 @@ function PracticeInner() {
   const params = useSearchParams();
   const router = useRouter();
   const userId = params.get("userId") ?? "";
-  const subject = params.get("subject") ?? "English";
+  const subjectParam = params.get("subject");
+  const subject = subjectParam ?? "English";
   const qotdMode = params.get("qotd") === "1";
   const [isQotd, setIsQotd] = useState(false);
   const [q, setQ] = useState<Q | null>(null);
@@ -61,7 +62,7 @@ function PracticeInner() {
   }, [userId, subject, qotdMode, qotdServed]);
 
   useEffect(() => {
-    if (userId) load();
+    if (userId && subjectParam) load();
     setTimed(localStorage.getItem("edupal_timed") === "1");
     if (userId) {
       fetch(`/api/topics?userId=${userId}`)
@@ -147,6 +148,27 @@ function PracticeInner() {
   }
 
   if (!userId) return <main style={{ padding: 20 }}>Missing user. Start from <a href="/onboarding">onboarding</a>.</main>;
+
+  // No subject chosen → subject picker hub (the Practice & Diagnostics section).
+  if (!subjectParam) {
+    return (
+      <main style={{ maxWidth: 680, margin: "0 auto", padding: 20, color: "#333A45" }}>
+        <h1 style={{ color: "#1E242E", fontSize: 24 }}>Practice &amp; Diagnostics</h1>
+        <p style={{ fontSize: 14, color: "#5F6E7F" }}>Choose a subject to start. Budgets reset daily at midnight.</p>
+        {switcher.length === 0 && <p>Loading subjects…</p>}
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))", gap: 12 }}>
+          {switcher.map((s) => (
+            <a key={s.subject} href={`/practice?userId=${userId}&subject=${encodeURIComponent(s.subject)}`}
+              style={{ background: "#fff", border: "2px solid #0F766E", borderRadius: 12, padding: 16, textDecoration: "none", color: "#1E242E" }}>
+              <strong style={{ fontSize: 17 }}>{s.subject}</strong>
+              <div style={{ fontSize: 13, color: "#5F6E7F", marginTop: 4 }}>{s.left} free left today</div>
+              <div style={{ fontSize: 14, fontWeight: 800, color: "#0F766E", marginTop: 8 }}>Start practicing →</div>
+            </a>
+          ))}
+        </div>
+      </main>
+    );
+  }
   if (done)
     return (
       <main style={{ maxWidth: 420, margin: "0 auto", padding: 20, color: "#333A45" }}>
