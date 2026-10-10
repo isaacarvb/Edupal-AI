@@ -9,7 +9,7 @@ export async function GET(req: Request) {
   if (userId) {
     const att = await db.prepare("SELECT COUNT(*) AS n FROM attempts WHERE user_id = ?").get(userId) as { n: number };
     const acc = await db.prepare("SELECT AVG(correct) AS a FROM attempts WHERE user_id = ?").get(userId) as { a: number | null };
-    const st = await db.prepare("SELECT current FROM streaks WHERE user_id = ?").get(userId) as { current: number } | undefined;
+    const st = await db.prepare('SELECT "current" FROM streaks WHERE user_id = ?').get(userId) as { current: number } | undefined;
     const ready = await db.prepare("SELECT AVG(accuracy) AS a FROM topic_mastery WHERE user_id = ?").get(userId) as { a: number | null };
     const bySubject = await db
       .prepare(

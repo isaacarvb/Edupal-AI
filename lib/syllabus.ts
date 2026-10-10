@@ -15,7 +15,7 @@ export const SUBJECTS = [
 export type Subject = (typeof SUBJECTS)[number];
 
 export const SYLLABUS: Record<Subject, string[]> = {
-  English: ["Comprehension", "Synonyms", "Antonyms", "Tenses", "Lexis"],
+  English: ["Comprehension", "Synonyms", "Antonyms", "Tenses", "Lexis", "Idioms"],
   Mathematics: ["Quadratic equations", "Linear equations", "Percentages", "Geometry"],
   Physics: ["Motion", "Waves", "Electricity"],
   Chemistry: ["Atomic structure", "Periodic table", "Acids and bases"],
@@ -100,6 +100,10 @@ export const GLOSSARY: Record<string, Record<string, GlossaryTerm[]>> = {
     Lexis: [
       { term: "Register", definition: "Words suited to a particular situation or field." },
       { term: "Idiom", definition: "An expression whose meaning differs from its literal words." }
+    ],
+    Idioms: [
+      { term: "Let the cat out of the bag", definition: "To reveal a secret by mistake." },
+      { term: "Hit the nail on the head", definition: "To say exactly the right thing." }
     ]
   },
   Mathematics: {

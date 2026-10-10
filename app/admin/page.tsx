@@ -36,6 +36,8 @@ export default function Admin() {
   const [dtitle, setDtitle] = useState("");
   const [dcloses, setDcloses] = useState("");
   const [dmsg, setDmsg] = useState("");
+  const [csv, setCsv] = useState("");
+  const [importMsg, setImportMsg] = useState("");
   function load() {
     fetch("/api/metrics").then((r) => r.json()).then(setM);
     fetch("/api/flag").then((r) => r.json()).then((d) => setFlags(d.flags ?? []));
@@ -78,6 +80,27 @@ export default function Admin() {
       </div>
       <h2 style={{ fontSize: 18 }}>By subject</h2>
       {m.bySubject.map((s) => <div key={s.subject} style={{ fontSize: 14 }}>{s.subject} — {s.accuracy}% over {s.attempts}</div>)}
+      <h2 style={{ fontSize: 18, marginTop: 16 }}>Import curated questions</h2>
+      <div style={{ background: "#fff", border: "1px solid #E2E8F0", borderRadius: 12, padding: 12 }}>
+        <p style={{ fontSize: 13, color: "#5F6E7F" }}>Paste CSV or load a file. Duplicates (same question text) are skipped. Only upload questions you have rights to use — imports are marked CURATED. <a href="/api/admin-bank/template" style={{ color: "#0F766E", fontWeight: 700 }}>Download template</a></p>
+        <textarea value={csv} onChange={(e) => setCsv(e.target.value)} rows={5} placeholder="exam,year,subject,topic,type,stem,options (a|b|c),answer,rubric,predicted" style={{ width: "100%", borderRadius: 10, border: "1px solid #CBD5E1", padding: 10, fontSize: 13, boxSizing: "border-box" }} />
+        <div style={{ display: "flex", gap: 8, marginTop: 8 }}>
+          <label style={{ fontSize: 13, fontWeight: 700, borderRadius: 8, border: "1px solid #0F766E", color: "#0F766E", padding: "10px 16px", cursor: "pointer" }}>
+            Load file…
+            <input type="file" accept=".csv,.txt" style={{ display: "none" }} onChange={(e) => { const f = e.target.files?.[0]; if (f) { const r = new FileReader(); r.onload = () => setCsv(String(r.result ?? "")); r.readAsText(f); } }} />
+          </label>
+          <button onClick={async () => {
+            setImportMsg("Importing…");
+            const res = await fetch("/api/admin-bank/import", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ csv }) });
+            const data = await res.json();
+            setImportMsg(res.ok ? `Added ${data.added}, skipped ${data.skipped}${data.errors?.length ? `. Issues: ${data.errors.join("; ")}` : ""}` : data.error || "Failed");
+            if (res.ok) { setCsv(""); load(); }
+          }} style={{ fontSize: 13, fontWeight: 700, borderRadius: 8, border: 0, background: "#0F766E", color: "#fff", padding: "10px 16px", cursor: "pointer" }}>
+            Import
+          </button>
+        </div>
+        {importMsg && <p style={{ fontSize: 13 }}>{importMsg}</p>}
+      </div>
       <h2 style={{ fontSize: 18, marginTop: 16 }}>Question bank</h2>
       <BankCount />
       <h2 style={{ fontSize: 18, marginTop: 16 }}>Add deadline window</h2>
