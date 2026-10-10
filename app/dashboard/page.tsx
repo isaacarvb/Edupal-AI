@@ -2,7 +2,7 @@
 import { Suspense, useEffect, useState } from "react";
 import { useSearchParams } from "next/navigation";
 
-type Profile = { level: string; exam: string; examDate: string | null; subjects: string; language: string; creditsLeft: number; plan: string; streak: number; freezeAvailable: number };
+type Profile = { name: string | null; level: string; exam: string; examDate: string | null; subjects: string; language: string; creditsLeft: number; plan: string; streak: number; freezeAvailable: number };
 
 const card: React.CSSProperties = { background: "#fff", border: "1px solid #E2E8F0", borderRadius: 16, padding: 16, margin: "0 0 12px" };
 
@@ -13,10 +13,7 @@ function DashInner() {
   const [qotd, setQotd] = useState<null | { subject: string; topic: string }>(null);
   const [reminder, setReminder] = useState<string | null>(null);
   const [limits, setLimits] = useState<{ subject: string; left: number }[]>([]);
-  const [live, setLive] = useState<{ title: string; startsAt: string; meetUrl: string; className: string; liveNow: boolean }[]>([]);
-  const [myClasses, setMyClasses] = useState<{ id: string; name: string }[]>([]);
-  const [joinCode, setJoinCode] = useState("");
-  const [joinMsg, setJoinMsg] = useState("");
+  const [attempts, setAttempts] = useState<number | null>(null);
   const limited = params.get("limited") ?? "";
 
   function chipStyle(days: number | null): React.CSSProperties {
@@ -48,44 +45,23 @@ function DashInner() {
     fetch(`/api/qotd?userId=${userId}`)
       .then((r) => r.json())
       .then((d) => setQotd(!d.done && d.question ? { subject: d.question.subject, topic: d.question.topic } : null));
-    fetch(`/api/classes?userId=${userId}`)
+    fetch(`/api/metrics?userId=${userId}`)
       .then((r) => r.json())
-      .then((d) => {
-        if (d.role !== "TEACHER") {
-          setMyClasses(d.classes ?? []);
-          const now = Date.now();
-          setLive((d.live ?? []).map((s: { title: string; startsAt: string; meetUrl: string; className: string }) => ({
-            ...s,
-            liveNow: Date.parse(s.startsAt) <= now + 3600000 && Date.parse(s.startsAt) >= now - 7200000
-          })));
-        }
-      });
+      .then((d) => setAttempts(typeof d.totalPracticed === "number" ? d.totalPracticed : null));
   }
 
   useEffect(refresh, [userId]);
-
-  async function joinClass() {
-    setJoinMsg("");
-    if (!joinCode.trim()) return;
-    const res = await fetch("/api/classes/join", {
-      method: "POST", headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ userId, code: joinCode.trim() })
-    });
-    const data = await res.json();
-    if (!res.ok) return setJoinMsg(data.error || "Could not join.");
-    setJoinCode("");
-    setJoinMsg(`Joined ${data.class.name} ✓`);
-    refresh();
-  }
 
   if (!userId) return <main style={{ padding: 20 }}>Missing user. Start from <a href="/signup">signup</a>.</main>;
   if (!profile) return <main style={{ padding: 20 }}>Loading…</main>;
 
   const days = profile.examDate ? Math.max(0, Math.ceil((new Date(profile.examDate).getTime() - Date.now()) / 86400000)) : null;
+  const firstName = (profile.name ?? "").trim().split(/\s+/)[0] || "Student";
+  const greeting = attempts === null ? `Welcome, ${firstName}` : attempts === 0 ? `Welcome, ${firstName}` : `Welcome back, ${firstName}`;
 
   return (
     <main style={{ maxWidth: 1100, margin: "0 auto", padding: 20, color: "#333A45" }}>
-      <h1 style={{ color: "#1E242E", fontSize: 24 }}>My dashboard</h1>
+      <h1 style={{ color: "#1E242E", fontSize: 24 }}>{greeting}</h1>
 
       {/* STATUS */}
       <div style={{ background: "#1E242E", borderRadius: 16, padding: 14, marginBottom: 12 }}>
@@ -122,27 +98,6 @@ function DashInner() {
               <a href={`/practice?userId=${userId}&subject=${encodeURIComponent(qotd.subject)}&qotd=1`} style={{ display: "block", textAlign: "center", background: "#0F766E", color: "#fff", borderRadius: 10, height: 44, lineHeight: "44px", fontWeight: 700, fontSize: 14, textDecoration: "none" }}>Answer today's question</a>
             </div>
           )}
-
-          {/* LIVE CLASS */}
-          <h2 style={{ color: "#1E242E", fontSize: 18 }}>Live class</h2>
-          <div style={card}>
-            {live.filter((s) => s.liveNow && s.meetUrl).map((s, i) => (
-              <div key={i} style={{ marginBottom: 8 }}>
-                <span style={{ fontWeight: 800, color: "#DC2626" }}>🔴 LIVE NOW:</span> <strong>{s.title}</strong> ({s.className})
-                <a href={s.meetUrl} target="_blank" rel="noreferrer" style={{ display: "block", textAlign: "center", background: "#DC2626", color: "#fff", borderRadius: 10, height: 44, lineHeight: "44px", fontWeight: 800, textDecoration: "none", marginTop: 6 }}>Join live</a>
-              </div>
-            ))}
-            {live.filter((s) => !s.liveNow).slice(0, 3).map((s, i) => (
-              <div key={i} style={{ fontSize: 14, padding: "4px 0" }}>⏰ {s.title} ({s.className}) — {s.startsAt.slice(0, 16).replace("T", " ")}</div>
-            ))}
-            {live.length === 0 && <p style={{ fontSize: 14, margin: "0 0 8px" }}>No live sessions. Join your teacher's class with their code:</p>}
-            {myClasses.length > 0 && <p style={{ fontSize: 13, color: "#5F6E7F", margin: "0 0 8px" }}>My classes: {myClasses.map((c) => c.name).join(", ")}</p>}
-            <div style={{ display: "flex", gap: 8 }}>
-              <input value={joinCode} onChange={(e) => setJoinCode(e.target.value)} placeholder="Class code e.g. ABC-1234" style={{ flex: 1, height: 44, borderRadius: 10, border: "1px solid #CBD5E1", padding: "0 10px", fontSize: 14 }} />
-              <button onClick={joinClass} style={{ height: 44, borderRadius: 10, border: 0, background: "#1E242E", color: "#fff", fontWeight: 700, padding: "0 18px", cursor: "pointer" }}>Join</button>
-            </div>
-            {joinMsg && <p style={{ fontSize: 13, marginTop: 6 }}>{joinMsg}</p>}
-          </div>
 
           {/* PRACTICE */}
           <h2 id="practice" style={{ color: "#1E242E", fontSize: 18 }}>Practice</h2>

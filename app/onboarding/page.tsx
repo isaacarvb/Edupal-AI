@@ -11,7 +11,6 @@ function OnboardingInner() {
   const router = useRouter();
   const params = useSearchParams();
   const [userId, setUserId] = useState("");
-  const [level, setLevel] = useState("SECONDARY");
   const [exam, setExam] = useState("JAMB");
   const [examDate, setExamDate] = useState("");
   const [subjects, setSubjects] = useState<string[]>(["English"]);
@@ -35,7 +34,7 @@ function OnboardingInner() {
     const res = await fetch("/api/onboarding", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ userId, level, exam, examDate: examDate || null, subjects, language })
+      body: JSON.stringify({ userId, level: "SECONDARY", exam, examDate: examDate || null, subjects, language })
     });
     const data = await res.json();
     if (!res.ok) return setErr(data.error || "Something went wrong");
@@ -49,20 +48,16 @@ function OnboardingInner() {
         <p style={{ fontSize: 14, color: "#5F6E7F", margin: "0 0 12px" }}>Step 2 of 2 — tell us what you're preparing for.</p>
         <div style={{ display: "flex", gap: 12, flexWrap: "wrap" }}>
           <div style={cell}>
-            <label>Level</label>
-            <select style={input} value={level} onChange={(e) => setLevel(e.target.value)}>
-              <option value="SECONDARY">Secondary</option>
-              <option value="UNIVERSITY">University</option>
-            </select>
-          </div>
-          <div style={cell}>
             <label>Exam</label>
             <select style={input} value={exam} onChange={(e) => setExam(e.target.value)}>
               <option value="JAMB">JAMB</option>
               <option value="WAEC">WAEC</option>
-              <option value="NECO">NECO</option>
-              <option value="GCE">GCE</option>
+              <option value="Others">Others (JSS / other exams)</option>
             </select>
+          </div>
+          <div style={cell}>
+            <label>Exam date</label>
+            <input style={input} type="date" value={examDate} onChange={(e) => setExamDate(e.target.value)} />
           </div>
         </div>
         <div style={{ display: "flex", gap: 12, flexWrap: "wrap" }}>

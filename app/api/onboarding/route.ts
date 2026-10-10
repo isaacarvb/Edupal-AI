@@ -10,11 +10,11 @@ export async function POST(req: Request) {
   if (!level || !exam || !subjects?.length || !language) {
     return NextResponse.json({ error: "level, exam, subjects, language required" }, { status: 400 });
   }
-  if (!["SECONDARY", "UNIVERSITY"].includes(level)) {
+  if (!["SECONDARY"].includes(level)) {
     return NextResponse.json({ error: "bad level" }, { status: 400 });
   }
-  if (!["WAEC", "JAMB", "NECO", "GCE"].includes(exam)) {
-    return NextResponse.json({ error: "exam must be WAEC, JAMB, NECO or GCE" }, { status: 400 });
+  if (!["WAEC", "JAMB", "Others"].includes(exam)) {
+    return NextResponse.json({ error: "exam must be WAEC, JAMB or Others" }, { status: 400 });
   }
   const db = await getDb();
   const user = await db.prepare("SELECT 1 FROM users WHERE id = ?").get(userId);

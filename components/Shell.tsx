@@ -1,22 +1,36 @@
 "use client";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { usePathname, useSearchParams } from "next/navigation";
 import { signOut } from "next-auth/react";
 import TopBar from "./TopBar";
 
 const PUBLIC_ROUTES = ["/", "/login", "/signup"];
 
+const TIPS: Record<string, string> = {
+  Dashboard: "Your home screen — streaks, practice summary, and quick actions",
+  Practice: "Answer questions and get instant AI feedback on your answers",
+  "Weak Topics": "See the topics you struggle with most and drill them specifically",
+  "Curriculum & Notes": "Browse the syllabus and access study notes by subject and topic",
+  "Likely Questions": "AI-predicted questions most likely to appear in your exam",
+  "Progress Analytics": "Track your performance over time across all subjects and topics",
+  "Parent Portal": "Your parent or guardian's view of your progress and activity",
+  "Subscription & Credits": "Manage your plan, view daily credits, and upgrade your account",
+  "Exam Info": "Key dates, registration deadlines, and exam tips",
+  Settings: "Update your profile, password, language, and display preferences"
+};
+
 // Persistent app shell: collapsible dark sidebar (desktop), hamburger drawer (mobile).
 export default function Shell({ children }: { children: React.ReactNode }) {
   const path = usePathname();
   const search = useSearchParams();
   const [userId, setUserId] = useState<string | null>(null);
-  const [role, setRole] = useState("STUDENT");
   const [name, setName] = useState("Student");
   const [daysLeft, setDaysLeft] = useState<number | null>(null);
   const [mobile, setMobile] = useState(false);
   const [open, setOpen] = useState(false);
   const [collapsed, setCollapsed] = useState(false);
+  const [tip, setTip] = useState<{ text: string; top: number } | null>(null);
+  const tipTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
     const mq = window.matchMedia("(max-width: 820px)");
@@ -51,7 +65,6 @@ export default function Shell({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     const id = localStorage.getItem("edupal_user");
     setUserId(id);
-    setRole(localStorage.getItem("edupal_role") ?? "STUDENT");
     setOpen(false);
     if (id) {
       fetch(`/api/topics?userId=${id}`)
@@ -64,6 +77,19 @@ export default function Shell({ children }: { children: React.ReactNode }) {
     }
   }, [path, search]);
 
+  function showTip(label: string, el: HTMLElement) {
+    if (tipTimer.current) clearTimeout(tipTimer.current);
+    tipTimer.current = setTimeout(() => {
+      const r = el.getBoundingClientRect();
+      setTip({ text: TIPS[label] ?? label, top: r.top + r.height / 2 });
+    }, 300);
+  }
+
+  function hideTip() {
+    if (tipTimer.current) clearTimeout(tipTimer.current);
+    setTip(null);
+  }
+
   async function logout() {
     localStorage.removeItem("edupal_user");
     localStorage.removeItem("edupal_role");
@@ -73,14 +99,10 @@ export default function Shell({ children }: { children: React.ReactNode }) {
 
   const q = userId ? `?userId=${userId}` : "";
   const likelyBadge =
-    daysLeft === null ? "Locked" : daysLeft > 7 ? `${daysLeft} left` : daysLeft >= 0 ? "Live" : "Live";
-  const links = role === "TEACHER" ? [
-    { href: userId ? `/teacher?userId=${userId}` : "/login", match: "/teacher", label: "My Classes", emoji: "🏫", badge: "" },
-    { href: "/admin", match: "/admin", label: "Progress Analytics", emoji: "📊", badge: "" },
-    { href: userId ? `/teacher?userId=${userId}` : "/login", match: "/teacher#billing", label: "Billing", emoji: "💳", badge: "" }
-  ] : [
+    daysLeft === null ? "Locked" : daysLeft > 7 ? `${daysLeft} left` : "Live";
+  const links = [
     { href: userId ? `/dashboard${q}` : "/onboarding", match: "/dashboard", label: "Dashboard", emoji: "🏠", badge: "" },
-    { href: userId ? `/practice?userId=${userId}` : "/onboarding", match: "/practice", label: "Practice & Diagnostics", emoji: "📝", badge: "" },
+    { href: userId ? `/practice?userId=${userId}` : "/onboarding", match: "/practice", label: "Practice", emoji: "📝", badge: "" },
     { href: userId ? `/weak-topics?userId=${userId}` : "/onboarding", match: "/weak-topics", label: "Weak Topics", emoji: "🎯", badge: "" },
     { href: userId ? `/dashboard/curriculum${q}` : "/onboarding", match: "/dashboard/curriculum", label: "Curriculum & Notes", emoji: "📚", badge: "" },
     { href: userId ? `/likely-questions${q}` : "/onboarding", match: "/likely-questions", label: "Likely Questions", emoji: "🔥", badge: userId ? likelyBadge : "" },
@@ -89,13 +111,12 @@ export default function Shell({ children }: { children: React.ReactNode }) {
     { href: userId ? `/subscription?userId=${userId}` : "/onboarding", match: "/subscription", label: "Subscription & Credits", emoji: "💳", badge: "" },
     { href: "/deadlines", match: "/deadlines", label: "Exam Info", emoji: "📅", badge: "" }
   ];
-  const homeHref = role === "TEACHER" && userId ? `/teacher?userId=${userId}` : userId ? `/dashboard${q}` : "/";
+  const homeHref = userId ? `/dashboard${q}` : "/";
   const wide = !collapsed;
   const initial = name.trim().charAt(0).toUpperCase() || "S";
 
   const sidebar = (
     <aside
-      title={collapsed ? "Expand sidebar" : ""}
       style={{
         width: collapsed ? 64 : 240, flexShrink: 0, background: "#1E242E", color: "#fff",
         display: "flex", flexDirection: "column", minHeight: "100vh",
@@ -108,7 +129,12 @@ export default function Shell({ children }: { children: React.ReactNode }) {
     >
       <div style={{ padding: wide ? 16 : 12, borderBottom: "1px solid #333A45" }}>
         <div style={{ display: "flex", alignItems: "center", justifyContent: wide ? "space-between" : "center", gap: 8 }}>
-          {wide && <a href={homeHref} style={{ fontWeight: 800, fontSize: 17, color: "#fff", textDecoration: "none" }}>🎓 EduPal AI</a>}
+          {wide && (
+            <a href={homeHref} style={{ color: "#fff", textDecoration: "none" }}>
+              <div style={{ fontWeight: 800, fontSize: 17 }}>🎓 EduPal AI</div>
+              <div style={{ fontSize: 11, fontStyle: "italic", color: "#A7F3D0", marginTop: 2 }}>"..your personal exam coach"</div>
+            </a>
+          )}
           {!mobile && (
             <button onClick={toggleCollapse} title="Collapse Sidebar" aria-label="Collapse Sidebar"
               style={{ background: "transparent", border: "1px solid #5F6E7F", color: "#fff", borderRadius: 8, fontSize: 14, padding: "4px 10px", cursor: "pointer" }}>
@@ -120,7 +146,9 @@ export default function Shell({ children }: { children: React.ReactNode }) {
       <nav style={{ padding: 10, display: "flex", flexDirection: "column", gap: 2, flex: 1 }}>
         {links.map((l) => (
           <a
-            key={l.label} href={l.href} title={l.label}
+            key={l.label} href={l.href}
+            onMouseEnter={(e) => showTip(l.label, e.currentTarget)}
+            onMouseLeave={hideTip}
             className={isActive(l.match) ? "nav-link nav-link-active" : "nav-link"}
             style={{
               color: "#fff", textDecoration: "none", fontSize: 14, padding: "10px 12px",
@@ -145,7 +173,7 @@ export default function Shell({ children }: { children: React.ReactNode }) {
             <span style={{ width: 32, height: 32, borderRadius: 999, background: "#0F766E", color: "#fff", fontWeight: 800, textAlign: "center", lineHeight: "32px", flexShrink: 0 }}>{initial}</span>
             <div style={{ flex: 1, minWidth: 0 }}>
               <div style={{ fontSize: 13, fontWeight: 700, overflow: "hidden", textOverflow: "ellipsis" }}>{name}</div>
-              <div style={{ fontSize: 10, color: "#A7F3D0" }}>{role === "TEACHER" ? "Active Teacher" : "Active Student"}</div>
+              <div style={{ fontSize: 10, color: "#A7F3D0" }}>Active Student</div>
             </div>
             <button onClick={logout} title="Logout" aria-label="Logout"
               style={{ background: "transparent", border: "1px solid #5F6E7F", color: "#fff", borderRadius: 8, fontSize: 14, padding: "4px 8px", cursor: "pointer" }}>🚪</button>
@@ -157,7 +185,10 @@ export default function Shell({ children }: { children: React.ReactNode }) {
               style={{ background: "transparent", border: "1px solid #5F6E7F", color: "#fff", borderRadius: 8, fontSize: 14, padding: "4px 8px", cursor: "pointer" }}>🚪</button>
           </div>
         )}
-        <a href="/settings" title="Settings" style={{ display: "block", color: "#fff", textDecoration: "none", fontSize: 14, padding: "10px 12px", borderRadius: 8, textAlign: wide ? "left" : "center" }}>
+        <a href="/settings"
+          onMouseEnter={(e) => showTip("Settings", e.currentTarget)}
+          onMouseLeave={hideTip}
+          style={{ display: "block", color: "#fff", textDecoration: "none", fontSize: 14, padding: "10px 12px", borderRadius: 8, textAlign: wide ? "left" : "center" }}>
           ⚙️{wide && <span style={{ marginLeft: 8 }}>Settings</span>}
         </a>
       </div>
@@ -177,6 +208,13 @@ export default function Shell({ children }: { children: React.ReactNode }) {
   return (
     <div style={{ display: "flex", minHeight: "100vh" }}>
       {sidebar}
+      {tip && (
+        <div style={{ position: "fixed", left: collapsed && !mobile ? 72 : 248, top: tip.top - 16, zIndex: 60,
+          background: "#1E242E", color: "#fff", fontSize: 12, padding: "8px 12px", borderRadius: 8,
+          border: "1px solid #0F766E", maxWidth: 240, pointerEvents: "none", boxShadow: "0 4px 16px rgb(0 0 0 / 0.3)" }}>
+          {tip.text}
+        </div>
+      )}
       {mobile && open && (
         <div onClick={() => setOpen(false)} style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.4)", zIndex: 40 }} />
       )}

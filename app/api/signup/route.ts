@@ -11,7 +11,7 @@ export async function POST(req: Request) {
   if (!cleanName) return NextResponse.json({ error: "full name required" }, { status: 400 });
   if (!cleanEmail || !cleanEmail.includes("@")) return NextResponse.json({ error: "valid email required" }, { status: 400 });
   if (!password || password.length < 6) return NextResponse.json({ error: "password of 6+ characters required" }, { status: 400 });
-  const cleanRole = role === "TEACHER" ? "TEACHER" : "STUDENT";
+  const cleanRole = "STUDENT";
   const db = await getDb();
   const taken = await db.prepare("SELECT 1 FROM users WHERE email = ?").get(cleanEmail);
   if (taken) return NextResponse.json({ error: "email already used — sign in instead" }, { status: 409 });

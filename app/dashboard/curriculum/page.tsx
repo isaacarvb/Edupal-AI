@@ -66,7 +66,7 @@ function CurriculumInner() {
                     </button>
                     {viewing && (
                       <div style={{ background: "#F8FAFC", borderRadius: 10, padding: 12, marginTop: 8 }}>
-                        <p style={{ fontSize: 12, color: "#5F6E7F", margin: "0 0 8px" }}>Key points {tier === "jss" ? "(junior syllabus)" : "(full study notes arrive with teacher uploads)"}:</p>
+                        <p style={{ fontSize: 12, color: "#5F6E7F", margin: "0 0 8px" }}>Key points {tier === "jss" ? "(junior syllabus)" : "(full study notes landing soon)"}:</p>
                         {terms.length === 0 && <p style={{ fontSize: 14 }}>Notes for this topic are being written — check back soon.</p>}
                         {terms.map((g) => (
                           <div key={g.term} style={{ fontSize: 14, padding: "6px 0", borderTop: "1px solid #E2E8F0" }}>

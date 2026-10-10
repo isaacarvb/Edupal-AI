@@ -17,6 +17,12 @@ body {
 }
 h1, h2, h3 { color: var(--ink); }
 
+/* ─── Dark mode (Appearance toggle in Settings) ─── */
+html.dark { background: #0B0F14; }
+html.dark body { background: #0B0F14; color: #D8DEE7; }
+html.dark body > div { filter: invert(0.93) hue-rotate(180deg); }
+html.dark img { filter: invert(0.93) hue-rotate(180deg); }
+
 /* ─── Reduced data mode: flat, text-only, no decoration ─── */
 body.lite { background: #fff; }
 body.lite * { box-shadow: none !important; transition: none !important; animation: none !important; }

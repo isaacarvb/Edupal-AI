@@ -19,9 +19,13 @@ export async function GET(req: Request) {
 }
 
 export async function POST(req: Request) {
-  const { userId, avatar, language, currentPassword, newPassword } = await req.json();
+  const { userId, name, avatar, language, currentPassword, newPassword } = await req.json();
   if (!userId) return NextResponse.json({ error: "userId required" }, { status: 400 });
   const db = await getDb();
+  if (name !== undefined) {
+    if (!String(name).trim()) return NextResponse.json({ error: "name can't be empty" }, { status: 400 });
+    await db.prepare("UPDATE users SET name = ? WHERE id = ?").run(String(name).trim(), userId);
+  }
   if (avatar !== undefined) {
     if (typeof avatar !== "string" || !avatar.startsWith("data:image/") || avatar.length > 200000) {
       return NextResponse.json({ error: "avatar must be an image under ~200KB" }, { status: 400 });

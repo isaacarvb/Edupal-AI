@@ -157,23 +157,36 @@ function PracticeInner() {
   const hubSubjects = bank.length
     ? bank.map((b) => ({ subject: b.subject, left: switcher.find((s) => s.subject === b.subject)?.left ?? 10, n: b.n }))
     : switcher.map((s) => ({ ...s, n: 0 }));
+  const [seniorOpen, setSeniorOpen] = useState(true);
 
-  // No subject chosen → subject picker hub (the Practice & Diagnostics section).
+  // No subject chosen → subject picker hub (the Practice section, tiered).
   if (!subjectParam) {
+    const jss = ["Mathematics", "English", "Intermediate Science", "Citizenship Education", "Physical Health Education"];
     return (
       <main style={{ maxWidth: 680, margin: "0 auto", padding: 20, color: "#333A45" }}>
-        <h1 style={{ color: "#1E242E", fontSize: 24 }}>Practice &amp; Diagnostics</h1>
+        <h1 style={{ color: "#1E242E", fontSize: 24 }}>Practice</h1>
         <p style={{ fontSize: 14, color: "#5F6E7F" }}>Choose a subject to start. Budgets reset daily at midnight.</p>
-        {hubSubjects.length === 0 && <p>Loading subjects…</p>}
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))", gap: 12 }}>
-          {hubSubjects.map((s) => (
-            <a key={s.subject} href={`/practice?userId=${userId}&subject=${encodeURIComponent(s.subject)}`}
-              style={{ background: "#fff", border: "2px solid #0F766E", borderRadius: 12, padding: 16, textDecoration: "none", color: "#1E242E" }}>
-              <strong style={{ fontSize: 17 }}>{s.subject}</strong>
-              <div style={{ fontSize: 13, color: "#5F6E7F", marginTop: 4 }}>{s.left} free left today • {s.n} questions in bank</div>
-              <div style={{ fontSize: 14, fontWeight: 800, color: "#0F766E", marginTop: 8 }}>Start practicing →</div>
-            </a>
-          ))}
+        <button onClick={() => setSeniorOpen((o) => !o)}
+          style={{ width: "100%", textAlign: "left", background: "#1E242E", color: "#fff", border: 0, borderRadius: 12, padding: 14, fontSize: 16, fontWeight: 800, cursor: "pointer", marginBottom: 8 }}>
+          {seniorOpen ? "▾" : "▸"} Senior Secondary School
+        </button>
+        {seniorOpen && (
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))", gap: 12, marginBottom: 12 }}>
+            {hubSubjects.length === 0 && <p>Loading subjects…</p>}
+            {hubSubjects.map((s) => (
+              <a key={s.subject} href={`/practice?userId=${userId}&subject=${encodeURIComponent(s.subject)}`}
+                style={{ background: "#fff", border: "2px solid #0F766E", borderRadius: 12, padding: 16, textDecoration: "none", color: "#1E242E" }}>
+                <strong style={{ fontSize: 17 }}>{s.subject}</strong>
+                <div style={{ fontSize: 13, color: "#5F6E7F", marginTop: 4 }}>{s.left} free left today • {s.n} questions in bank</div>
+                <div style={{ fontSize: 14, fontWeight: 800, color: "#0F766E", marginTop: 8 }}>Start practicing →</div>
+              </a>
+            ))}
+          </div>
+        )}
+        <div style={{ background: "#F1F5F9", border: "1px solid #E2E8F0", borderRadius: 12, padding: 14, opacity: 0.85 }}>
+          <strong>Junior Secondary School</strong>{" "}
+          <span style={{ fontSize: 11, fontWeight: 800, background: "#F59E0B", color: "#422006", padding: "3px 10px", borderRadius: 999 }}>Coming Soon</span>
+          <div style={{ fontSize: 13, color: "#5F6E7F", marginTop: 6 }}>{jss.join(" • ")}</div>
         </div>
       </main>
     );

@@ -10,7 +10,6 @@ function SignupInner() {
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [role, setRole] = useState("STUDENT");
   const [err, setErr] = useState("");
   const [busy, setBusy] = useState(false);
   const ref = params.get("ref") ?? "";
@@ -23,14 +22,13 @@ function SignupInner() {
       const res = await fetch("/api/signup", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ name, email, password, role, referredBy: ref || undefined })
+        body: JSON.stringify({ name, email, password, referredBy: ref || undefined })
       });
       const data = await res.json();
       if (!res.ok) return setErr(data.error || "Something went wrong");
       localStorage.setItem("edupal_user", data.userId);
-      localStorage.setItem("edupal_role", data.role ?? "STUDENT");
-      localStorage.setItem("edupal_role", data.role ?? "STUDENT");
-      router.push(data.role === "TEACHER" ? `/teacher?userId=${data.userId}` : `/onboarding?userId=${data.userId}`);
+      localStorage.setItem("edupal_role", "STUDENT");
+      router.push(`/onboarding?userId=${data.userId}`);
     } finally {
       setBusy(false);
     }
@@ -42,11 +40,6 @@ function SignupInner() {
         <h1 style={{ color: "#1E242E", fontSize: 24, margin: "0 0 4px" }}>Create your account</h1>
         <p style={{ fontSize: 14, color: "#5F6E7F", margin: "0 0 12px" }}>Step 1 of 2 — your study plan comes next.</p>
         {ref !== "" && <p style={{ fontSize: 14, background: "#ECFDF5", border: "1px solid #A7F3D0", borderRadius: 10, padding: "8px 12px" }}>🎁 Invited by a classmate — they earn bonus questions when you join!</p>}
-        <label style={{ fontSize: 12, fontWeight: 800, letterSpacing: 1 }}>I AM A…</label>
-        <select value={role} onChange={(e) => setRole(e.target.value)} style={input}>
-          <option value="STUDENT">Student — practice + exams</option>
-          <option value="TEACHER">Teacher — manage a class</option>
-        </select>
         <label style={{ fontSize: 12, fontWeight: 800, letterSpacing: 1 }}>FULL NAME</label>
         <input style={input} value={name} onChange={(e) => setName(e.target.value)} placeholder="e.g. Amina Bello" />
         <label style={{ fontSize: 12, fontWeight: 800, letterSpacing: 1 }}>EMAIL ADDRESS</label>

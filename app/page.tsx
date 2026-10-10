@@ -25,7 +25,7 @@ export default function Landing() {
       <section className="lite-flat" style={{ background: "linear-gradient(160deg, #1E242E 0%, #2F5D7C 60%, #0F766E 100%)", color: "#fff", padding: "72px 20px 64px", textAlign: "center" }}>
         <div style={{ maxWidth: 1100, margin: "0 auto" }}>
           <span style={{ display: "inline-block", fontSize: 14, fontWeight: 700, letterSpacing: 2, background: "rgba(16,185,129,0.18)", border: "1px solid #10B981", color: "#A7F3D0", padding: "8px 22px", borderRadius: 999 }}>
-            WAEC • JAMB • NECO
+            WAEC • JAMB • Others
           </span>
           <h1 style={{ fontSize: 56, fontWeight: 700, margin: "20px 0 12px", color: "#fff", lineHeight: 1.1 }}>
             EduPal AI — your personal exam coach
@@ -73,8 +73,8 @@ export default function Landing() {
           {["WAEC", "JAMB"].map((e) => (
             <span key={e} style={{ fontSize: 15, fontWeight: 700, background: "#1E242E", color: "#fff", padding: "10px 22px", borderRadius: 999 }}>{e} — live now</span>
           ))}
-          {["NECO", "GCE", "Post-UTME"].map((e) => (
-            <span key={e} style={{ fontSize: 15, fontWeight: 600, background: "#fff", color: "#5F6E7F", border: "1px solid #E2E8F0", padding: "10px 22px", borderRadius: 999 }}>{e} — coming soon</span>
+          {["Others (JSS & more)"].map((e) => (
+            <span key={e} style={{ fontSize: 15, fontWeight: 600, background: "#fff", color: "#5F6E7F", border: "1px solid #E2E8F0", padding: "10px 22px", borderRadius: 999 }}>{e} — growing</span>
           ))}
         </div>
       </section>
