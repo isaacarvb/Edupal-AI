@@ -109,7 +109,9 @@ export async function getDb(): Promise<Db> {
       await pgMigrate();
       gflag.__edupalPgReady = true;
     }
-    return pgDb();
+    const db = pgDb();
+    await ensureSeeded(db);
+    return db;
   }
   const db = sqliteDb();
   await sqliteMigrate();
