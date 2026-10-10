@@ -24,6 +24,7 @@ function PracticeInner() {
   const [busy, setBusy] = useState(false);
   const [timed, setTimed] = useState(false);
   const [secs, setSecs] = useState(0);
+  const [seniorOpen, setSeniorOpen] = useState(true);
   const [switcher, setSwitcher] = useState<{ subject: string; left: number }[]>([]);
   const [bank, setBank] = useState<{ subject: string; n: number }[]>([]);
   const [alt, setAlt] = useState<null | { explanation: string; engine: string }>(null);
@@ -128,11 +129,14 @@ function PracticeInner() {
     setBusy(true);
     setErr("");
     const limit = q.type === "MCQ" ? 60 : 180;
+    const ctrl = new AbortController();
+    const timer = setTimeout(() => ctrl.abort(), 25000);
     try {
       const res = await fetch("/api/practice/attempt", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ userId, questionId: q.id, response: answer, timed, secondsUsed: timed ? limit - secs : null, qotd: isQotd })
+        body: JSON.stringify({ userId, questionId: q.id, response: answer, timed, secondsUsed: timed ? limit - secs : null, qotd: isQotd }),
+        signal: ctrl.signal
       });
       const data = await res.json();
       if (data.duplicate) return load(); // double-click: just move on
@@ -146,7 +150,14 @@ function PracticeInner() {
       }
       if (!res.ok) return setErr(data.error || "Failed");
       setResult(data);
+    } catch (e) {
+      if (e instanceof DOMException && e.name === "AbortError") {
+        setErr("Taking too long — check your connection and tap Submit once more.");
+      } else {
+        setErr("Network hiccup — tap Submit once more.");
+      }
     } finally {
+      clearTimeout(timer);
       setBusy(false);
     }
   }
@@ -157,7 +168,6 @@ function PracticeInner() {
   const hubSubjects = bank.length
     ? bank.map((b) => ({ subject: b.subject, left: switcher.find((s) => s.subject === b.subject)?.left ?? 10, n: b.n }))
     : switcher.map((s) => ({ ...s, n: 0 }));
-  const [seniorOpen, setSeniorOpen] = useState(true);
 
   // No subject chosen → subject picker hub (the Practice section, tiered).
   if (!subjectParam) {
@@ -260,7 +270,7 @@ function PracticeInner() {
           )}
           {err && <p style={{ color: "#DC2626" }}>{err}</p>}
           {!result ? (
-            <button style={btnPrimary} onClick={() => submit()} disabled={busy}>{busy ? "Marking…" : `Submit (${q.type === "MCQ" ? "1 credit" : "3 credits"})`}</button>
+            <button style={btnPrimary} onClick={() => submit()} disabled={busy}>{busy ? "Marking… (wait, do not tap twice)" : `Submit (${q.type === "MCQ" ? "1 credit" : "3 credits"})`}</button>
           ) : (
             <div style={{ background: "#fff", border: "1px solid #E2E8F0", borderRadius: 16, padding: 16, marginTop: 8 }}>
               <p style={{ fontWeight: 700, color: result.correct ? "#16A34A" : "#DC2626" }}>{result.correct ? "Correct ✓" : `Not quite — answer: ${result.correctAnswer}`}</p>
