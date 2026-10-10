@@ -55,7 +55,7 @@ export async function GET(req: Request) {
     .all();
   return NextResponse.json({
     students: users, attempts, retentionPct, retained, activeStudents: active.length,
-    clarityPct, paid, exhausted, parentPct, linksSent: links.n, bySubject,
+    clarityPct, paid, exhausted, parentPct, linksSent: links, bySubject,
     gates: { retention70: retentionPct >= 70, note: "Pilot gate: >70% daily-active retention across the 5-day sprint." }
   });
 }
