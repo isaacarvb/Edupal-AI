@@ -27,12 +27,13 @@ export async function GET(req: Request) {
     });
   }
 
-  const users = (await db.prepare("SELECT COUNT(*) AS n FROM users WHERE role = 'STUDENT'").get() as { n: number }).n;
-  const attempts = (await db.prepare("SELECT COUNT(*) AS n FROM attempts").get() as { n: number }).n;
+  // NOTE: Postgres returns COUNT(*) as text — Number() keeps guards honest on both engines.
+  const users = Number((await db.prepare("SELECT COUNT(*) AS n FROM users WHERE role = 'STUDENT'").get() as { n: number }).n);
+  const attempts = Number((await db.prepare("SELECT COUNT(*) AS n FROM attempts").get() as { n: number }).n);
   const active = await db
     .prepare("SELECT user_id AS u, COUNT(DISTINCT SUBSTRING(created_at,1,10)) AS d FROM attempts GROUP BY user_id")
     .all() as { u: string; d: number }[];
-  const retained = active.filter((a) => a.d >= 2).length;
+  const retained = active.filter((a) => Number(a.d) >= 2).length;
   const retentionPct = active.length ? Math.round((retained / active.length) * 100) : 0;
   const mcq = await db
     .prepare(
@@ -41,11 +42,11 @@ export async function GET(req: Request) {
     )
     .all() as { c: number }[];
   const clarityPct = mcq.length ? Math.round((mcq.reduce((s, r) => s + r.c, 0) / mcq.length) * 100) : 0;
-  const paid = (await db.prepare("SELECT COUNT(*) AS n FROM wallets WHERE plan = 'UNLIMITED'").get() as { n: number }).n;
-  const exhausted = (await db.prepare("SELECT COUNT(DISTINCT user_id) AS n FROM attempts WHERE credits_spent > 0 AND user_id IN (SELECT user_id FROM wallets WHERE credits_left = 0)").get() as { n: number }).n;
-  const links = await db.prepare("SELECT COUNT(*) AS n FROM parent_links").get() as { n: number };
-  const verified = await db.prepare("SELECT COUNT(*) AS n FROM parent_links WHERE verified_at IS NOT NULL").get() as { n: number };
-  const parentPct = links.n ? Math.round((verified.n / links.n) * 100) : 0;
+  const paid = Number((await db.prepare("SELECT COUNT(*) AS n FROM wallets WHERE plan = 'UNLIMITED'").get() as { n: number }).n);
+  const exhausted = Number((await db.prepare("SELECT COUNT(DISTINCT user_id) AS n FROM attempts WHERE credits_spent > 0 AND user_id IN (SELECT user_id FROM wallets WHERE credits_left = 0)").get() as { n: number }).n);
+  const links = Number((await db.prepare("SELECT COUNT(*) AS n FROM parent_links").get() as { n: number }).n);
+  const verified = Number((await db.prepare("SELECT COUNT(*) AS n FROM parent_links WHERE verified_at IS NOT NULL").get() as { n: number }).n);
+  const parentPct = links ? Math.round((verified / links) * 100) : 0;
   const bySubject = await db
     .prepare(
       `SELECT q.subject AS subject, ROUND(AVG(a.correct) * 100) AS accuracy, COUNT(*) AS attempts

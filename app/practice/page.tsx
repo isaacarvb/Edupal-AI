@@ -25,6 +25,7 @@ function PracticeInner() {
   const [timed, setTimed] = useState(false);
   const [secs, setSecs] = useState(0);
   const [switcher, setSwitcher] = useState<{ subject: string; left: number }[]>([]);
+  const [bank, setBank] = useState<{ subject: string; n: number }[]>([]);
   const [alt, setAlt] = useState<null | { explanation: string; engine: string }>(null);
   const [altBusy, setAltBusy] = useState(false);
   const [flagged, setFlagged] = useState(false);
@@ -68,6 +69,9 @@ function PracticeInner() {
       fetch(`/api/topics?userId=${userId}`)
         .then((r) => r.json())
         .then((d) => setSwitcher(d.subjectLimits ?? []));
+      fetch("/api/admin-bank")
+        .then((r) => (r.ok ? r.json() : null))
+        .then((d) => setBank(d?.counts ?? []));
     }
   }, [userId, load]);
 
@@ -149,19 +153,24 @@ function PracticeInner() {
 
   if (!userId) return <main style={{ padding: 20 }}>Missing user. Start from <a href="/onboarding">onboarding</a>.</main>;
 
+  // Hub lists every subject that actually has questions (profile list can lag behind).
+  const hubSubjects = bank.length
+    ? bank.map((b) => ({ subject: b.subject, left: switcher.find((s) => s.subject === b.subject)?.left ?? 10, n: b.n }))
+    : switcher.map((s) => ({ ...s, n: 0 }));
+
   // No subject chosen → subject picker hub (the Practice & Diagnostics section).
   if (!subjectParam) {
     return (
       <main style={{ maxWidth: 680, margin: "0 auto", padding: 20, color: "#333A45" }}>
         <h1 style={{ color: "#1E242E", fontSize: 24 }}>Practice &amp; Diagnostics</h1>
         <p style={{ fontSize: 14, color: "#5F6E7F" }}>Choose a subject to start. Budgets reset daily at midnight.</p>
-        {switcher.length === 0 && <p>Loading subjects…</p>}
+        {hubSubjects.length === 0 && <p>Loading subjects…</p>}
         <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))", gap: 12 }}>
-          {switcher.map((s) => (
+          {hubSubjects.map((s) => (
             <a key={s.subject} href={`/practice?userId=${userId}&subject=${encodeURIComponent(s.subject)}`}
               style={{ background: "#fff", border: "2px solid #0F766E", borderRadius: 12, padding: 16, textDecoration: "none", color: "#1E242E" }}>
               <strong style={{ fontSize: 17 }}>{s.subject}</strong>
-              <div style={{ fontSize: 13, color: "#5F6E7F", marginTop: 4 }}>{s.left} free left today</div>
+              <div style={{ fontSize: 13, color: "#5F6E7F", marginTop: 4 }}>{s.left} free left today • {s.n} questions in bank</div>
               <div style={{ fontSize: 14, fontWeight: 800, color: "#0F766E", marginTop: 8 }}>Start practicing →</div>
             </a>
           ))}
