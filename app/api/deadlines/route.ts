@@ -19,7 +19,7 @@ export async function GET() {
   await ensureSeeded(db);
   const today = new Date().toISOString().slice(0, 10);
   const rows = await db
-    .prepare("SELECT id, kind, title, detail, source_url AS sourceUrl, opens_on AS opensOn, closes_on AS closesOn FROM deadlines")
+    .prepare('SELECT id, kind, title, detail, source_url AS "sourceUrl", opens_on AS "opensOn", closes_on AS "closesOn" FROM deadlines')
     .all() as { id: string; kind: string; title: string; detail: string; sourceUrl: string | null; opensOn: string | null; closesOn: string | null }[];
   const upcoming = rows
     .filter((r) => r.closesOn && r.closesOn >= today)

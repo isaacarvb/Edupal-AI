@@ -40,8 +40,8 @@ export async function GET(req: Request) {
     await db
       .prepare(
         `WITH ranked AS (
-           SELECT id, exam, subject, topic, type, stem, options_json AS optionsJson,
-                  predicted_repeat AS predictedRepeat, source,
+           SELECT id, exam, subject, topic, type, stem, options_json AS "optionsJson",
+                  predicted_repeat AS "predictedRepeat", source,
                   ROW_NUMBER() OVER (PARTITION BY topic ORDER BY id) AS rn,
                   COUNT(*) OVER (PARTITION BY topic) AS n
            FROM questions WHERE subject = ?

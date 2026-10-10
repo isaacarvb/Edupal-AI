@@ -12,7 +12,7 @@ export async function POST(req: Request) {
   const lang: Language = language === "PIDGIN" ? "PIDGIN" : "SIMPLE";
   const db = await getDb();
   const q = await db
-    .prepare("SELECT subject, topic, stem, answer_key AS answerKey, marking_rubric AS markingRubric FROM questions WHERE id = ?")
+    .prepare('SELECT subject, topic, stem, answer_key AS "answerKey", marking_rubric AS "markingRubric" FROM questions WHERE id = ?')
     .get(questionId) as
     | { subject: string; topic: string; stem: string; answerKey: string; markingRubric: string }
     | undefined;

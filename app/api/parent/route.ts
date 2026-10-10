@@ -8,7 +8,7 @@ export async function GET(req: Request) {
   if (!token) return NextResponse.json({ error: "token required" }, { status: 400 });
   const db = await getDb();
   const link = await db
-    .prepare("SELECT student_id AS studentId, parent_email AS parentEmail, verified_at AS verifiedAt FROM parent_links WHERE magic_token = ?")
+    .prepare('SELECT student_id AS "studentId", parent_email AS "parentEmail", verified_at AS "verifiedAt" FROM parent_links WHERE magic_token = ?')
     .get(token) as { studentId: string; parentEmail: string; verifiedAt: string | null } | undefined;
   if (!link) return NextResponse.json({ error: "bad link" }, { status: 404 });
   if (!link.verifiedAt) {
@@ -18,7 +18,7 @@ export async function GET(req: Request) {
   const summary = await db
     .prepare(
       `SELECT p.exam, s.current AS streak, w.plan,
-              (SELECT COUNT(*) FROM attempts WHERE user_id = ? AND SUBSTRING(created_at,1,10) >= ?) AS weekAttempts
+              (SELECT COUNT(*) FROM attempts WHERE user_id = ? AND SUBSTRING(created_at,1,10) >= ?) AS "weekAttempts"
        FROM users u LEFT JOIN profiles p ON p.user_id = u.id
        LEFT JOIN streaks s ON s.user_id = u.id LEFT JOIN wallets w ON w.user_id = u.id
        WHERE u.id = ?`

@@ -10,9 +10,9 @@ export async function GET(req: Request) {
   const db = await getDb();
   const profile = await db
     .prepare(
-      `SELECT u.name, u.level, p.exam, p.exam_date AS examDate, p.subjects, p.language,
+      `SELECT u.name, u.level, p.exam, p.exam_date AS "examDate", p.subjects, p.language,
               w.plan,
-              s.current AS streak, s.freeze_available AS freezeAvailable
+              s.current AS streak, s.freeze_available AS "freezeAvailable"
        FROM users u
        LEFT JOIN profiles p ON p.user_id = u.id
        LEFT JOIN wallets w ON w.user_id = u.id

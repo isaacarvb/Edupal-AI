@@ -18,7 +18,7 @@ export async function GET(req: Request) {
   }
   const rows = await db
     .prepare(
-      `SELECT id, subject, topic, type, stem, options_json AS optionsJson
+      `SELECT id, subject, topic, type, stem, options_json AS "optionsJson"
        FROM questions WHERE exam = ? AND subject = ? ORDER BY id LIMIT 10`
     )
     .all(exam, subject);
@@ -48,7 +48,7 @@ export async function POST(req: Request) {
   const perTopic: Record<string, { correct: number; total: number; subject: string }> = {};
   for (const a of answers) {
     const q = await db
-      .prepare("SELECT id, subject, topic, type, answer_key AS answerKey, marking_rubric AS markingRubric FROM questions WHERE id = ?")
+      .prepare('SELECT id, subject, topic, type, answer_key AS "answerKey", marking_rubric AS "markingRubric" FROM questions WHERE id = ?')
       .get(a.questionId) as
       | { id: string; subject: string; topic: string; type: "MCQ" | "THEORY"; answerKey: string; markingRubric: string }
       | undefined;

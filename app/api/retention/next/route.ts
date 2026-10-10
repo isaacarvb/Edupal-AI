@@ -22,7 +22,7 @@ export async function GET(req: Request) {
   if (!topic) return NextResponse.json({ question: null, reason: "No Strong topics yet — earn one first." });
   const q = await db
     .prepare(
-      `SELECT id, exam, subject, topic, type, stem, options_json AS optionsJson
+      `SELECT id, exam, subject, topic, type, stem, options_json AS "optionsJson"
        FROM questions WHERE subject = ? AND topic = ? ORDER BY RANDOM() LIMIT 1`
     )
     .get(topic.subject, topic.topic);

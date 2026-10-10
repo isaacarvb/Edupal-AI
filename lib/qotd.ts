@@ -4,8 +4,8 @@ import type { Db } from "./db";
 export async function todayQuestion(db: Db) {
   const rows = await db
     .prepare(
-      `SELECT id, subject, topic, type, stem, options_json AS optionsJson,
-              predicted_repeat AS predictedRepeat
+      `SELECT id, subject, topic, type, stem, options_json AS "optionsJson",
+              predicted_repeat AS "predictedRepeat"
        FROM questions ORDER BY id`
     )
     .all() as { id: string; subject: string; topic: string; type: string; stem: string; optionsJson: string; predictedRepeat: number }[];

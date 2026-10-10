@@ -18,7 +18,7 @@ const DAY_NAMES = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Frid
 // Deterministic weekly plan from live mastery + countdown (no LLM needed;
 // Groq can later rewrite the wording via the same shape).
 export async function buildStudyPlan(db: Db, userId: string): Promise<StudyPlan> {
-  const profile = await db.prepare("SELECT exam, exam_date AS examDate FROM profiles WHERE user_id = ?").get(userId) as
+  const profile = await db.prepare('SELECT exam, exam_date AS "examDate" FROM profiles WHERE user_id = ?').get(userId) as
     | { exam: string; examDate: string | null }
     | undefined;
   const exam = profile?.exam ?? "WAEC";

@@ -20,7 +20,7 @@ export async function findPatterns(db: Db, userId: string): Promise<Pattern[]> {
   const wrong = await db
     .prepare(
       `SELECT a.question_id AS qid, a.response AS resp, q.stem AS stem, q.topic AS topic,
-              q.subject AS subject, q.type AS type, q.options_json AS optionsJson, a.theory_score AS theory
+              q.subject AS subject, q.type AS type, q.options_json AS "optionsJson", a.theory_score AS theory
        FROM attempts a JOIN questions q ON q.id = a.question_id
        WHERE a.user_id = ? AND a.correct = 0`
     )

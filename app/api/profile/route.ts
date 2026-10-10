@@ -10,7 +10,7 @@ export async function GET(req: Request) {
   const db = await getDb();
   const u = await db
     .prepare(
-      `SELECT u.name, u.email, u.avatar, u.level, p.exam, p.exam_date AS examDate, p.language
+      `SELECT u.name, u.email, u.avatar, u.level, p.exam, p.exam_date AS "examDate", p.language
        FROM users u LEFT JOIN profiles p ON p.user_id = u.id WHERE u.id = ?`
     )
     .get(userId);

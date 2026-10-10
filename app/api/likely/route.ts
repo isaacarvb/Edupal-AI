@@ -10,7 +10,7 @@ export async function GET(req: Request) {
   const userId = searchParams.get("userId");
   if (!userId) return NextResponse.json({ error: "userId required" }, { status: 400 });
   const db = await getDb();
-  const profile = await db.prepare("SELECT exam, exam_date AS examDate FROM profiles WHERE user_id = ?").get(userId) as
+  const profile = await db.prepare('SELECT exam, exam_date AS "examDate" FROM profiles WHERE user_id = ?').get(userId) as
     | { exam: string; examDate: string | null }
     | undefined;
   if (!profile?.examDate) {
@@ -27,7 +27,7 @@ export async function GET(req: Request) {
       `SELECT q.subject AS subject, q.topic AS topic,
               SUM(CASE WHEN q.predicted_repeat = 1 THEN 1 ELSE 0 END) AS flagged,
               COUNT(*) AS bank,
-              ROUND(AVG(CASE WHEN a.id IS NOT NULL THEN a.correct END) * 100) AS cohortAcc
+              ROUND(AVG(CASE WHEN a.id IS NOT NULL THEN a.correct END) * 100) AS "cohortAcc"
        FROM questions q
        LEFT JOIN attempts a ON a.question_id = q.id
        WHERE q.exam = ?
@@ -43,7 +43,7 @@ export async function GET(req: Request) {
   for (const p of picks) {
     const q = await db
       .prepare(
-        `SELECT id, subject, topic, type, stem, options_json AS optionsJson FROM questions
+        `SELECT id, subject, topic, type, stem, options_json AS "optionsJson" FROM questions
          WHERE exam = ? AND subject = ? AND topic = ?
          AND id NOT IN (SELECT question_id FROM attempts WHERE user_id = ?)
          ORDER BY predicted_repeat DESC, id LIMIT 2`

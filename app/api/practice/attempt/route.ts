@@ -21,7 +21,7 @@ export async function POST(req: Request) {
   }
   const db = await getDb();
   const q = await db
-    .prepare("SELECT id, subject, topic, type, stem, answer_key AS answerKey, marking_rubric AS markingRubric FROM questions WHERE id = ?")
+    .prepare('SELECT id, subject, topic, type, stem, answer_key AS "answerKey", marking_rubric AS "markingRubric" FROM questions WHERE id = ?')
     .get(questionId) as
     | { id: string; subject: string; topic: string; type: "MCQ" | "THEORY"; stem: string; answerKey: string; markingRubric: string }
     | undefined;

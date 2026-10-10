@@ -36,7 +36,7 @@ export async function POST(req: Request) {
     | { exam: string }
     | undefined;
   const q = questionId
-    ? (await db.prepare("SELECT subject, topic, stem, answer_key AS answerKey FROM questions WHERE id = ?").get(questionId) as
+    ? (await db.prepare('SELECT subject, topic, stem, answer_key AS "answerKey" FROM questions WHERE id = ?').get(questionId) as
         | { subject: string; topic: string; stem: string; answerKey: string }
         | undefined)
     : undefined;

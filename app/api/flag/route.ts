@@ -26,7 +26,7 @@ export async function GET() {
   const db = await getDb();
   const rows = await db
     .prepare(
-      `SELECT a.id, a.response, a.correct, a.created_at AS at, q.subject, q.topic, q.stem, q.answer_key AS answerKey,
+      `SELECT a.id, a.response, a.correct, a.created_at AS at, q.subject, q.topic, q.stem, q.answer_key AS "answerKey",
               u.email AS student
        FROM attempts a
        JOIN questions q ON q.id = a.question_id

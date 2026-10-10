@@ -37,7 +37,7 @@ export async function subjectLimits(db: Db, userId: string, subjects: string[], 
 // 24h auto-reset for FREE wallets. UNLIMITED never runs out.
 export async function getWallet(db: Db, userId: string): Promise<Wallet | null> {
   const w = await db
-    .prepare("SELECT credits_left AS creditsLeft, reset_at AS resetAt, plan FROM wallets WHERE user_id = ?")
+    .prepare('SELECT credits_left AS "creditsLeft", reset_at AS "resetAt", plan FROM wallets WHERE user_id = ?')
     .get(userId) as { creditsLeft: number; resetAt: string; plan: "FREE" | "UNLIMITED" } | undefined;
   if (!w) return null;
   if (w.plan === "UNLIMITED") return { creditsLeft: w.creditsLeft, plan: w.plan };
