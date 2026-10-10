@@ -52,7 +52,7 @@ export async function GET(req: Request) {
                           ELSE 'HARD' END AS difficulty
            FROM ranked
          )
-         SELECT id, exam, subject, topic, type, stem, optionsJson, predictedRepeat, difficulty
+         SELECT id, exam, subject, topic, type, stem, "optionsJson", "predictedRepeat", difficulty
          FROM tiered
          WHERE difficulty = ? AND id NOT IN (SELECT question_id FROM attempts WHERE user_id = ?)
          ORDER BY CASE WHEN source = 'CURATED' THEN 0 ELSE 1 END, id
