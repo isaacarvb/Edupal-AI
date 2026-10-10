@@ -129,15 +129,35 @@ function PracticeInner() {
     setBusy(true);
     setErr("");
     const limit = q.type === "MCQ" ? 60 : 180;
-    const ctrl = new AbortController();
-    const timer = setTimeout(() => ctrl.abort(), 25000);
+    // Cold serverless instances can drop the first call — retry once silently.
+    let res: Response | null = null;
+    for (let attempt = 1; attempt <= 2; attempt++) {
+      const ctrl = new AbortController();
+      const timer = setTimeout(() => ctrl.abort(), 45000);
+      try {
+        res = await fetch("/api/practice/attempt", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ userId, questionId: q.id, response: answer, timed, secondsUsed: timed ? limit - secs : null, qotd: isQotd }),
+          signal: ctrl.signal
+        });
+        clearTimeout(timer);
+        break;
+      } catch (e) {
+        clearTimeout(timer);
+        if (attempt === 2) {
+          const aborted = e instanceof Error && e.name === "AbortError";
+          setErr(aborted ? "Taking too long — tap Submit once more." : "Network hiccup — tap Submit once more.");
+          setBusy(false);
+          return;
+        }
+      }
+    }
+    if (!res) {
+      setBusy(false);
+      return;
+    }
     try {
-      const res = await fetch("/api/practice/attempt", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ userId, questionId: q.id, response: answer, timed, secondsUsed: timed ? limit - secs : null, qotd: isQotd }),
-        signal: ctrl.signal
-      });
       const data = await res.json();
       if (data.duplicate) return load(); // double-click: just move on
       if (res.status === 402 && data.subjectLimit) {
@@ -150,14 +170,7 @@ function PracticeInner() {
       }
       if (!res.ok) return setErr(data.error || "Failed");
       setResult(data);
-    } catch (e) {
-      if (e instanceof DOMException && e.name === "AbortError") {
-        setErr("Taking too long — check your connection and tap Submit once more.");
-      } else {
-        setErr("Network hiccup — tap Submit once more.");
-      }
     } finally {
-      clearTimeout(timer);
       setBusy(false);
     }
   }
