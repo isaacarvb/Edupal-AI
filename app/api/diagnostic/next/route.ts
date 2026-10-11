@@ -15,6 +15,8 @@ export async function GET(req: Request) {
     return NextResponse.json({ error: "userId + subject required" }, { status: 400 });
   }
   const db = await getDb();
+  const wallet = await db.prepare("SELECT plan FROM wallets WHERE user_id = ?").get(userId) as { plan: string } | undefined;
+  const freeOnly = wallet?.plan !== "UNLIMITED";
   const done = await db
     .prepare(
       `SELECT COUNT(*) AS n FROM attempts a
@@ -43,7 +45,8 @@ export async function GET(req: Request) {
            SELECT id, exam, subject, topic, type, stem, options_json AS "optionsJson",
                   predicted_repeat AS "predictedRepeat", source,
                   ROW_NUMBER() OVER (PARTITION BY topic ORDER BY id) AS rn,
-                  COUNT(*) OVER (PARTITION BY topic) AS n
+                  COUNT(*) OVER (PARTITION BY topic) AS n,
+                  ROW_NUMBER() OVER (PARTITION BY subject ORDER BY stem) AS bank_idx
            FROM questions WHERE subject = ?
          ),
          tiered AS (
@@ -55,6 +58,7 @@ export async function GET(req: Request) {
          SELECT id, exam, subject, topic, type, stem, "optionsJson", "predictedRepeat", difficulty
          FROM tiered
          WHERE difficulty = ? AND id NOT IN (SELECT question_id FROM attempts WHERE user_id = ?)
+          ${freeOnly ? "AND bank_idx <= 10" : ""}
          ORDER BY CASE WHEN source = 'CURATED' THEN 0 ELSE 1 END, id
          LIMIT 1`
       )

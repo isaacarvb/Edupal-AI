@@ -311,6 +311,7 @@ function PracticeInner() {
           ) : (
             <div style={{ background: "#fff", border: "1px solid #E2E8F0", borderRadius: 16, padding: 16, marginTop: 8 }}>
               <p style={{ fontWeight: 700, color: result.correct ? "#16A34A" : "#DC2626" }}>{result.correct ? "Correct ✓" : `Not quite — answer: ${result.correctAnswer}`}</p>
+              <p style={{ fontSize: 11, color: "#5F6E7F", margin: "0 0 4px" }}>AI-generated explanation — verify with your teacher</p>
               {result.leveledUp && <p style={{ fontWeight: 800, color: "#0F766E" }}><span className="deco">🎉 </span>Level up! {result.mastery.topic} is now {result.mastery.label}.</p>}
               {result.freezeUsed && <p style={{ fontWeight: 700, color: "#2F5D7C" }}><span className="deco">🧊 </span>Your streak freeze saved the streak — one per month.</p>}
               {result.usedBonus && <p style={{ fontWeight: 700, color: "#92400E" }}>🎁 Referral bonus covered this question.</p>}

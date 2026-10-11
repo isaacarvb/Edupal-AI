@@ -116,7 +116,21 @@ CREATE TABLE IF NOT EXISTS bonus_pool (
   PRIMARY KEY (user_id, day)
 );
 
--- Deadlines & scholarships board (curated; unverified dates stay NULL = TBC).
+-- AI-drafted questions awaiting owner approval (hybrid factory).
+CREATE TABLE IF NOT EXISTS draft_questions (
+  id TEXT PRIMARY KEY,
+  exam TEXT NOT NULL,
+  subject TEXT NOT NULL,
+  topic TEXT NOT NULL,
+  type TEXT NOT NULL,
+  stem TEXT NOT NULL,
+  options_json TEXT NOT NULL DEFAULT '[]',
+  answer_key TEXT NOT NULL DEFAULT '',
+  marking_rubric TEXT NOT NULL DEFAULT '',
+  status TEXT NOT NULL DEFAULT 'pending',
+  created_at TEXT NOT NULL DEFAULT (datetime('now'))
+);
+CREATE INDEX IF NOT EXISTS idx_drafts_status ON draft_questions(status, subject);
 CREATE TABLE IF NOT EXISTS deadlines (
   id TEXT PRIMARY KEY,
   kind TEXT NOT NULL,

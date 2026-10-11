@@ -14,11 +14,11 @@ export async function groqChat(messages: ChatMsg[]): Promise<string> {
   if (!key) throw new Error("GROQ_API_KEY missing");
   // Primary model first, then known-good fallbacks (Groq retires names often).
   // Override the whole chain without code changes via GROQ_MODELS="a,b,c".
-  const configured = (process.env.GROQ_MODELS ?? process.env.GROQ_MODEL ?? "llama-3.3-70b-versatile")
+  const configured = (process.env.GROQ_MODELS ?? process.env.GROQ_MODEL ?? "openai/gpt-oss-120b")
     .split(",")
     .map((m) => m.trim())
     .filter(Boolean);
-  const models = [...new Set([...configured, "llama-3.3-70b-versatile", "openai/gpt-oss-120b"])];
+  const models = [...new Set([...configured, "openai/gpt-oss-120b", "moonshotai/kimi-k2-instruct", "llama-3.3-70b-versatile"])];
   let lastStatus = 0;
   for (const model of models) {
     for (let attempt = 1; attempt <= 2; attempt++) {

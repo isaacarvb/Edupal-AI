@@ -38,11 +38,29 @@ export default function Admin() {
   const [dmsg, setDmsg] = useState("");
   const [csv, setCsv] = useState("");
   const [importMsg, setImportMsg] = useState("");
+  const [drafts, setDrafts] = useState<{ id: string; exam: string; subject: string; topic: string; type: string; stem: string; optionsJson: string; answerKey: string; markingRubric: string }[]>([]);
+  const [sel, setSel] = useState<Record<string, boolean>>({});
+  const [draftMsg, setDraftMsg] = useState("");
   function load() {
     fetch("/api/metrics").then((r) => r.json()).then(setM);
     fetch("/api/flag").then((r) => r.json()).then((d) => setFlags(d.flags ?? []));
+    fetch("/api/drafts").then((r) => r.json()).then((d) => {
+      setDrafts(d.pending ?? []);
+      setSel({});
+    });
   }
   useEffect(load, []);
+  async function review(ids: string[], action: "approve" | "reject") {
+    if (!ids.length) return;
+    const res = await fetch("/api/drafts", {
+      method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ ids, action })
+    });
+    const data = await res.json();
+    setDraftMsg(res.ok ? `${action}d ${action === "approve" ? data.approved : ids.length}.` : data.error || "Failed.");
+    load();
+  }
+
   async function resolve(id: string) {
     await fetch("/api/flag", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ resolve: id }) });
     load();
@@ -126,6 +144,26 @@ export default function Admin() {
           <p style={{ margin: "4px 0" }}>{f.stem}</p>
           <p style={{ margin: "4px 0", color: "#5F6E7F" }}>Student said: “{f.response}” (key: {f.answerKey}) • {f.student ?? "unknown"} • {f.at.slice(0, 10)}</p>
           <button onClick={() => resolve(f.id)} style={{ fontSize: 13, fontWeight: 700, background: "#0F766E", color: "#fff", border: 0, borderRadius: 8, padding: "8px 16px", cursor: "pointer" }}>Mark resolved</button>
+        </div>
+      ))}
+      <h2 style={{ fontSize: 18, marginTop: 16 }}>AI drafts awaiting review ({drafts.length})</h2>
+      <p style={{ fontSize: 13, color: "#5F6E7F" }}>Generated from curriculum notes — verify every answer before approving. Approved drafts enter the bank as AI-source.</p>
+      {draftMsg && <p style={{ fontSize: 14 }}>{draftMsg}</p>}
+      {drafts.length === 0 && <p style={{ fontSize: 14 }}>No pending drafts. Generate: <code>node scripts/generate-questions.mjs --subject English</code></p>}
+      {drafts.length > 0 && (
+        <div style={{ display: "flex", gap: 8, marginBottom: 8 }}>
+          <button onClick={() => review(drafts.map((d) => d.id), "approve")} style={{ fontSize: 13, fontWeight: 700, background: "#16A34A", color: "#fff", border: 0, borderRadius: 8, padding: "8px 16px", cursor: "pointer" }}>Approve all ({drafts.length})</button>
+          <button onClick={() => review(drafts.filter((d) => sel[d.id]).map((d) => d.id), "approve")} style={{ fontSize: 13, fontWeight: 700, background: "#fff", color: "#16A34A", border: "2px solid #16A34A", borderRadius: 8, padding: "8px 16px", cursor: "pointer" }}>Approve selected</button>
+          <button onClick={() => review(drafts.filter((d) => sel[d.id]).map((d) => d.id), "reject")} style={{ fontSize: 13, fontWeight: 700, background: "#fff", color: "#DC2626", border: "2px solid #DC2626", borderRadius: 8, padding: "8px 16px", cursor: "pointer" }}>Reject selected</button>
+        </div>
+      )}
+      {drafts.map((d) => (
+        <div key={d.id} style={{ background: "#fff", border: "1px solid #E2E8F0", borderRadius: 12, padding: 12, margin: "8px 0", fontSize: 14 }}>
+          <label style={{ display: "flex", gap: 8, cursor: "pointer" }}>
+            <input type="checkbox" checked={!!sel[d.id]} onChange={(e) => setSel((s) => ({ ...s, [d.id]: e.target.checked }))} style={{ width: 18, height: 18 }} />
+            <span><strong>{d.subject} • {d.topic}</strong> [{d.type}] — {d.stem}</span>
+          </label>
+          <p style={{ fontSize: 13, color: "#5F6E7F", margin: "6px 0 0 26px" }}>Answer: {d.answerKey}{d.markingRubric ? ` • ${d.markingRubric}` : ""}</p>
         </div>
       ))}
     </main>
