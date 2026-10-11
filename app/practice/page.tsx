@@ -153,9 +153,11 @@ function PracticeInner() {
     setBusy(true);
     setErr("");
     const limit = q.type === "MCQ" ? 60 : 180;
-    // Cold serverless instances can drop the first call — retry once silently.
+    // One tap locks the answer. If the network drops the call, retry
+    // invisibly in the background — the user never taps twice.
     let res: Response | null = null;
-    for (let attempt = 1; attempt <= 2; attempt++) {
+    let lastErr: unknown = null;
+    for (let attempt = 1; attempt <= 3; attempt++) {
       const ctrl = new AbortController();
       const timer = setTimeout(() => ctrl.abort(), 45000);
       try {
@@ -169,9 +171,22 @@ function PracticeInner() {
         break;
       } catch (e) {
         clearTimeout(timer);
-        if (attempt === 2) {
-          const aborted = e instanceof Error && e.name === "AbortError";
-          setErr(aborted ? "Taking too long — tap Submit once more." : "Network hiccup — tap Submit once more.");
+        lastErr = e;
+        if (attempt < 3) continue; // silent auto-retry, no second tap needed
+        const aborted = e instanceof Error && e.name === "AbortError";
+        setErr(aborted ? "Taking too long — please wait, still marking…" : "Network hiccup — still trying, hold on…");
+        // One final invisible retry before giving up and unlocking.
+        try {
+          res = await fetch("/api/practice/attempt", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ userId, questionId: q.id, response: answer, timed, secondsUsed: timed ? limit - secs : null, qotd: isQotd })
+          });
+          setErr("");
+          break;
+        } catch {
+          const aborted2 = lastErr instanceof Error && lastErr.name === "AbortError";
+          setErr(aborted2 ? "Taking too long — tap Submit once to retry." : "Network hiccup — tap Submit once to retry.");
           setBusy(false);
           return;
         }
@@ -296,21 +311,59 @@ function PracticeInner() {
             {q.predictedRepeat === 1 && <span style={{ fontSize: 12, fontWeight: 700, background: "#FEF3C7", border: "1px solid #FDE68A", color: "#92400E", padding: "4px 10px", borderRadius: 999 }}>Likely to repeat</span>}
           </div>
           <p>{q.stem}</p>
-          {q.type === "MCQ" ? (
-            JSON.parse(q.optionsJson).map((opt: string) => (
-              <button key={opt} style={{ ...btnOpt, border: answer === opt ? "2px solid #0F766E" : btnOpt.border, background: answer === opt ? "#CCFBF1" : "#fff" }} onClick={() => setAnswer(opt)}>
-                {opt}
-              </button>
-            ))
-          ) : (
-            <textarea value={answer} onChange={(e) => setAnswer(e.target.value)} rows={4} style={{ width: "100%", borderRadius: 10, border: "1px solid #CBD5E1", padding: 10, fontSize: 16 }} placeholder="Write your answer…" />
+          {(() => {
+            if (q.type !== "MCQ") return null;
+            const opts: string[] = JSON.parse(q.optionsJson);
+            const norm = (s: string) => s.trim().toLowerCase();
+            const correctNorm = result ? norm(result.correctAnswer) : "";
+            const pickedNorm = norm(answer);
+            // One shared layout: same positions/styles for right + wrong.
+            // Locked after one tap (busy || result). Wrong → picked red ✗,
+            // right answer green glow. Right → picked green Correct ✓.
+            return opts.map((opt: string) => {
+              const isPicked = norm(opt) === pickedNorm && answer.trim() !== "";
+              const isCorrectOpt = !!result && norm(opt) === correctNorm;
+              const isWrongPick = !!result && isPicked && !result.correct;
+              const locked = busy || !!result;
+              let border = btnOpt.border;
+              let background = "#fff";
+              let opacity = 1;
+              let boxShadow = "none";
+              if (!result) {
+                if (isPicked) { border = "2px solid #0F766E"; background = "#CCFBF1"; }
+              } else if (isCorrectOpt) {
+                border = "2px solid #16A34A"; background = "#DCFCE7";
+                boxShadow = "0 0 0 3px rgba(22,163,74,0.25)";
+              } else if (isWrongPick) {
+                border = "2px solid #DC2626"; background = "#FEE2E2";
+              } else {
+                opacity = 0.65;
+              }
+              return (
+                <button key={opt} disabled={locked}
+                  style={{ ...btnOpt, border, background, opacity, boxShadow, cursor: locked ? "default" : "pointer" }}
+                  onClick={() => { if (!locked) setAnswer(opt); }}>
+                  {isWrongPick ? "✗ " : isCorrectOpt ? "✓ " : ""}{opt}
+                </button>
+              );
+            });
+          })()}
+          {q.type !== "MCQ" && (
+            <textarea value={answer} onChange={(e) => { if (!busy && !result) setAnswer(e.target.value); }} rows={4}
+              disabled={busy || !!result}
+              style={{ width: "100%", borderRadius: 10, border: "1px solid #CBD5E1", padding: 10, fontSize: 16, background: result ? "#F8FAFC" : "#fff" }}
+              placeholder="Write your answer…" />
           )}
           {err && <p style={{ color: "#DC2626" }}>{err}</p>}
           {!result ? (
-            <button style={btnPrimary} onClick={() => submit()} disabled={busy}>{busy ? "Marking… (wait, do not tap twice)" : `Submit Answer • ${q.type === "MCQ" ? "1 credit" : "3 credits"}`}</button>
+            <button style={{ ...btnPrimary, opacity: busy || !answer.trim() ? 0.7 : 1 }} onClick={() => submit()} disabled={busy || !answer.trim()}>
+              {busy ? "Marking… (wait, do not tap twice)" : `Submit Answer • ${q.type === "MCQ" ? "1 credit" : "3 credits"}`}
+            </button>
           ) : (
             <div style={{ background: "#fff", border: "1px solid #E2E8F0", borderRadius: 16, padding: 16, marginTop: 8 }}>
-              <p style={{ fontWeight: 700, color: result.correct ? "#16A34A" : "#DC2626" }}>{result.correct ? "Correct ✓" : `Not quite — answer: ${result.correctAnswer}`}</p>
+              <p style={{ fontWeight: 700, color: result.correct ? "#16A34A" : "#DC2626" }}>
+                {result.correct ? "Correct ✓" : `Not quite ✗ — answer: ${result.correctAnswer}`}
+              </p>
               <p style={{ fontSize: 11, color: "#5F6E7F", margin: "0 0 4px" }}>AI-generated explanation — verify with your teacher</p>
               {result.leveledUp && <p style={{ fontWeight: 800, color: "#0F766E" }}><span className="deco">🎉 </span>Level up! {result.mastery.topic} is now {result.mastery.label}.</p>}
               {result.freezeUsed && <p style={{ fontWeight: 700, color: "#2F5D7C" }}><span className="deco">🧊 </span>Your streak freeze saved the streak — one per month.</p>}

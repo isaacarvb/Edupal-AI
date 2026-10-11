@@ -20,7 +20,7 @@ export async function consumeSubject(db: Db, userId: string, subject: string, co
   const today = new Date().toISOString().slice(0, 10);
   await db.prepare(
     `INSERT INTO subject_usage (user_id, subject, day, used) VALUES (?, ?, ?, ?)
-     ON CONFLICT(user_id, subject, day) DO UPDATE SET used = used + excluded.used`
+     ON CONFLICT(user_id, subject, day) DO UPDATE SET used = subject_usage.used + excluded.used`
   ).run(userId, subject, today, cost);
 }
 
