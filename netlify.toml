@@ -8,6 +8,17 @@
   # node:sqlite (local DB) needs Node 22.5+; pin 24 for safety.
   NODE_VERSION = "24"
 
+# CDN headers for PWA files (Next.js headers don't cover CDN-served statics).
+[[headers]]
+  for = "/manifest.webmanifest"
+  [headers.values]
+    Content-Type = "application/manifest+json"
+
+[[headers]]
+  for = "/sw.js"
+  [headers.values]
+    Cache-Control = "no-cache"
+
 # Required dashboard env vars (Site settings → Environment variables):
 #   NEXTAUTH_SECRET = any long random string
 #   NEXTAUTH_URL    = https://YOUR-SITE.netlify.app (set after first deploy, then redeploy)
