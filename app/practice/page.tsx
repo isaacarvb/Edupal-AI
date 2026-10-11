@@ -29,6 +29,9 @@ function PracticeInner() {
   const [bank, setBank] = useState<{ subject: string; n: number }[]>([]);
   const [alt, setAlt] = useState<null | { explanation: string; engine: string }>(null);
   const [altBusy, setAltBusy] = useState(false);
+  const [ask, setAsk] = useState("");
+  const [askThread, setAskThread] = useState<{ role: string; content: string }[]>([]);
+  const [askBusy, setAskBusy] = useState(false);
   const [flagged, setFlagged] = useState(false);
   const [err, setErr] = useState("");
 
@@ -37,6 +40,8 @@ function PracticeInner() {
   const load = useCallback(async () => {
     setResult(null);
     setAlt(null);
+    setAsk("");
+    setAskThread([]);
     setFlagged(false);
     setAnswer("");
     setIsQotd(false);
@@ -96,6 +101,25 @@ function PracticeInner() {
   }, [timed, q, secs, result]);
 
   const limitFor = (type: string) => (type === "MCQ" ? 60 : 180);
+
+  async function askAI() {
+    if (!q || !ask.trim() || askBusy) return;
+    const text = ask.trim();
+    setAsk("");
+    setAskBusy(true);
+    setAskThread((t) => [...t, { role: "user", content: text }]);
+    try {
+      const res = await fetch("/api/chat", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ userId, questionId: q.id, message: text, language: "SIMPLE" })
+      });
+      const data = await res.json();
+      setAskThread((t) => [...t, { role: "assistant", content: data.reply ?? "Hmm, try again." }]);
+    } finally {
+      setAskBusy(false);
+    }
+  }
 
   async function flag() {
     if (!q || flagged) return;
@@ -316,6 +340,21 @@ function PracticeInner() {
               )}
               <p style={{ fontSize: 13, color: "#5F6E7F" }}>{result.mastery.topic}: {result.mastery.accuracy}% • {result.mastery.label}</p>
               <a href={`/tutor?userId=${userId}&questionId=${q?.id ?? ""}`} style={{ display: "block", textAlign: "center", fontSize: 14, fontWeight: 700, color: "#0F766E", border: "2px solid #0F766E", borderRadius: 10, height: 44, lineHeight: "40px", textDecoration: "none", marginTop: 8 }}>Discuss with AI tutor</a>
+              <div style={{ marginTop: 8, background: "#F8FAFC", borderRadius: 10, padding: 10 }}>
+                <div style={{ fontSize: 13, fontWeight: 800, color: "#1E242E", marginBottom: 6 }}>Ask AI — follow up without leaving</div>
+                {askThread.map((m, i) => (
+                  <div key={i} style={{ fontSize: 13, textAlign: m.role === "user" ? "right" : "left", margin: "4px 0" }}>
+                    <span style={{ display: "inline-block", background: m.role === "user" ? "#0F766E" : "#fff", color: m.role === "user" ? "#fff" : "#333A45", border: m.role === "user" ? "none" : "1px solid #E2E8F0", borderRadius: 10, padding: "6px 10px", maxWidth: "90%" }}>{m.content}</span>
+                  </div>
+                ))}
+                <div style={{ display: "flex", gap: 6, marginTop: 6 }}>
+                  <input value={ask} onChange={(e) => setAsk(e.target.value)} onKeyDown={(e) => e.key === "Enter" && askAI()} placeholder="e.g. why not option B?" disabled={askBusy}
+                    style={{ flex: 1, height: 40, borderRadius: 10, border: "1px solid #CBD5E1", padding: "0 10px", fontSize: 14 }} />
+                  <button onClick={askAI} disabled={askBusy || !ask.trim()} style={{ height: 40, borderRadius: 10, border: 0, background: "#0F766E", color: "#fff", fontWeight: 800, padding: "0 16px", cursor: "pointer" }}>
+                    {askBusy ? "…" : "Ask"}
+                  </button>
+                </div>
+              </div>
               <button onClick={flag} disabled={flagged} style={{ display: "block", width: "100%", fontSize: 13, fontWeight: 600, color: flagged ? "#16A34A" : "#5F6E7F", background: "transparent", border: "none", cursor: flagged ? "default" : "pointer", marginTop: 8 }}>
                 {flagged ? "✓ Reported — reviewed within 48 hours" : "⚑ Flag this explanation"}
               </button>

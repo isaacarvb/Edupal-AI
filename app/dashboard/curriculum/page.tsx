@@ -50,9 +50,16 @@ function CurriculumInner() {
   const [loadingNotes, setLoadingNotes] = useState(false);
   const [openTopic, setOpenTopic] = useState<string | null>(null);
   const [terms, setTerms] = useState<Term[]>([]);
+  const [plan, setPlan] = useState("FREE");
 
   useEffect(() => {
-    setUserId(params.get("userId") ?? localStorage.getItem("edupal_user") ?? "");
+    const id = params.get("userId") ?? localStorage.getItem("edupal_user") ?? "";
+    setUserId(id);
+    if (id) {
+      fetch(`/api/topics?userId=${id}`)
+        .then((r) => r.json())
+        .then((d) => setPlan(d.profile?.plan ?? "FREE"));
+    }
   }, [params]);
 
   const subjects: string[] = tier === "jss" ? [...JSS_SUBJECTS] : [...SUBJECTS];
@@ -116,15 +123,18 @@ function CurriculumInner() {
             <div style={{ padding: "0 14px 14px" }}>
               {loadingNotes && <p style={{ fontSize: 14 }}>Loading notes…</p>}
               {!loadingNotes && notes.length === 0 && <p style={{ fontSize: 14 }}>Notes for this subject are being written — check back soon.</p>}
-              {notes.map((n) => {
+              {notes.map((n, ni) => {
                 const key = `${s}::${n.topic}`;
                 const viewing = openTopic === key;
+                const locked = plan !== "UNLIMITED" && ni > 0;
                 return (
                   <div key={n.topic} style={{ borderTop: "1px solid #E2E8F0", padding: "8px 0" }}>
-                    <button onClick={() => openNote(s, n.topic)} style={{ background: "transparent", border: 0, fontSize: 14, fontWeight: 600, color: "#0F766E", cursor: "pointer" }}>
-                      {viewing ? "▾" : "▸"} {n.topic}
+                    <button onClick={() => !locked && openNote(s, n.topic)} style={{ background: "transparent", border: 0, fontSize: 14, fontWeight: 600, color: locked ? "#94A3B8" : "#0F766E", cursor: locked ? "not-allowed" : "pointer" }}>
+                      {locked ? "🔒" : viewing ? "▾" : "▸"} {n.topic}
                     </button>
-                    {viewing && (
+                    {locked ? (
+                      <p style={{ fontSize: 13, margin: "4px 0 0" }}>Locked — <a href={userId ? `/subscription?userId=${userId}` : "/signup"} style={{ color: "#0F766E", fontWeight: 700 }}>upgrade to unlock all topics</a></p>
+                    ) : viewing && (
                       <div style={{ background: "#F8FAFC", borderRadius: 10, padding: 12, marginTop: 8 }}>
                         <div dangerouslySetInnerHTML={{ __html: renderNote(n.content) }} />
                         {terms.length > 0 && (

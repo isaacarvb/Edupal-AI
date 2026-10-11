@@ -31,5 +31,11 @@ export async function GET(req: Request) {
       "SELECT subject, topic, accuracy, label FROM topic_mastery WHERE user_id = ? ORDER BY accuracy ASC"
     )
     .all(userId);
-  return NextResponse.json({ profile: { ...profile, creditsLeft: limits.reduce((s, l) => s + l.left, 0), plan }, topics, subjectLimits: limits, exhaustedAll });
+  const lastRow = await db
+    .prepare(
+      `SELECT q.subject AS s FROM attempts a JOIN questions q ON q.id = a.question_id
+       WHERE a.user_id = ? ORDER BY a.created_at DESC LIMIT 1`
+    )
+    .get(userId) as { s: string } | undefined;
+  return NextResponse.json({ profile: { ...profile, creditsLeft: limits.reduce((s, l) => s + l.left, 0), plan }, topics, subjectLimits: limits, exhaustedAll, lastSubject: lastRow?.s ?? null });
 }

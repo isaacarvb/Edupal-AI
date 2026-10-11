@@ -8,7 +8,7 @@ import { consumeBonus } from "@/lib/referral";
 const COST = { MCQ: 1, THEORY: 3 } as const;
 
 function labelFor(acc: number): "WEAK" | "NEEDS_WORK" | "STRONG" {
-  if (acc >= 80) return "STRONG";
+  if (acc >= 75) return "STRONG";
   if (acc >= 50) return "NEEDS_WORK";
   return "WEAK";
 }
@@ -100,9 +100,9 @@ export async function POST(req: Request) {
     | { label: "WEAK" | "NEEDS_WORK" | "STRONG"; consec: number; overridden: number }
     | undefined;
   const consec = correct ? (prev?.consec ?? 0) + 1 : 0;
-  // STRONG needs 80%+ AND 3 in a row; hysteresis keeps STRONG above 65%.
+  // STRONG needs 75%+ AND 3 in a row; hysteresis keeps STRONG above 65%.
   let label = labelFor(acc);
-  if (label === "STRONG" && !(acc >= 80 && consec >= 3)) label = acc >= 50 ? "NEEDS_WORK" : "WEAK";
+  if (label === "STRONG" && !(acc >= 75 && consec >= 3)) label = acc >= 50 ? "NEEDS_WORK" : "WEAK";
   if (prev?.label === "STRONG" && acc >= 65 && label === "NEEDS_WORK") label = "STRONG";
   if (prev?.overridden) label = prev.label; // manual override sticks
   const rank = { WEAK: 0, NEEDS_WORK: 1, STRONG: 2 } as const;

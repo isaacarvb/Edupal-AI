@@ -13,6 +13,7 @@ function DashInner() {
   const [qotd, setQotd] = useState<null | { subject: string; topic: string }>(null);
   const [reminder, setReminder] = useState<string | null>(null);
   const [limits, setLimits] = useState<{ subject: string; left: number }[]>([]);
+  const [lastSubject, setLastSubject] = useState<string | null>(null);
   const [attempts, setAttempts] = useState<number | null>(null);
   const limited = params.get("limited") ?? "";
 
@@ -38,6 +39,7 @@ function DashInner() {
       .then((d) => {
         setProfile(d.profile);
         setLimits(d.subjectLimits ?? []);
+        setLastSubject(d.lastSubject ?? null);
       });
     fetch(`/api/reminders?userId=${userId}`)
       .then((r) => r.json())
@@ -61,7 +63,7 @@ function DashInner() {
 
   return (
     <main style={{ maxWidth: 1100, margin: "0 auto", padding: 20, color: "#333A45" }}>
-      <h1 style={{ color: "#1E242E", fontSize: 24 }}>{greeting}</h1>
+      <h1 style={{ color: "#1E242E", fontSize: 34 }}>{greeting}</h1>
 
       {/* STATUS */}
       <div style={{ background: "#1E242E", borderRadius: 16, padding: 14, marginBottom: 12 }}>
@@ -114,17 +116,16 @@ function DashInner() {
               ))}
             </div>
             <div style={{ display: "flex", gap: 8, marginTop: 12 }}>
-              <a href={`/past-paper?userId=${userId}`} style={{ flex: 1, textAlign: "center", background: "#fff", color: "#0F766E", border: "2px solid #0F766E", borderRadius: 10, height: 44, lineHeight: "40px", fontWeight: 700, fontSize: 14, textDecoration: "none" }}>Past paper mode</a>
-              <a href={`/weak-topics?userId=${userId}`} style={{ flex: 1, textAlign: "center", background: "#1E242E", color: "#fff", borderRadius: 10, height: 44, lineHeight: "44px", fontWeight: 700, fontSize: 14, textDecoration: "none" }}>My weak topics</a>
+              <a href={lastSubject ? `/practice?userId=${userId}&subject=${encodeURIComponent(lastSubject)}` : `/practice?userId=${userId}`} style={{ flex: 1, textAlign: "center", background: "#0F766E", color: "#fff", borderRadius: 10, height: 48, lineHeight: "48px", fontWeight: 700, fontSize: 15, textDecoration: "none" }}>{lastSubject ? `Continue: ${lastSubject} →` : "Start Practising →"}</a>
             </div>
           </div>
         </div>
 
         <div style={{ flex: "1 1 280px", minWidth: 0 }}>
           <div style={card}>
-            <h3 style={{ margin: "0 0 4px", fontSize: 16 }}>Today</h3>
-            <p style={{ fontSize: 14, margin: 0 }}>Plan: <strong>{profile.plan}</strong></p>
-            <p style={{ fontSize: 13, margin: "6px 0 0" }}><a href={`/study-plan?userId=${userId}`} style={{ color: "#0F766E", fontWeight: 700 }}>My week plan</a> • <a href={`/metrics?userId=${userId}`} style={{ color: "#0F766E", fontWeight: 700 }}>My progress</a> • <a href="/glossary" style={{ color: "#0F766E", fontWeight: 700 }}>Glossary</a></p>
+            <h3 style={{ margin: "0 0 4px", fontSize: 16 }}>Past paper mode</h3>
+            <p style={{ fontSize: 13, margin: "0 0 8px" }}>Full timed paper, scored at the end. Unlimited plan.</p>
+            <a href={`/past-paper?userId=${userId}`} style={{ display: "block", textAlign: "center", background: "#fff", color: "#0F766E", border: "2px solid #0F766E", borderRadius: 10, height: 44, lineHeight: "40px", fontWeight: 700, fontSize: 14, textDecoration: "none" }}>Open past paper mode</a>
           </div>
         </div>
       </div>
