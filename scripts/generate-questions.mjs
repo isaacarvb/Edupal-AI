@@ -17,7 +17,7 @@ if (!GROQ_KEY) {
   console.error("GROQ_API_KEY missing — add it to .env.local first.");
   process.exit(1);
 }
-const MODEL = process.env.GROQ_MODEL || "llama-3.3-70b-versatile";
+const MODEL = process.env.GROQ_MODEL || "openai/gpt-oss-120b";
 
 let db;
 let pg = null;
