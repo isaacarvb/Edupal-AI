@@ -2,7 +2,7 @@
   "name": "EduPal AI — exam prep tutor",
   "short_name": "EduPal AI",
   "description": "AI-powered WAEC/JAMB exam prep for Nigerian students.",
-  "start_url": "/",
+  "start_url": "/login",
   "scope": "/",
   "display": "standalone",
   "orientation": "portrait",
