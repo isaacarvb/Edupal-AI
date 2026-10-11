@@ -43,7 +43,7 @@ export default function Landing() {
       <section style={{ background: "#ECFDF5", borderBottom: "1px solid #A7F3D0" }}>
         <div style={{ maxWidth: 1100, margin: "0 auto", padding: "20px 16px", display: "flex", justifyContent: "space-around", textAlign: "center", flexWrap: "wrap", gap: 12 }}>
           {[
-            ["9", "Core Subjects Supported"],
+            ["14", "Core Subjects Supported (5 JSS + 9 SSS)"],
             ["30+", "Exam Topics & Questions"],
             ["2", "Explanation Modes (Simple English & Pidgin)"]
           ].map(([n, label]) => (
@@ -63,6 +63,8 @@ export default function Landing() {
           <Feature emoji="🎯" color="#FEF3C7" title="Finds Your Weak Topics" text="Weak, Needs Work, Strong — the app points at exactly what to study next, and celebrates level-ups." />
           <Feature emoji="⏳" color="#E1EBF5" title="Countdowns & Streaks" text="Daily reminders, study streaks with a monthly freeze, and a countdown that pushes you at 30 and 7 days." />
           <Feature emoji="👪" color="#FDEAEA" title="Parents Stay in the Loop" text="Weekly progress updates and a view-only dashboard, with zero friction at payment." />
+          <Feature emoji="📚" color="#E0E7FF" title="Robust Notes" text="Comprehensive, curriculum-aligned study notes and formula guides across all JSS and SSS subjects." />
+          <Feature emoji="📅" color="#F3E8FF" title="Exam Info" text="Latest exam updates, syllabus changes, and countdown alerts for WAEC, JAMB, and more." />
         </div>
       </section>
 
@@ -96,14 +98,16 @@ export default function Landing() {
       <section id="pricing" style={{ maxWidth: 1100, margin: "0 auto", padding: "32px 16px" }}>
         <h2 style={{ color: "#1E242E", fontSize: 26 }}>Pricing</h2>
         <div style={{ display: "flex", gap: 16, flexWrap: "wrap" }}>
-          <div style={{ flex: "1 1 240px", background: "#fff", border: "1px solid #E2E8F0", borderRadius: 12, padding: 20 }}>
+          <div style={{ flex: "1 1 240px", minHeight: 180, background: "#fff", border: "1px solid #E2E8F0", borderRadius: 12, padding: 20 }}>
             <div style={{ fontWeight: 800, fontSize: 18 }}>Free</div>
             <p style={{ fontSize: 14 }}>10 questions per subject, daily. Weak-topic tracking included.</p>
+            <p style={{ fontSize: 14 }}>Limited access to topics.</p>
             <div style={{ fontWeight: 800, fontSize: 22 }}>₦0</div>
           </div>
-          <div style={{ flex: "1 1 240px", background: "#1E242E", color: "#fff", borderRadius: 12, padding: 20 }}>
-            <div style={{ fontWeight: 800, fontSize: 18 }}>Unlimited</div>
+          <div style={{ flex: "1 1 240px", minHeight: 180, background: "#1E242E", color: "#fff", borderRadius: 12, padding: 20 }}>
+            <div style={{ fontWeight: 800, fontSize: 18 }}>Paid</div>
             <p style={{ fontSize: 14, opacity: 0.9 }}>Unlimited practice + parent dashboard + weekly digest.</p>
+            <p style={{ fontSize: 14, opacity: 0.9 }}>Unlimited access to all resources.</p>
             <div style={{ fontWeight: 800, fontSize: 22 }}>Paystack checkout</div>
           </div>
         </div>
@@ -111,7 +115,7 @@ export default function Landing() {
 
       {/* BOTTOM CTA */}
       <section style={{ textAlign: "center", padding: "16px 16px 48px" }}>
-        <a href="/signup" className="btn-journey">Start Practicing Now — Free Daily Access</a>
+        <a href="/signup" className="btn-journey">Start your journey</a>
         <p style={{ fontSize: 13, color: "#5F6E7F" }}>Know what you're learning, where you're weak, and when your exam is.</p>
       </section>
     </main>
