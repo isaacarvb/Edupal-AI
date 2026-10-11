@@ -3,7 +3,18 @@ const CACHE = "edupal-v1";
 const SHELL = ["/", "/offline", "/icons/icon-192.png", "/manifest.webmanifest"];
 
 self.addEventListener("install", (e) => {
-  e.waitUntil(caches.open(CACHE).then((c) => c.addAll(SHELL)).then(() => self.skipWaiting()));
+  // Add files one by one: one missing URL must never block activation.
+  e.waitUntil(
+    caches.open(CACHE).then(async (c) => {
+      for (const url of SHELL) {
+        try {
+          await c.add(url);
+        } catch {
+          /* offline-first is best-effort */
+        }
+      }
+    }).then(() => self.skipWaiting())
+  );
 });
 
 self.addEventListener("activate", (e) => {
