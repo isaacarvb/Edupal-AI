@@ -44,7 +44,7 @@ function parseCSV(text: string): { rows: Row[]; errors: string[] } {
       return;
     }
     rows.push({
-      exam: exam.toUpperCase(), subject: subject.trim(), topic: topic.trim(), type: t,
+      exam: exam.toUpperCase(), subject: appSubject(subject), topic: topic.trim(), type: t,
       stem: stem.trim(), options: opts, answer: answer.trim(), rubric: (rubric ?? "").trim(),
       predicted: predicted === "1" ? 1 : 0
     });
@@ -54,6 +54,28 @@ function parseCSV(text: string): { rows: Row[]; errors: string[] } {
 
 // Owner uploads curated past questions (CSV pasted or file-read client-side).
 // Dedupes by question text; year column is recorded in feedback_json for future trend claims.
+const SUBJECT_MAP: Record<string, string> = {
+  "english language": "English",
+  mathematics: "Mathematics",
+  physics: "Physics",
+  chemistry: "Chemistry",
+  biology: "Biology",
+  commerce: "Commerce",
+  economics: "Economics",
+  government: "Government",
+  "literature in english": "Literature",
+  literature: "Literature",
+  "citizenship education": "Citizenship Education",
+  "integrated science": "Intermediate Science",
+  "intermediate science": "Intermediate Science",
+  "physical and health education": "Physical Health Education",
+  "physical health education": "Physical Health Education"
+};
+
+function appSubject(raw: string): string {
+  const key = raw.trim().toLowerCase();
+  return SUBJECT_MAP[key] ?? raw.trim();
+}
 export async function POST(req: Request) {
   const { csv } = await req.json();
   if (!csv || typeof csv !== "string") return NextResponse.json({ error: "csv text required" }, { status: 400 });
