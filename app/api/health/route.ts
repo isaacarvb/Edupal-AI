@@ -10,6 +10,10 @@ export async function GET() {
     const db = await getDb();
     await db.prepare("SELECT 1").get();
     dbOk = true;
+    // Read the mode AFTER connecting: on cold start the module-level values
+    // are still the defaults until getDb() runs.
+    dbStatus = dbMode;
+    dbDetail = dbModeReason;
   } catch (e) {
     dbOk = false;
     dbDetail = `DB check failed: ${e instanceof Error ? e.message : String(e)}`;

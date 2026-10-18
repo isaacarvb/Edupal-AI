@@ -170,6 +170,7 @@ const gflag = globalThis as unknown as { __edupalPgReady?: boolean };
 
 // ---- Entry point ----
 export async function getDb(): Promise<Db> {
+  let fallbackReason = ""; // set when Postgres fails; keeps the real error visible
   if (usingPostgres() && process.env.DB_FORCE_SQLITE !== "1") {
     try {
       if (!gflag.__edupalPgReady) {
@@ -186,14 +187,17 @@ export async function getDb(): Promise<Db> {
     } catch (e) {
       // Postgres unreachable at query time — fall back to SQLite for this request.
       console.warn("Postgres query failed, falling back to SQLite:", e instanceof Error ? e.message : String(e));
-      dbMode = "sqlite";
-      dbModeReason = `Postgres unavailable: ${e instanceof Error ? e.message : String(e)}`;
+      fallbackReason = `Postgres unavailable: ${e instanceof Error ? e.message : String(e)}`;
     }
+  } else if (!usingPostgres()) {
+    fallbackReason = "DATABASE_URL not set";
+  } else {
+    fallbackReason = "DB_FORCE_SQLITE=1";
   }
   const db = sqliteDb();
   await sqliteMigrate();
   await ensureSeeded(db);
   dbMode = "sqlite";
-  dbModeReason = "SQLite (local dev.db)";
+  dbModeReason = fallbackReason || "SQLite (local dev.db)";
   return db;
 }
