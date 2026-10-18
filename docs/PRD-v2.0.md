@@ -3,7 +3,7 @@
 **Version:** 2.0 (Full)
 **Product:** EduPal AI
 **Owner:** Isaac Olamilekan Areo
-**GitHub:** https://github.com/isaacareo-analytics/edupal_ai
+**GitHub:** https://github.com/isaacarvb/Edupal-AI
 
 **Relationship to built v1.0:** v1.0 is fully built and live (login, diagnostic practice, AI tutor, Paystack test-mode checkout, parent portal, metrics board). This document keeps that foundation untouched and specifies what gets built next. Where §8 says "Phase 1 prototype," read it as the assessment track; the production app already implements that scope live.
 

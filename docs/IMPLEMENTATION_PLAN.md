@@ -1,7 +1,7 @@
 # EduPal AI — Implementation Plan (PRD v1.0)
 
 Source: `docx/EduPal AI_PRD v1.0.md` (126 lines, 7831 bytes).
-Repo state at planning time: `README.md` (1382 bytes), `docx/`, `picx/`, `vidx/` (each only `.gitkeep` except PRD), 1 commit `a3714ed`, `origin=https://github.com/isaacareo-analytics/edupal-ai.git`, untracked `docx/EduPal AI_PRD v1.0.md`.
+Repo state at planning time: `README.md` (1382 bytes), `docx/`, `picx/`, `vidx/` (each only `.gitkeep` except PRD), 1 commit `a3714ed`, origin repo (since moved to `https://github.com/isaacarvb/Edupal-AI`), untracked `docx/EduPal AI_PRD v1.0.md`.
 
 ## 1. What we are building
 
