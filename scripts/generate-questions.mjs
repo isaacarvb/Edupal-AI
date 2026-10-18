@@ -70,12 +70,12 @@ async function groq(messages) {
 }
 
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
-const files = fs.readdirSync(path.join(ROOT, "docs", "notes")).filter((f) => f.startsWith("sss_") && f.endsWith(".json"));
+const files = fs.readdirSync(path.join(ROOT, "docs", "notes", "json file")).filter((f) => f.startsWith("sss_") && f.endsWith(".json"));
 let made = 0;
 let skipped = 0;
 
 for (const f of files) {
-  const doc = JSON.parse(fs.readFileSync(path.join(ROOT, "docs", "notes", f), "utf8"));
+  const doc = JSON.parse(fs.readFileSync(path.join(ROOT, "docs", "notes", "json file", f), "utf8"));
   const subject = String(doc.subject || "").replace(/ language$/i, "").replace(/^literature in english$/i, "Literature").trim();
   const appSubject = /literature/i.test(subject) ? "Literature" : subject;
   if (FILTER_SUBJECT && appSubject.toLowerCase() !== FILTER_SUBJECT) continue;

@@ -1,7 +1,7 @@
 import fs from "node:fs";
 import path from "node:path";
 
-// Curriculum note files in docs/notes/*.json. File subject names differ
+// Curriculum note files in docs/notes/json file/*.json. File subject names differ
 // slightly from app names — normalized here so each file lands in its column.
 const MAP: Record<string, string> = {
   "english language": "English",
@@ -26,7 +26,7 @@ const MAP: Record<string, string> = {
 export type NoteTopic = { topic: string; content: string };
 
 export function noteSubjects(level: "senior" | "junior"): string[] {
-  const dir = path.join(process.cwd(), "docs", "notes");
+  const dir = path.join(process.cwd(), "docs", "notes", "json file");
   const prefix = level === "senior" ? "sss_" : "jss_";
   if (!fs.existsSync(dir)) return [];
   const out: string[] = [];
@@ -41,7 +41,7 @@ export function noteSubjects(level: "senior" | "junior"): string[] {
 }
 
 export function noteTopics(level: "senior" | "junior", subject: string): NoteTopic[] {
-  const dir = path.join(process.cwd(), "docs", "notes");
+  const dir = path.join(process.cwd(), "docs", "notes", "json file");
   const prefix = level === "senior" ? "sss_" : "jss_";
   if (!fs.existsSync(dir)) return [];
   for (const f of fs.readdirSync(dir).filter((x) => x.startsWith(prefix) && x.endsWith(".json"))) {
