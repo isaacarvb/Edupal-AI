@@ -1,6 +1,8 @@
 "use client";
 import { Suspense, useCallback, useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
+import { useHiddenSubjects } from "@/components/useHiddenSubjects";
+import { JSS_SUBJECTS, DEPARTMENTS, COMMON_SUBJECTS } from "@/lib/syllabus";
 
 type Q = { id: string; subject: string; topic: string; type: string; stem: string; optionsJson: string; predictedRepeat: number; difficulty: string };
 type Theory = { score: number; maxScore: number; hits: string[]; misses: string[]; tips: string[]; modelAnswer: string };
@@ -13,6 +15,7 @@ function PracticeInner() {
   const router = useRouter();
   const userId = params.get("userId") ?? "";
   const subjectParam = params.get("subject");
+  const topicParam = params.get("topic");
   const subject = subjectParam ?? "English";
   const qotdMode = params.get("qotd") === "1";
   const [isQotd, setIsQotd] = useState(false);
@@ -27,6 +30,8 @@ function PracticeInner() {
   const [seniorOpen, setSeniorOpen] = useState(true);
   const [switcher, setSwitcher] = useState<{ subject: string; left: number }[]>([]);
   const [bank, setBank] = useState<{ subject: string; n: number }[]>([]);
+  const hidden = useHiddenSubjects();
+  const [department, setDepartment] = useState("");
   const [alt, setAlt] = useState<null | { explanation: string; engine: string }>(null);
   const [altBusy, setAltBusy] = useState(false);
   const [ask, setAsk] = useState("");
@@ -74,7 +79,10 @@ function PracticeInner() {
     if (userId) {
       fetch(`/api/topics?userId=${userId}`)
         .then((r) => r.json())
-        .then((d) => setSwitcher(d.subjectLimits ?? []));
+        .then((d) => {
+          setSwitcher(d.subjectLimits ?? []);
+          setDepartment(d.profile?.department ?? "");
+        });
       fetch("/api/admin-bank")
         .then((r) => (r.ok ? r.json() : null))
         .then((d) => setBank(d?.counts ?? []));
@@ -217,16 +225,26 @@ function PracticeInner() {
   if (!userId) return <main style={{ padding: 20 }}>Missing user. Start from <a href="/onboarding">onboarding</a>.</main>;
 
   // Hub lists every subject that actually has questions (profile list can lag behind).
-  const hubSubjects = bank.length
+  const allowedSubjects = department
+    ? [...COMMON_SUBJECTS, ...DEPARTMENTS[department as keyof typeof DEPARTMENTS]]
+    : [...JSS_SUBJECTS];
+  const hubSubjects = (bank.length
     ? bank.map((b) => ({ subject: b.subject, left: switcher.find((s) => s.subject === b.subject)?.left ?? 10, n: b.n }))
-    : switcher.map((s) => ({ ...s, n: 0 }));
+    : switcher.map((s) => ({ ...s, n: 0 }))
+  ).filter((s) => !hidden.includes(s.subject) && allowedSubjects.includes(s.subject));
 
   // No subject chosen → subject picker hub (the Practice section, tiered).
   if (!subjectParam) {
-    const jss = ["Mathematics", "English", "Intermediate Science", "Citizenship Education", "Physical Health Education"];
+    const jss = [...JSS_SUBJECTS];
     return (
       <main style={{ maxWidth: 680, margin: "0 auto", padding: 20, color: "#333A45" }}>
         <h1 style={{ color: "#1E242E", fontSize: 24 }}>Practice</h1>
+        {department && (
+          <div style={{ background: "#F0F9FF", border: "1px solid #BAE6FD", borderRadius: 10, padding: 10, marginBottom: 12, fontSize: 13, color: "#0369A1" }}>
+            <strong style={{ display: "block", fontSize: 12, marginBottom: 4, color: "#0c4a6e" }}>📚 {department} department focus</strong>
+            You're seeing {department} subjects only. English, Mathematics and Physical Health Education are included for everyone. Other subjects exist but stay hidden so you stay focused on your department.
+          </div>
+        )}
         <p style={{ fontSize: 14, color: "#5F6E7F" }}>Choose a subject to start. Budgets reset daily at midnight.</p>
         <button onClick={() => setSeniorOpen((o) => !o)}
           style={{ width: "100%", textAlign: "left", background: "#1E242E", color: "#fff", border: 0, borderRadius: 12, padding: 14, fontSize: 16, fontWeight: 800, cursor: "pointer", marginBottom: 8 }}>
@@ -253,6 +271,22 @@ function PracticeInner() {
       </main>
     );
   }
+  // Block access to subjects outside the user's department.
+  if (subjectParam && department && !allowedSubjects.includes(subjectParam)) {
+    return (
+      <main style={{ maxWidth: 640, margin: "0 auto", padding: 20, color: "#333A45", textAlign: "center" }}>
+        <div style={{ fontSize: 48 }}>🚫</div>
+        <h1 style={{ color: "#1E242E" }}>Not in your department</h1>
+        <p style={{ fontSize: 16, margin: "12px 0" }}>
+          <strong>{subjectParam}</strong> is not part of your {department} department study plan.
+        </p>
+        <p style={{ fontSize: 14, color: "#5F6E7F" }}>
+          You can only practise your department's subjects ({allowedSubjects.join(", ")}). Other subjects exist but stay hidden so you stay focused.
+        </p>
+        <a href={`/practice?userId=${userId}`} style={{ display: "inline-block", background: "#0F766E", color: "#fff", borderRadius: 10, padding: "12px 28px", fontWeight: 800, textDecoration: "none", marginTop: 12 }}>Back to subject picker</a>
+      </main>
+    );
+  }
   if (done)
     return (
       <main style={{ maxWidth: 420, margin: "0 auto", padding: 20, color: "#333A45" }}>
@@ -272,6 +306,11 @@ function PracticeInner() {
 
   return (
     <main style={{ maxWidth: 420, margin: "0 auto", padding: 20, color: "#333A45" }}>
+      {topicParam && (
+        <div style={{ background: "#F0F9FF", border: "1px solid #BAE6FD", borderRadius: 10, padding: 10, marginBottom: 12, fontSize: 13, color: "#0369A1", display: "flex", alignItems: "center", gap: 8 }}>
+          <strong style={{ fontSize: 12, color: "#0c4a6e" }}>📖 Practicing:</strong> {topicParam}
+        </div>
+      )}
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
         <p style={{ fontSize: 13, color: "#2F5D7C", margin: 0 }}>
           {isQotd ? "⭐ Question of the Day • FREE" : `${subject} • Diagnostic ${Math.min(answered + 1, 10)}/10`}

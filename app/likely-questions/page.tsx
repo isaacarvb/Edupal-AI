@@ -5,7 +5,7 @@ import { useSearchParams } from "next/navigation";
 type Q = { id: string; subject: string; topic: string; type: string; stem: string; optionsJson: string };
 type Data =
   | { locked: true; reason: string; daysLeft?: number; exam?: string }
-  | { locked: false; daysLeft: number; exam: string; analysis: string; engine: string; questions: Q[] };
+  | { locked: false; daysLeft: number | null; exam: string; unconfirmed?: boolean; analysis: string; engine: string; questions: Q[] };
 
 function LikelyInner() {
   const params = useSearchParams();
@@ -21,17 +21,6 @@ function LikelyInner() {
   if (!userId) return <main style={{ padding: 20 }}>Missing user. Start from <a href="/signup">signup</a>.</main>;
   if (!data) return <main style={{ padding: 20 }}>Loading…</main>;
 
-  if (data.locked && data.reason === "no-date") {
-    return (
-      <main style={{ maxWidth: 640, margin: "0 auto", padding: 20, color: "#333A45", textAlign: "center" }}>
-        <div style={{ fontSize: 48 }}>🔒</div>
-        <h1 style={{ color: "#1E242E" }}>Likely questions are brewing</h1>
-        <p>Tell us your exam date and predictions unlock automatically 7 days before.</p>
-        <a href={`/onboarding?userId=${userId}`} style={{ display: "inline-block", background: "#0F766E", color: "#fff", borderRadius: 10, padding: "12px 28px", fontWeight: 800, textDecoration: "none" }}>Set my exam date</a>
-      </main>
-    );
-  }
-
   if (data.locked) {
     return (
       <main style={{ maxWidth: 640, margin: "0 auto", padding: 20, color: "#333A45", textAlign: "center" }}>
@@ -44,9 +33,25 @@ function LikelyInner() {
     );
   }
 
+  if (data.unconfirmed) {
+    return (
+      <main style={{ maxWidth: 640, margin: "0 auto", padding: 20, color: "#333A45", textAlign: "center" }}>
+        <div style={{ fontSize: 48 }}>📅</div>
+        <h1 style={{ color: "#1E242E" }}>Likely questions are ready when you are</h1>
+        <p style={{ fontSize: 16, margin: "12px 0" }}>
+          This section shows the questions most likely to appear in your exam — unlocked automatically 7 days before your exam date.
+        </p>
+        <p style={{ fontSize: 14, color: "#5F6E7F" }}>
+          Your exam dates aren't confirmed yet, so predictions stay locked. Set your start and end dates in Settings as soon as the timetable is out, and this section will spring to life on its own.
+        </p>
+        <a href={`/settings?userId=${userId}`} style={{ display: "inline-block", background: "#0F766E", color: "#fff", borderRadius: 10, padding: "12px 28px", fontWeight: 800, textDecoration: "none", marginTop: 12 }}>Set my exam dates</a>
+      </main>
+    );
+  }
+
   return (
     <main style={{ maxWidth: 680, margin: "0 auto", padding: 20, color: "#333A45" }}>
-      <p style={{ fontSize: 13, fontWeight: 800, color: "#0F766E" }}>🔥 FINAL WEEK • {data.exam} • {data.daysLeft} day(s) left</p>
+      <p style={{ fontSize: 13, fontWeight: 800, color: "#0F766E" }}>🔥 FINAL WEEK • {data.exam}{data.daysLeft !== null ? ` • ${data.daysLeft} day(s) left` : " • dates not confirmed yet"}</p>
       <h1 style={{ color: "#1E242E", fontSize: 24 }}>Likely exam questions</h1>
       {data.analysis !== "" && (
         <div style={{ background: "#CCFBF1", border: "1px solid #99F6E4", borderRadius: 12, padding: 14, fontSize: 15 }}>

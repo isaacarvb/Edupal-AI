@@ -15,6 +15,18 @@ function SubscriptionInner() {
   const [parentEmail, setParentEmail] = useState("");
   const [payMsg, setPayMsg] = useState("");
   const [paid, setPaid] = useState(false);
+  const [plans, setPlans] = useState<{ id: string; name: string; amountKobo: number }[]>([]);
+  const [planId, setPlanId] = useState("");
+  const [promoCode, setPromoCode] = useState("");
+
+  useEffect(() => {
+    fetch("/api/plans").then((r) => r.json()).then((d) => {
+      if (d.plans?.length) {
+        setPlans(d.plans);
+        setPlanId(d.plans[0].id);
+      }
+    });
+  }, []);
 
   useEffect(() => {
     const id = params.get("userId") ?? localStorage.getItem("edupal_user") ?? "";
@@ -33,7 +45,7 @@ function SubscriptionInner() {
     setPayMsg("");
     const res = await fetch("/api/checkout", {
       method: "POST", headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ userId, parentEmail: parentEmail || undefined })
+      body: JSON.stringify({ userId, parentEmail: parentEmail || undefined, planId: planId || undefined, promoCode: promoCode || undefined })
     });
     const data = await res.json();
     if (!res.ok) return setPayMsg(data.needsParent ? "Since you're in secondary school, add a parent or guardian's contact so they can support your subscription and stay updated." : data.error);
@@ -64,6 +76,14 @@ function SubscriptionInner() {
             {level === "SECONDARY" && (
               <input value={parentEmail} onChange={(e) => setParentEmail(e.target.value)} placeholder="Parent/guardian email" style={{ width: "100%", height: 44, borderRadius: 10, border: "1px solid #CBD5E1", padding: "0 10px", fontSize: 14, marginBottom: 8, boxSizing: "border-box" }} />
             )}
+            {plans.length > 1 && (
+              <select value={planId} onChange={(e) => setPlanId(e.target.value)} style={{ width: "100%", height: 44, borderRadius: 10, border: "1px solid #CBD5E1", padding: "0 10px", fontSize: 14, marginBottom: 8, boxSizing: "border-box" }}>
+                {plans.map((p) => (
+                  <option key={p.id} value={p.id}>{p.name} — ₦{(p.amountKobo / 100).toLocaleString("en-NG")}</option>
+                ))}
+              </select>
+            )}
+            <input value={promoCode} onChange={(e) => setPromoCode(e.target.value.toUpperCase())} placeholder="Promo code (optional)" style={{ width: "100%", height: 44, borderRadius: 10, border: "1px solid #CBD5E1", padding: "0 10px", fontSize: 14, marginBottom: 8, boxSizing: "border-box" }} />
             {payMsg && <p style={{ fontSize: 13, color: "#DC2626" }}>{payMsg}</p>}
             <button onClick={pay} style={{ display: "block", width: "100%", height: 48, borderRadius: 10, border: 0, background: "#0F766E", color: "#fff", fontWeight: 700, fontSize: 16, cursor: "pointer" }}>Pay with Paystack (test)</button>
           </>

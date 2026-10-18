@@ -13,6 +13,11 @@ export type Stmt = {
 };
 export type Db = { prepare: (sql: string) => Stmt };
 
+export type DbMode = "sqlite" | "postgres";
+
+export let dbMode: DbMode = "sqlite";
+export let dbModeReason: string = "";
+
 import { randomUUID } from "node:crypto";
 import { ensureSeeded } from "./seed";
 
@@ -57,6 +62,31 @@ async function sqliteMigrate(): Promise<void> {
   if (!cols("users").has("avatar")) h.exec("ALTER TABLE users ADD COLUMN avatar TEXT");
   if (!cols("topic_mastery").has("consecutive_correct")) h.exec("ALTER TABLE topic_mastery ADD COLUMN consecutive_correct INTEGER NOT NULL DEFAULT 0");
   if (!cols("topic_mastery").has("overridden")) h.exec("ALTER TABLE topic_mastery ADD COLUMN overridden INTEGER NOT NULL DEFAULT 0");
+  const pcols = cols("profiles");
+  if (!pcols.has("exam_start")) h.exec("ALTER TABLE profiles ADD COLUMN exam_start TEXT");
+  if (!pcols.has("exam_end")) h.exec("ALTER TABLE profiles ADD COLUMN exam_end TEXT");
+  if (!pcols.has("dates_confirmed")) h.exec("ALTER TABLE profiles ADD COLUMN dates_confirmed INTEGER NOT NULL DEFAULT 1");
+  if (!pcols.has("department")) h.exec("ALTER TABLE profiles ADD COLUMN department TEXT NOT NULL DEFAULT ''");
+  // One-time carry-over: old single exam_date becomes the new start date.
+  h.exec("UPDATE profiles SET exam_start = exam_date WHERE (exam_start IS NULL OR exam_start = '') AND exam_date IS NOT NULL AND exam_date != ''");
+  // Standardise renamed subjects so old rows keep matching the new lists.
+  h.exec("UPDATE questions SET subject = 'Literature in English' WHERE subject = 'Literature'");
+  h.exec("UPDATE questions SET subject = 'Social and Citizenship Education' WHERE subject = 'Citizenship Education'");
+  h.exec("UPDATE questions SET subject = 'Intermediate Science (Basic Science and Technology)' WHERE subject IN ('Intermediate Science', 'Integrated Science')");
+  h.exec("UPDATE profiles SET subjects = REPLACE(subjects, 'Citizenship Education', 'Social and Citizenship Education') WHERE subjects LIKE '%Citizenship Education%' AND subjects NOT LIKE '%Social and Citizenship Education%'");
+  h.exec("UPDATE profiles SET subjects = REPLACE(subjects, 'Intermediate Science', 'Intermediate Science (Basic Science and Technology)') WHERE subjects LIKE '%Intermediate Science%' AND subjects NOT LIKE '%Intermediate Science (%'");
+  h.exec("UPDATE profiles SET subjects = REPLACE(subjects, 'Integrated Science', 'Intermediate Science (Basic Science and Technology)') WHERE subjects LIKE '%Integrated Science%'");
+  h.exec("CREATE TABLE IF NOT EXISTS site_settings (key TEXT PRIMARY KEY, value TEXT NOT NULL DEFAULT '')");
+  h.exec("CREATE TABLE IF NOT EXISTS admin_audit (id TEXT PRIMARY KEY, admin_id TEXT, action TEXT NOT NULL, target TEXT NOT NULL DEFAULT '', created_at TEXT NOT NULL DEFAULT (datetime('now')))");
+  h.exec("CREATE TABLE IF NOT EXISTS transactions (id TEXT PRIMARY KEY, user_id TEXT REFERENCES users(id) ON DELETE SET NULL, email TEXT NOT NULL DEFAULT '', reference TEXT UNIQUE, amount_kobo INTEGER NOT NULL DEFAULT 0, plan TEXT NOT NULL DEFAULT 'UNLIMITED', status TEXT NOT NULL DEFAULT 'pending', channel TEXT NOT NULL DEFAULT 'paystack', promo_code TEXT NOT NULL DEFAULT '', created_at TEXT NOT NULL DEFAULT (datetime('now')))");
+  h.exec("CREATE INDEX IF NOT EXISTS idx_tx_status_day ON transactions(status, created_at)");
+  h.exec("CREATE TABLE IF NOT EXISTS plans (id TEXT PRIMARY KEY, name TEXT UNIQUE NOT NULL, amount_kobo INTEGER NOT NULL DEFAULT 100000, credits INTEGER NOT NULL DEFAULT 9999, active INTEGER NOT NULL DEFAULT 1, created_at TEXT NOT NULL DEFAULT (datetime('now')))");
+  h.exec("CREATE TABLE IF NOT EXISTS promo_codes (code TEXT PRIMARY KEY, percent_off INTEGER NOT NULL DEFAULT 0, max_uses INTEGER NOT NULL DEFAULT 100, used INTEGER NOT NULL DEFAULT 0, active INTEGER NOT NULL DEFAULT 1, expires_on TEXT)");
+  h.exec("CREATE TABLE IF NOT EXISTS announcements (id TEXT PRIMARY KEY, title TEXT NOT NULL, body TEXT NOT NULL DEFAULT '', segment TEXT NOT NULL DEFAULT 'all', created_by TEXT NOT NULL DEFAULT '', created_at TEXT NOT NULL DEFAULT (datetime('now')))");
+  h.exec("CREATE TABLE IF NOT EXISTS announcement_reads (announcement_id TEXT NOT NULL REFERENCES announcements(id) ON DELETE CASCADE, user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE, read_at TEXT NOT NULL DEFAULT (datetime('now')), PRIMARY KEY (announcement_id, user_id))");
+  h.exec("CREATE TABLE IF NOT EXISTS subject_config (subject TEXT PRIMARY KEY, active INTEGER NOT NULL DEFAULT 1, updated_at TEXT NOT NULL DEFAULT (datetime('now')))");
+  h.exec("CREATE TABLE IF NOT EXISTS admin_allowlist (email TEXT PRIMARY KEY, role TEXT NOT NULL DEFAULT 'CONTENT_ADMIN', added_at TEXT NOT NULL DEFAULT (datetime('now')))");
+  h.exec("CREATE TABLE IF NOT EXISTS error_logs (id TEXT PRIMARY KEY, source TEXT NOT NULL DEFAULT '', message TEXT NOT NULL DEFAULT '', created_at TEXT NOT NULL DEFAULT (datetime('now')))");
 }
 
 // ---- Postgres branch (Supabase, incl. pooler on :6543) ----
@@ -67,9 +97,10 @@ function pgDb(): Db {
     g.__edupalPg = new Pool({
       connectionString: process.env.DATABASE_URL,
       ssl: { rejectUnauthorized: false },
-      max: 3,
-      idleTimeoutMillis: 10000,
-      connectionTimeoutMillis: 10000
+      max: 5,
+      idleTimeoutMillis: 30000,
+      connectionTimeoutMillis: 15000,
+      application_name: "edupal-ai"
     });
   }
   const pool = g.__edupalPg;
@@ -89,32 +120,80 @@ function pgDb(): Db {
   };
 }
 
+async function sleep(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+async function pgTestConnection(pool: import("pg").Pool): Promise<void> {
+  await pool.query("SELECT 1");
+}
+
 async function pgMigrate(): Promise<void> {
-  const db = pgDb();
-  const schema = fs.readFileSync(path.join(process.cwd(), "db", "schema-postgres.sql"), "utf8");
-  // Split on semicolons: node-postgres takes one statement per query().
-  for (const stmt of schema.split(";")) {
-    const s = stmt.trim();
-    if (s) await db.prepare(s).run();
+  let lastError: unknown = null;
+  // Try up to 3 times with exponential backoff (Supabase pooler can be slow to wake)
+  for (let attempt = 1; attempt <= 3; attempt++) {
+    try {
+      const db = pgDb();
+      // Test connection first
+      await pgTestConnection((globalThis as unknown as { __edupalPg?: import("pg").Pool }).__edupalPg!);
+      const schema = fs.readFileSync(path.join(process.cwd(), "db", "schema-postgres.sql"), "utf8");
+      // Split on semicolons: node-postgres takes one statement per query().
+      for (const stmt of schema.split(";")) {
+        const s = stmt.trim();
+        if (s) await db.prepare(s).run();
+      }
+      // Later additive columns land here via information_schema checks.
+      const has = async (col: string) =>
+        ((await db.prepare("SELECT 1 FROM information_schema.columns WHERE table_name = 'profiles' AND column_name = ?").get(col)) ? true : false);
+      if (!(await has("exam_start"))) await db.prepare("ALTER TABLE profiles ADD COLUMN exam_start TEXT").run();
+      if (!(await has("exam_end"))) await db.prepare("ALTER TABLE profiles ADD COLUMN exam_end TEXT").run();
+      if (!(await has("dates_confirmed"))) await db.prepare("ALTER TABLE profiles ADD COLUMN dates_confirmed INTEGER NOT NULL DEFAULT 1").run();
+      if (!(await has("department"))) await db.prepare("ALTER TABLE profiles ADD COLUMN department TEXT NOT NULL DEFAULT ''").run();
+      await db.prepare("UPDATE profiles SET exam_start = exam_date WHERE (exam_start IS NULL OR exam_start = '') AND exam_date IS NOT NULL AND exam_date != ''").run();
+      await db.prepare("UPDATE questions SET subject = 'Literature in English' WHERE subject = 'Literature'").run();
+      await db.prepare("UPDATE questions SET subject = 'Social and Citizenship Education' WHERE subject = 'Citizenship Education'").run();
+      await db.prepare("UPDATE questions SET subject = 'Intermediate Science (Basic Science and Technology)' WHERE subject IN ('Intermediate Science', 'Integrated Science')").run();
+      await db.prepare("UPDATE profiles SET subjects = REPLACE(subjects, 'Citizenship Education', 'Social and Citizenship Education') WHERE subjects LIKE '%Citizenship Education%' AND subjects NOT LIKE '%Social and Citizenship Education%'").run();
+      await db.prepare("UPDATE profiles SET subjects = REPLACE(subjects, 'Intermediate Science', 'Intermediate Science (Basic Science and Technology)') WHERE subjects LIKE '%Intermediate Science%' AND subjects NOT LIKE '%Intermediate Science (%'").run();
+      await db.prepare("UPDATE profiles SET subjects = REPLACE(subjects, 'Integrated Science', 'Intermediate Science (Basic Science and Technology)') WHERE subjects LIKE '%Integrated Science%'").run();
+      return; // success
+    } catch (e) {
+      lastError = e;
+      console.warn(`Postgres migration attempt ${attempt} failed:`, e instanceof Error ? e.message : String(e));
+      if (attempt < 3) await sleep(2000 * attempt); // 2s, 4s backoff
+    }
   }
-  // Later additive columns land here via information_schema checks.
+  throw lastError;
 }
 
 const gflag = globalThis as unknown as { __edupalPgReady?: boolean };
 
 // ---- Entry point ----
 export async function getDb(): Promise<Db> {
-  if (usingPostgres()) {
-    if (!gflag.__edupalPgReady) {
-      await pgMigrate();
-      gflag.__edupalPgReady = true;
+  if (usingPostgres() && process.env.DB_FORCE_SQLITE !== "1") {
+    try {
+      if (!gflag.__edupalPgReady) {
+        await pgMigrate();
+        gflag.__edupalPgReady = true;
+      }
+      const db = pgDb();
+      // Verify connection is alive before returning
+      await pgTestConnection((globalThis as unknown as { __edupalPg?: import("pg").Pool }).__edupalPg!);
+      await ensureSeeded(db);
+      dbMode = "postgres";
+      dbModeReason = "Postgres (Supabase) connected";
+      return db;
+    } catch (e) {
+      // Postgres unreachable at query time — fall back to SQLite for this request.
+      console.warn("Postgres query failed, falling back to SQLite:", e instanceof Error ? e.message : String(e));
+      dbMode = "sqlite";
+      dbModeReason = `Postgres unavailable: ${e instanceof Error ? e.message : String(e)}`;
     }
-    const db = pgDb();
-    await ensureSeeded(db);
-    return db;
   }
   const db = sqliteDb();
   await sqliteMigrate();
   await ensureSeeded(db);
+  dbMode = "sqlite";
+  dbModeReason = "SQLite (local dev.db)";
   return db;
 }

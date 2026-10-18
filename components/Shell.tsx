@@ -3,6 +3,8 @@ import { useEffect, useRef, useState } from "react";
 import { usePathname, useSearchParams } from "next/navigation";
 import { signOut } from "next-auth/react";
 import TopBar from "./TopBar";
+import AdminViewBanner from "./AdminViewBanner";
+import NoticeBell from "./NoticeBell";
 
 const PUBLIC_ROUTES = ["/", "/login", "/signup"];
 
@@ -29,6 +31,7 @@ export default function Shell({ children }: { children: React.ReactNode }) {
   const [mobile, setMobile] = useState(false);
   const [open, setOpen] = useState(false);
   const [collapsed, setCollapsed] = useState(false);
+  const [adminView, setAdminView] = useState(false);
   const [tip, setTip] = useState<{ text: string; top: number } | null>(null);
   const tipTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -90,6 +93,22 @@ export default function Shell({ children }: { children: React.ReactNode }) {
     setTip(null);
   }
 
+  // Preview mode survives clicks AND refreshes: the ?adminView=1 ticket is
+  // remembered in session memory, cleared only by "Back to Admin".
+  // (Must sit with the other hooks — never below an early return.)
+  useEffect(() => {
+    try {
+      if (search?.get("adminView") === "1") {
+        sessionStorage.setItem("edupal_admin_view", "1");
+        setAdminView(true);
+      } else {
+        setAdminView(sessionStorage.getItem("edupal_admin_view") === "1");
+      }
+    } catch {
+      setAdminView(search?.get("adminView") === "1");
+    }
+  }, [search]);
+
   async function logout() {
     localStorage.removeItem("edupal_user");
     localStorage.removeItem("edupal_role");
@@ -97,7 +116,7 @@ export default function Shell({ children }: { children: React.ReactNode }) {
     window.location.href = "/login";
   }
 
-  const q = userId ? `?userId=${userId}` : "";
+  const q = userId ? `?userId=${userId}${adminView ? "&adminView=1" : ""}` : "";
   const likelyBadge =
     daysLeft === null ? "Locked" : daysLeft > 7 ? `${daysLeft} left` : "Live";
   const links = [
@@ -205,6 +224,11 @@ export default function Shell({ children }: { children: React.ReactNode }) {
     );
   }
 
+  // Skip sidebar shell for /admin/* (it has its own layout).
+  if (path?.startsWith("/admin")) {
+    return <>{children}</>;
+  }
+
   return (
     <div style={{ display: "flex", minHeight: "100vh" }}>
       {sidebar}
@@ -219,6 +243,7 @@ export default function Shell({ children }: { children: React.ReactNode }) {
         <div onClick={() => setOpen(false)} style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.4)", zIndex: 40 }} />
       )}
       <div style={{ flex: 1, minWidth: 0 }}>
+        {adminView && <AdminViewBanner userName={name} />}
         {mobile && (
           <div style={{ background: "#1E242E", padding: "10px 12px", position: "sticky", top: 0, zIndex: 30 }}>
             <button onClick={() => setOpen(!open)} aria-label="Menu"
@@ -229,6 +254,7 @@ export default function Shell({ children }: { children: React.ReactNode }) {
         )}
         {children}
       </div>
+      {userId && <NoticeBell userId={userId} />}
     </div>
   );
 }

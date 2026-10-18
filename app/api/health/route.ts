@@ -1,7 +1,26 @@
 import { NextResponse } from "next/server";
+import { getDb, dbMode, dbModeReason } from "@/lib/db";
 import { groqConfigured } from "@/lib/groq";
 
 export async function GET() {
-  // groq: true/false only — the key itself never leaves the server.
-  return NextResponse.json({ ok: true, app: "edupal-ai", phase: 0, db: "sqlite (node built-in)", storage: "local", groq: groqConfigured() });
+  let dbStatus = dbMode;
+  let dbDetail = dbModeReason;
+  let dbOk = false;
+  try {
+    const db = await getDb();
+    await db.prepare("SELECT 1").get();
+    dbOk = true;
+  } catch (e) {
+    dbOk = false;
+    dbDetail = `DB check failed: ${e instanceof Error ? e.message : String(e)}`;
+  }
+  return NextResponse.json({
+    ok: dbOk,
+    app: "edupal-ai",
+    phase: 0,
+    db: dbStatus,
+    dbDetail,
+    storage: dbStatus === "postgres" ? "postgres (Supabase)" : "local sqlite (ephemeral on Netlify)",
+    groq: groqConfigured()
+  });
 }

@@ -1,7 +1,8 @@
 "use client";
 import { Suspense, useEffect, useState } from "react";
 import { useSearchParams } from "next/navigation";
-import { SUBJECTS } from "@/lib/syllabus";
+import { SUBJECTS, DEPARTMENTS, COMMON_SUBJECTS, JSS_SUBJECTS } from "@/lib/syllabus";
+import { useHiddenSubjects } from "@/components/useHiddenSubjects";
 
 function GlossaryInner() {
   const params = useSearchParams();
@@ -9,6 +10,17 @@ function GlossaryInner() {
   const [topics, setTopics] = useState<string[]>([]);
   const [open, setOpen] = useState<string | null>(null);
   const [terms, setTerms] = useState<Record<string, { term: string; definition: string }[]>>({});
+  const hidden = useHiddenSubjects();
+  const [department, setDepartment] = useState("");
+
+  useEffect(() => {
+    const id = params.get("userId") ?? localStorage.getItem("edupal_user") ?? "";
+    if (id) {
+      fetch(`/api/topics?userId=${id}`)
+        .then((r) => r.json())
+        .then((d) => setDepartment(d.profile?.department ?? ""));
+    }
+  }, [params]);
 
   useEffect(() => {
     fetch(`/api/glossary?subject=${encodeURIComponent(subject)}`)
@@ -19,6 +31,11 @@ function GlossaryInner() {
         setOpen(null);
       });
   }, [subject]);
+
+  const allowedSubjects = department
+    ? [...COMMON_SUBJECTS, ...DEPARTMENTS[department as keyof typeof DEPARTMENTS]]
+    : [...JSS_SUBJECTS];
+  const visibleSubjects = SUBJECTS.filter((s) => !hidden.includes(s) && allowedSubjects.includes(s));
 
   async function toggle(topic: string) {
     if (open === topic) return setOpen(null);
@@ -32,8 +49,14 @@ function GlossaryInner() {
   return (
     <main style={{ maxWidth: 680, margin: "0 auto", padding: 20, color: "#333A45" }}>
       <h1 style={{ color: "#1E242E", fontSize: 24 }}>Glossary</h1>
+      {department && (
+        <div style={{ background: "#F0F9FF", border: "1px solid #BAE6FD", borderRadius: 10, padding: 10, marginBottom: 12, fontSize: 13, color: "#0369A1" }}>
+          <strong style={{ display: "block", fontSize: 12, marginBottom: 4, color: "#0c4a6e" }}>📚 {department} department focus</strong>
+          You're seeing {department} subjects only. English, Mathematics and Physical Health Education are included for everyone. Other subjects exist but stay hidden so you stay focused on your department.
+        </div>
+      )}
       <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginBottom: 12 }}>
-        {SUBJECTS.map((s) => (
+        {visibleSubjects.map((s) => (
           <button key={s} onClick={() => setSubject(s)}
             style={{ fontSize: 13, fontWeight: 700, padding: "8px 12px", borderRadius: 999, cursor: "pointer",
               background: subject === s ? "#0F766E" : "#fff", color: subject === s ? "#fff" : "#1E242E",

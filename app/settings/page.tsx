@@ -16,6 +16,13 @@ function SettingsInner() {
   const [next, setNext] = useState("");
   const [confirm, setConfirm] = useState("");
   const [msg, setMsg] = useState("");
+  const [exam, setExam] = useState("");
+  const [department, setDepartment] = useState("");
+  const [examStart, setExamStart] = useState("");
+  const [examEnd, setExamEnd] = useState("");
+  const [notConfirmed, setNotConfirmed] = useState(false);
+  const [schedMsg, setSchedMsg] = useState("");
+  const [schedBusy, setSchedBusy] = useState(false);
 
   useEffect(() => {
     setUserId(params.get("userId") ?? localStorage.getItem("edupal_user") ?? "");
@@ -27,6 +34,11 @@ function SettingsInner() {
         if (d.profile) {
           setName(d.profile.name ?? "");
           setLanguage(d.profile.language ?? "SIMPLE");
+          setExam(d.profile.exam ?? "");
+          setDepartment(d.profile.department ?? "");
+          setExamStart(d.profile.examStart ?? "");
+          setExamEnd(d.profile.examEnd ?? "");
+          setNotConfirmed(Number(d.profile.datesConfirmed ?? 1) === 0);
         }
       });
     }
@@ -60,6 +72,24 @@ function SettingsInner() {
     setNext("");
     setConfirm("");
     setMsg("Password changed ✓");
+  }
+
+  async function saveSchedule() {
+    if (!notConfirmed && examStart && examEnd && examEnd < examStart) {
+      return setSchedMsg("End date cannot be before start date.");
+    }
+    setSchedMsg("");
+    setSchedBusy(true);
+    try {
+      const r = await post({
+        examStart: notConfirmed ? null : examStart || null,
+        examEnd: notConfirmed ? null : examEnd || null,
+        datesConfirmed: !notConfirmed
+      });
+      setSchedMsg(r.ok ? "Schedule saved ✓ — dashboard and countdown updated." : r.data.error || "Could not save.");
+    } finally {
+      setSchedBusy(false);
+    }
   }
 
   function toggleLite() {
@@ -107,6 +137,34 @@ function SettingsInner() {
         <input type="password" value={confirm} onChange={(e) => setConfirm(e.target.value)} placeholder="Confirm new password" style={input} />
         <button onClick={changePw} style={{ height: 44, borderRadius: 10, border: 0, background: "#1E242E", color: "#fff", fontWeight: 700, padding: "0 20px", cursor: "pointer" }}>Update password</button>
         {msg && <p style={{ fontSize: 14 }}>{msg}</p>}
+      </div>
+
+      <div style={group}>
+        <h2 style={{ fontSize: 16, margin: "0 0 8px" }}>Examination schedule</h2>
+        <p style={{ fontSize: 13, color: "#5F6E7F", margin: "0 0 8px" }}>
+          {exam ? `${exam}${department ? ` • ${department} department` : ""}` : "No exam set yet."} Update your dates here whenever the official timetable is released — no need for a new account.
+        </p>
+        <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+          <div style={{ flex: "1 1 200px" }}>
+            <label style={{ fontSize: 13, fontWeight: 700 }}>Start date</label>
+            <input type="date" value={examStart} disabled={notConfirmed} onChange={(e) => setExamStart(e.target.value)} style={input} />
+          </div>
+          <div style={{ flex: "1 1 200px" }}>
+            <label style={{ fontSize: 13, fontWeight: 700 }}>End date</label>
+            <input type="date" value={examEnd} disabled={notConfirmed} onChange={(e) => setExamEnd(e.target.value)} style={input} />
+          </div>
+        </div>
+        <label style={{ display: "flex", gap: 8, alignItems: "center", fontSize: 14, margin: "0 0 8px", cursor: "pointer" }}>
+          <input type="checkbox" checked={notConfirmed} onChange={(e) => setNotConfirmed(e.target.checked)} style={{ width: 18, height: 18 }} />
+          My dates are not yet confirmed
+        </label>
+        <button onClick={saveSchedule} disabled={schedBusy} style={{ height: 44, borderRadius: 10, border: 0, background: "#0F766E", color: "#fff", fontWeight: 700, padding: "0 20px", cursor: "pointer", opacity: schedBusy ? 0.6 : 1 }}>
+          {schedBusy ? "Saving…" : "Save schedule"}
+        </button>
+        {schedMsg && <p style={{ fontSize: 14 }}>{schedMsg}</p>}
+        <p style={{ fontSize: 13, margin: "8px 0 0" }}>
+          <a href={`/onboarding?userId=${userId}`} style={{ color: "#0F766E", fontWeight: 700 }}>Need to change exam, department or subjects? Redo setup</a>
+        </p>
       </div>
 
       <div style={group}>

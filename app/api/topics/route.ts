@@ -10,7 +10,9 @@ export async function GET(req: Request) {
   const db = await getDb();
   const profile = await db
     .prepare(
-      `SELECT u.name, u.level, p.exam, p.exam_date AS "examDate", p.subjects, p.language,
+      `SELECT u.name, u.level, p.exam, p.exam_date AS "examDate",
+              p.exam_start AS "examStart", p.exam_end AS "examEnd",
+              p.dates_confirmed AS "datesConfirmed", p.department, p.subjects, p.language,
               w.plan,
               s.current AS streak, s.freeze_available AS "freezeAvailable"
        FROM users u

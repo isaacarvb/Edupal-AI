@@ -2,6 +2,8 @@
 @tailwind components;
 @tailwind utilities;
 
+@import url("https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Poppins:wght@600;700;800&display=swap");
+
 :root {
   --ink: #1e242e;
   --body: #333a45;
@@ -12,10 +14,15 @@
 body {
   background: #f8fafc;
   color: var(--body);
+  font-family: "Inter", system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
   font-size: 16px;
   line-height: 1.6;
 }
-h1, h2, h3 { color: var(--ink); }
+
+.font-poppins { font-family: "Poppins", system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
+.font-inter { font-family: "Inter", system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
+
+h1, h2, h3 { color: var(--ink); font-family: "Poppins", system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; font-weight: 800; }
 
 /* ─── Dark mode (Appearance toggle in Settings) ─── */
 html.dark { background: #0B0F14; }
@@ -49,3 +56,22 @@ body.lite .lite-flat { background: #1E242E !important; }
 button, a { transition: all 0.2s ease; }
 button:hover:not(:disabled) { filter: brightness(1.08); }
 a:hover { filter: brightness(1.1); }
+
+/* ─── Admin portal interactions (wrapped in .admin-scope) ─── */
+.admin-scope button:not(:disabled) { cursor: pointer; transition: transform 120ms ease, box-shadow 120ms ease, filter 120ms ease, background 120ms ease; }
+.admin-scope button:hover:not(:disabled) { filter: brightness(1.12); transform: translateY(-1px); box-shadow: 0 4px 14px -4px rgb(30 36 46 / 0.35); }
+.admin-scope button:active:not(:disabled) { transform: translateY(1px) scale(0.99); box-shadow: none; }
+.admin-scope button:disabled { opacity: 0.55; cursor: not-allowed; }
+.admin-scope button:focus-visible, .admin-scope a:focus-visible, .admin-scope input:focus-visible, .admin-scope select:focus-visible, .admin-scope textarea:focus-visible {
+  outline: 3px solid #0F766E; outline-offset: 2px;
+}
+.admin-scope .admin-link { transition: background 120ms ease, transform 120ms ease; }
+.admin-scope .admin-link:hover { background: #333A45 !important; transform: translateX(3px); }
+.admin-scope .arow { transition: background 120ms ease, box-shadow 120ms ease, transform 120ms ease; }
+.admin-scope .arow:hover { background: #F8FAFC !important; box-shadow: 0 4px 14px -6px rgb(30 36 46 / 0.25); }
+@keyframes abtn-spin { to { transform: rotate(360deg); } }
+.abtn-spinner {
+  display: inline-block; width: 14px; height: 14px; margin-right: 8px; vertical-align: -2px;
+  border: 2px solid rgb(255 255 255 / 0.4); border-top-color: #fff; border-radius: 999px;
+  animation: abtn-spin 700ms linear infinite;
+}

@@ -1,18 +1,36 @@
 // WAEC/JAMB Day-1 syllabus map (PRD §9 + §8 anti-hallucination).
 // Single source of truth for subject lists; AI questions must stay inside these topics.
-export const SUBJECTS = [
+export const SSS_SUBJECTS = [
   "English",
   "Mathematics",
+  "Physical Health Education",
   "Physics",
   "Chemistry",
   "Biology",
   "Commerce",
+  "Accounting",
+  "Marketing",
   "Economics",
   "Government",
-  "Literature"
+  "Literature in English"
 ] as const;
 
-export type Subject = (typeof SUBJECTS)[number];
+// Back-compat alias (senior list).
+export const SUBJECTS = [...SSS_SUBJECTS];
+
+export type Subject = (typeof SSS_SUBJECTS)[number];
+
+// Departments choose which subjects a student may pick. English, Mathematics
+// and Physical Health Education belong to everyone.
+export const COMMON_SUBJECTS = ["English", "Mathematics", "Physical Health Education"];
+
+export const DEPARTMENTS: Record<"Science" | "Commercial" | "Arts", string[]> = {
+  Science: [...COMMON_SUBJECTS, "Physics", "Chemistry", "Biology"],
+  Commercial: [...COMMON_SUBJECTS, "Commerce", "Accounting", "Marketing", "Economics"],
+  Arts: [...COMMON_SUBJECTS, "Literature in English", "Government"]
+};
+
+export const DEPARTMENT_NAMES = Object.keys(DEPARTMENTS);
 
 export const SYLLABUS: Record<Subject, string[]> = {
   English: ["Comprehension", "Synonyms", "Antonyms", "Tenses", "Lexis", "Idioms"],
@@ -23,7 +41,10 @@ export const SYLLABUS: Record<Subject, string[]> = {
   Commerce: ["Trade", "Business units"],
   Economics: ["Demand and supply", "Scale of preference", "Inflation"],
   Government: ["Democracy", "Federalism"],
-  Literature: ["Prose", "Drama", "Poetry"]
+  "Literature in English": ["Prose", "Drama", "Poetry"],
+  Accounting: [],
+  Marketing: [],
+  "Physical Health Education": []
 };
 
 export function topicAllowed(subject: string, topic: string): boolean {
@@ -35,17 +56,23 @@ export function topicAllowed(subject: string, topic: string): boolean {
 export const JSS_SUBJECTS = [
   "Mathematics",
   "English",
-  "Intermediate Science",
-  "Citizenship Education",
-  "Physical Health Education"
+  "Physical Health Education",
+  "Intermediate Science (Basic Science and Technology)",
+  "Social and Citizenship Education",
+  "Business Studies",
+  "Nigerian History",
+  "Digital Technologies (Computer Studies/ICT)"
 ] as const;
 
 export const JSS_SYLLABUS: Record<string, string[]> = {
   Mathematics: ["Fractions", "Basic Algebra", "Geometry Basics"],
   English: ["Parts of Speech", "Comprehension", "Tenses"],
-  "Intermediate Science": ["Living Things", "Matter", "Energy"],
-  "Citizenship Education": ["Rights & Duties", "National Symbols", "Honesty"],
-  "Physical Health Education": ["Fitness", "Safety", "Nutrition"]
+  "Physical Health Education": ["Fitness", "Safety", "Nutrition"],
+  "Intermediate Science (Basic Science and Technology)": ["Living Things", "Matter", "Energy"],
+  "Social and Citizenship Education": ["Rights & Duties", "National Symbols", "Honesty"],
+  "Business Studies": [],
+  "Nigerian History": [],
+  "Digital Technologies (Computer Studies/ICT)": []
 };
 
 export const JSS_GLOSSARY: Record<string, Record<string, { term: string; definition: string }[]>> = {
@@ -59,12 +86,12 @@ export const JSS_GLOSSARY: Record<string, Record<string, { term: string; definit
     Comprehension: [{ term: "Main idea", definition: "What the passage is mostly about." }, { term: "Title", definition: "A short name capturing the passage's message." }],
     Tenses: [{ term: "Present tense", definition: "Happening now, e.g. she goes." }, { term: "Past tense", definition: "Already happened, e.g. she went." }]
   },
-  "Intermediate Science": {
+  "Intermediate Science (Basic Science and Technology)": {
     "Living Things": [{ term: "Organism", definition: "Any living thing, plant or animal." }, { term: "Habitat", definition: "Where an organism naturally lives." }],
     Matter: [{ term: "Solid", definition: "Fixed shape and volume." }, { term: "Evaporation", definition: "Liquid turning to gas at the surface." }],
     Energy: [{ term: "Energy", definition: "Ability to do work." }, { term: "Solar energy", definition: "Energy from the sun." }]
   },
-  "Citizenship Education": {
+  "Social and Citizenship Education": {
     "Rights & Duties": [{ term: "Right", definition: "What the law allows you to enjoy." }, { term: "Duty", definition: "What the law expects from you." }],
     "National Symbols": [{ term: "Coat of arms", definition: "Nigeria's official emblem of authority." }, { term: "Anthem", definition: "The national song of unity." }],
     Honesty: [{ term: "Integrity", definition: "Doing right even when unseen." }, { term: "Corruption", definition: "Dishonest use of position for gain." }]
@@ -200,7 +227,7 @@ export const GLOSSARY: Record<string, Record<string, GlossaryTerm[]>> = {
       { term: "Concurrent list", definition: "Powers shared by federal and state governments." }
     ]
   },
-  Literature: {
+  "Literature in English": {
     Prose: [
       { term: "Novel", definition: "Extended fictional narrative in prose." },
       { term: "Theme", definition: "The central idea running through a work." }

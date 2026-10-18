@@ -1,6 +1,7 @@
 "use client";
 import { Suspense, useEffect, useRef, useState } from "react";
 import { useSearchParams } from "next/navigation";
+import { SSS_SUBJECTS, DEPARTMENTS, COMMON_SUBJECTS } from "@/lib/syllabus";
 
 type Q = { id: string; subject: string; topic: string; type: string; stem: string; optionsJson: string };
 type Result = { score: number; total: number; pct: number; topics: { topic: string; subject: string; correct: number; total: number; pct: number }[] };
@@ -16,11 +17,25 @@ function PaperInner() {
   const [result, setResult] = useState<Result | null>(null);
   const [err, setErr] = useState("");
   const [busy, setBusy] = useState(false);
+  const [department, setDepartment] = useState("");
   const submitted = useRef(false);
 
   useEffect(() => {
     setUserId(params.get("userId") ?? localStorage.getItem("edupal_user") ?? "");
   }, [params]);
+
+  useEffect(() => {
+    const id = params.get("userId") ?? localStorage.getItem("edupal_user") ?? "";
+    if (id) {
+      fetch(`/api/topics?userId=${id}`)
+        .then((r) => r.json())
+        .then((d) => setDepartment(d.profile?.department ?? ""));
+    }
+  }, [params]);
+
+  const allowedPaperSubjects = department
+    ? [...COMMON_SUBJECTS, ...DEPARTMENTS[department as keyof typeof DEPARTMENTS]]
+    : [...SSS_SUBJECTS];
 
   useEffect(() => {
     if (secs <= 0 || result) return;
@@ -102,10 +117,16 @@ function PaperInner() {
           </select>
           <label>Subject</label>
           <select value={subject} onChange={(e) => setSubject(e.target.value)} style={{ width: "100%", height: 48, borderRadius: 10, border: "1px solid #CBD5E1", padding: "0 12px", fontSize: 16, margin: "6px 0 12px" }}>
-            {["English", "Mathematics", "Physics", "Chemistry", "Biology", "Commerce", "Economics", "Government", "Literature"].map((s) => (
+            {allowedPaperSubjects.map((s) => (
               <option key={s} value={s}>{s}</option>
             ))}
           </select>
+          {department && (
+            <div style={{ background: "#F0F9FF", border: "1px solid #BAE6FD", borderRadius: 8, padding: 8, marginTop: 8, fontSize: 12, color: "#0369A1" }}>
+              <strong style={{ display: "block", fontSize: 11, marginBottom: 2, color: "#0c4a6e" }}>📚 {department} department focus</strong>
+              You're seeing {department} subjects only for past papers. Other subjects exist but stay hidden so you stay focused on your department.
+            </div>
+          )}
           {err && <p style={{ color: "#DC2626", fontSize: 14 }}>{err}</p>}
           <button onClick={start} style={{ width: "100%", height: 52, borderRadius: 12, border: 0, background: "#0F766E", color: "#fff", fontWeight: 800, fontSize: 16, cursor: "pointer" }}>Start paper</button>
         </div>

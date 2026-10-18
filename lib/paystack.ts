@@ -11,7 +11,7 @@ export function planAmountKobo(): number {
   return Number(process.env.PAYSTACK_PLAN_AMOUNT_KOBO ?? 100000); // ₦1,000 default
 }
 
-export async function initializePayment(email: string, metadata: Record<string, string>): Promise<string> {
+export async function initializePayment(email: string, metadata: Record<string, string>, amountKobo?: number): Promise<{ authorizationUrl: string; reference: string }> {
   const key = process.env.PAYSTACK_SECRET_KEY;
   if (!key) throw new Error("PAYSTACK_SECRET_KEY missing");
   const base = process.env.NEXTAUTH_URL ?? "http://localhost:3000";
@@ -20,7 +20,7 @@ export async function initializePayment(email: string, metadata: Record<string, 
     headers: { "Content-Type": "application/json", Authorization: `Bearer ${key}` },
     body: JSON.stringify({
       email,
-      amount: planAmountKobo(),
+      amount: amountKobo ?? planAmountKobo(),
       callback_url: `${base}/api/checkout/callback`,
       metadata
     })
@@ -30,7 +30,7 @@ export async function initializePayment(email: string, metadata: Record<string, 
     console.error(`Paystack init error: ${res.status}`);
     throw new Error("Paystack initialize failed");
   }
-  return data.data.authorization_url as string;
+  return { authorizationUrl: data.data.authorization_url as string, reference: data.data.reference as string };
 }
 
 export async function verifyPayment(reference: string): Promise<{ paid: boolean; email?: string; userId?: string; classId?: string }> {

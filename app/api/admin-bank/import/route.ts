@@ -63,11 +63,13 @@ const SUBJECT_MAP: Record<string, string> = {
   commerce: "Commerce",
   economics: "Economics",
   government: "Government",
-  "literature in english": "Literature",
-  literature: "Literature",
-  "citizenship education": "Citizenship Education",
-  "integrated science": "Intermediate Science",
-  "intermediate science": "Intermediate Science",
+  "literature in english": "Literature in English",
+  literature: "Literature in English",
+  "citizenship education": "Social and Citizenship Education",
+  "social and citizenship education": "Social and Citizenship Education",
+  "integrated science": "Intermediate Science (Basic Science and Technology)",
+  "intermediate science": "Intermediate Science (Basic Science and Technology)",
+  "intermediate science (basic science and technology)": "Intermediate Science (Basic Science and Technology)",
   "physical and health education": "Physical Health Education",
   "physical health education": "Physical Health Education"
 };

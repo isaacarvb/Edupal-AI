@@ -2,7 +2,7 @@
 import { Suspense, useEffect, useState } from "react";
 import { useSearchParams } from "next/navigation";
 
-type Profile = { name: string | null; level: string; exam: string; examDate: string | null; subjects: string; language: string; creditsLeft: number; plan: string; streak: number; freezeAvailable: number };
+type Profile = { name: string | null; level: string; exam: string; examDate: string | null; examStart: string | null; examEnd: string | null; datesConfirmed: number | null; department: string | null; subjects: string; language: string; creditsLeft: number; plan: string; streak: number; freezeAvailable: number };
 
 const card: React.CSSProperties = { background: "#fff", border: "1px solid #E2E8F0", borderRadius: 16, padding: 16, margin: "0 0 12px" };
 
@@ -12,6 +12,7 @@ function DashInner() {
   const [profile, setProfile] = useState<Profile | null>(null);
   const [qotd, setQotd] = useState<null | { subject: string; topic: string }>(null);
   const [reminder, setReminder] = useState<string | null>(null);
+  const [schedDismissed, setSchedDismissed] = useState(() => localStorage.getItem(`edupal_sched_dismissed_${userId}`) === "1");
   const [limits, setLimits] = useState<{ subject: string; left: number }[]>([]);
   const [lastSubject, setLastSubject] = useState<string | null>(null);
   const [attempts, setAttempts] = useState<number | null>(null);
@@ -50,6 +51,12 @@ function DashInner() {
     fetch(`/api/metrics?userId=${userId}`)
       .then((r) => r.json())
       .then((d) => setAttempts(typeof d.totalPracticed === "number" ? d.totalPracticed : null));
+    // Dismissed-once reminder for unconfirmed dates
+    fetch(`/api/profile?userId=${userId}`).then((r) => r.json()).then((d) => {
+      if (d.profile && Number(d.profile.datesConfirmed ?? 1) === 0 && localStorage.getItem(`edupal_sched_dismissed_${userId}`) !== "1") {
+        setReminder("Your examination dates are not yet confirmed. Once the official timetable is released, you can update your examination schedule in Settings to help EduPal AI organise your preparation more effectively.");
+      }
+    });
   }
 
   useEffect(refresh, [userId]);
@@ -57,13 +64,15 @@ function DashInner() {
   if (!userId) return <main style={{ padding: 20 }}>Missing user. Start from <a href="/signup">signup</a>.</main>;
   if (!profile) return <main style={{ padding: 20 }}>Loading…</main>;
 
-  const days = profile.examDate ? Math.max(0, Math.ceil((new Date(profile.examDate).getTime() - Date.now()) / 86400000)) : null;
+  const confirmed = Number(profile?.datesConfirmed ?? 1) !== 0;
+  const startDate = confirmed ? profile?.examStart ?? null : null;
+  const days = startDate ? Math.max(0, Math.ceil((new Date(startDate).getTime() - Date.now()) / 86400000)) : null;
   const firstName = (profile.name ?? "").trim().split(/\s+/)[0] || "Student";
   const greeting = attempts === null ? `Welcome, ${firstName}` : attempts === 0 ? `Welcome, ${firstName}` : `Welcome back, ${firstName}`;
 
   return (
     <main style={{ maxWidth: 1100, margin: "0 auto", padding: 20, color: "#333A45" }}>
-      <h1 style={{ color: "#1E242E", fontSize: 34 }}>{greeting}</h1>
+      <h1 className="font-poppins" style={{ color: "#1E242E", fontSize: 40, fontWeight: 800, letterSpacing: "-0.5px" }}>{greeting}</h1>
 
       {/* STATUS */}
       <div style={{ background: "#1E242E", borderRadius: 16, padding: 14, marginBottom: 12 }}>
@@ -75,7 +84,18 @@ function DashInner() {
           </span>
           <span style={{ fontSize: 13, background: "#333A45", color: "#fff", padding: "6px 10px", borderRadius: 999 }}>{profile.freezeAvailable ? "🧊 Freeze ready" : "🧊 Freeze used"}</span>
         </div>
-        {reminder && <p style={{ fontSize: 13, color: "#FDE68A", margin: "8px 0 0" }}>🔔 {reminder} <a href="#practice" style={{ color: "#fff", fontWeight: 700 }}>Practice now</a></p>}
+        {reminder && !schedDismissed && (
+          <div style={{ marginTop: 10, padding: 10, background: "#FDE68A", borderRadius: 10, color: "#78350F", fontSize: 13, display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap" }}>
+            <span>{reminder}</span>
+            <button onClick={() => { setSchedDismissed(true); localStorage.setItem(`edupal_sched_dismissed_${userId}`, "1"); setReminder(null); }} style={{ background: "#1E242E", color: "#fff", border: 0, borderRadius: 6, padding: "4px 10px", fontSize: 12, cursor: "pointer", whiteSpace: "nowrap" }}>Dismiss ✕</button>
+          </div>
+        )}
+        {reminder && schedDismissed && profile && Number(profile.datesConfirmed ?? 1) === 0 && (
+          <div style={{ marginTop: 10, padding: 10, background: "#FDE68A", borderRadius: 10, color: "#78350F", fontSize: 13 }}>
+            Your examination dates are not yet confirmed. Update them in Settings when the timetable is released.
+            <a href="/settings" style={{ color: "#0F766E", fontWeight: 700, marginLeft: 8 }}>Go to Settings</a>
+          </div>
+        )}
       </div>
 
       {/* LIMIT BANNER */}
