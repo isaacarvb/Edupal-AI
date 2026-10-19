@@ -13,7 +13,7 @@ export async function GET(req: Request) {
       `SELECT u.name, u.level, p.exam, p.exam_date AS "examDate",
               p.exam_start AS "examStart", p.exam_end AS "examEnd",
               p.dates_confirmed AS "datesConfirmed", p.department, p.subjects, p.language,
-              w.plan,
+              w.plan, w.paid_until AS "paidUntil",
               s.current AS streak, s.freeze_available AS "freezeAvailable"
        FROM users u
        LEFT JOIN profiles p ON p.user_id = u.id

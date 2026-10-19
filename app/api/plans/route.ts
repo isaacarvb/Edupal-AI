@@ -1,18 +1,10 @@
 import { NextResponse } from "next/server";
-import { getDb } from "@/lib/db";
+import { PLANS } from "@/lib/plans";
 
-// Public: active plans + prices for the subscription page. No admin needed.
+// Public: the 3 subscription options for the upgrade page. Source of truth is
+// lib/plans.ts (prices + duration), not the database.
 export async function GET() {
-  const db = await getDb();
-  let plans: Array<Record<string, unknown>> = [];
-  try {
-    plans = await db.prepare("SELECT id, name, amount_kobo AS amountKobo, credits FROM plans WHERE active = 1 ORDER BY amount_kobo").all();
-  } catch {
-    plans = [];
-  }
-  if (!plans.length) {
-    const fallback = Number(process.env.PAYSTACK_PLAN_AMOUNT_KOBO ?? 100000);
-    plans = [{ id: "default", name: "Unlimited", amountKobo: fallback, credits: 9999 }];
-  }
-  return NextResponse.json({ plans });
+  return NextResponse.json({
+    plans: PLANS.map((p) => ({ id: p.id, name: p.label, amountKobo: p.amountKobo, priceNaira: p.priceNaira, days: p.days, note: p.note ?? "", popular: !!p.popular }))
+  });
 }

@@ -1,14 +1,18 @@
 import { NextResponse } from "next/server";
 import { getDb, uid } from "@/lib/db";
-import { paystackConfigured, initializePayment, planAmountKobo } from "@/lib/paystack";
+import { paystackConfigured, initializePayment } from "@/lib/paystack";
+import { findPlan, defaultPlan } from "@/lib/plans";
 import { registerParentContact, unlockUnlimited } from "@/lib/parent";
 
 // Checkout: parent contact if SECONDARY (never blocks), optional promoCode,
-// then real Paystack when configured, otherwise the local mock.
+// then real Paystack (one-time payment for the chosen months) — or the local
+// mock when Paystack isn't configured (local dev only).
 // Every attempt is recorded in transactions (pending → success/failed/mock).
 export async function POST(req: Request) {
   const { userId, parentEmail, promoCode, planId } = await req.json();
   if (!userId) return NextResponse.json({ error: "userId required" }, { status: 400 });
+
+  const plan = findPlan(String(planId ?? "")) ?? defaultPlan();
   const db = await getDb();
   const user = await db.prepare("SELECT level FROM users WHERE id = ?").get(userId) as
     | { level: "SECONDARY" }
@@ -21,20 +25,7 @@ export async function POST(req: Request) {
 
   if (parentEmail) await registerParentContact(db, userId, parentEmail);
 
-  // Plan price: chosen plan, else default ₦1,000.
-  let amountKobo = planAmountKobo();
-  let planName = "UNLIMITED";
-  try {
-    if (planId) {
-      const p = (await db.prepare("SELECT name, amount_kobo AS amountKobo FROM plans WHERE id = ? AND active = 1").get(planId)) as
-        | { name: string; amountKobo: number }
-        | undefined;
-      if (p) {
-        amountKobo = Number(p.amountKobo);
-        planName = p.name;
-      }
-    }
-  } catch { /* plans table missing */ }
+  let amountKobo = plan.amountKobo;
 
   // Promo code: percent off if valid, counts one use only after success.
   let promo = "";
@@ -58,21 +49,32 @@ export async function POST(req: Request) {
 
   if (paystackConfigured()) {
     const profile = await db.prepare("SELECT email FROM users WHERE id = ?").get(userId) as { email: string | null } | undefined;
-    const email = profile?.email ?? parentEmail ?? "student@edupal.local";
-    const { authorizationUrl, reference } = await initializePayment(email, { userId }, amountKobo);
-    await db.prepare("INSERT INTO transactions (id, user_id, email, reference, amount_kobo, plan, status, channel, promo_code) VALUES (?, ?, ?, ?, ?, ?, 'pending', 'paystack', ?)").run(
-      uid(), userId, email, reference, amountKobo, planName, promo
+    // Paystack needs a deliverable-looking address. Test accounts (.local/.test)
+    // have no real inbox — swap in a syntactically valid one so checkout still runs.
+    const ok = (e: string) => /^[^\s@]+@[^\s@]+\.[a-zA-Z]{2,}$/.test(e) && !/\.(local|test|localhost|invalid|example|internal)$/i.test(e);
+    const raw = String(profile?.email ?? "").trim() || String(parentEmail ?? "").trim();
+    const email = ok(raw) ? raw : `student-${String(userId).replace(/[^a-zA-Z0-9]/g, "").slice(0, 12)}@edupal.app`;
+    // Origin from the request — works on localhost, Netlify and custom domains.
+    const origin = new URL(req.url).origin;
+    const { authorizationUrl, reference } = await initializePayment(
+      email,
+      { userId, planId: plan.id },
+      amountKobo,
+      `${origin}/api/checkout/callback`
     );
-    return NextResponse.json({ ok: true, mode: "paystack", authorizationUrl, amountKobo, promo });
+    await db.prepare("INSERT INTO transactions (id, user_id, email, reference, amount_kobo, plan, status, channel, promo_code) VALUES (?, ?, ?, ?, ?, ?, 'pending', 'paystack', ?)").run(
+      uid(), userId, email, reference, amountKobo, plan.id, promo
+    );
+    return NextResponse.json({ ok: true, mode: "paystack", authorizationUrl, amountKobo, promo, planId: plan.id });
   }
 
   // Local mock: instant success.
   const ref = `MOCK-${Date.now()}`;
   const profile = await db.prepare("SELECT email FROM users WHERE id = ?").get(userId) as { email: string | null } | undefined;
-  await unlockUnlimited(db, userId);
+  await unlockUnlimited(db, userId, plan.days);
   await db.prepare("INSERT INTO transactions (id, user_id, email, reference, amount_kobo, plan, status, channel, promo_code) VALUES (?, ?, ?, ?, ?, ?, 'mock', 'mock', ?)").run(
-    uid(), userId, profile?.email ?? "", ref, amountKobo, planName, promo
+    uid(), userId, profile?.email ?? "", ref, amountKobo, plan.id, promo
   );
   if (promo) await db.prepare("UPDATE promo_codes SET used = used + 1 WHERE code = ?").run(promo);
-  return NextResponse.json({ ok: true, mode: "mock", ref, plan: "UNLIMITED", magicLinkSent: !!parentEmail, amountKobo, promo });
+  return NextResponse.json({ ok: true, mode: "mock", ref, plan: "UNLIMITED", planId: plan.id, magicLinkSent: !!parentEmail, amountKobo, promo });
 }

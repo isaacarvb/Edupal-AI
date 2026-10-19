@@ -43,8 +43,8 @@ export default function Landing() {
       <section style={{ background: "#ECFDF5", borderBottom: "1px solid #A7F3D0" }}>
         <div style={{ maxWidth: 1100, margin: "0 auto", padding: "20px 16px", display: "flex", justifyContent: "space-around", textAlign: "center", flexWrap: "wrap", gap: 12 }}>
           {[
-            ["14", "Core Subjects Supported (5 JSS + 9 SSS)"],
-            ["30+", "Exam Topics & Questions"],
+            ["20", "Core Subjects Supported (8 JSS + 12 SSS)"],
+            ["100+", "Practice Questions & Exam Topics"],
             ["2", "Explanation Modes (Simple English & Pidgin)"]
           ].map(([n, label]) => (
             <div key={label}>

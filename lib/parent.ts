@@ -17,6 +17,13 @@ export async function registerParentContact(db: Db, userId: string, parentEmail:
   return magicLink;
 }
 
-export async function unlockUnlimited(db: Db, userId: string): Promise<void> {
-  await db.prepare("UPDATE wallets SET plan = 'UNLIMITED' WHERE user_id = ?").run(userId);
+// Activates/extends an Unlimited subscription for `days` from the later of
+// now or the current paid_until (so buying 2 months while 1 is left adds on).
+export async function unlockUnlimited(db: Db, userId: string, days = 30): Promise<void> {
+  const now = new Date();
+  const row = await db.prepare("SELECT paid_until AS paidUntil FROM wallets WHERE user_id = ?").get(userId) as { paidUntil: string | null } | undefined;
+  const currentEnd = row?.paidUntil ? Date.parse(row.paidUntil) : NaN;
+  const base = Number.isFinite(currentEnd) && currentEnd > now.getTime() ? currentEnd : now.getTime();
+  const paidUntil = new Date(base + days * 86400000).toISOString();
+  await db.prepare("UPDATE wallets SET plan = 'UNLIMITED', paid_until = ? WHERE user_id = ?").run(paidUntil, userId);
 }

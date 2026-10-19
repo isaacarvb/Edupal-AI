@@ -4,7 +4,7 @@ export const DAILY_FREE = 10;
 export const SUBJECT_DAILY_LIMIT = 10;
 const DAY_MS = 24 * 3600 * 1000;
 
-export type Wallet = { creditsLeft: number; plan: "FREE" | "UNLIMITED" };
+export type Wallet = { creditsLeft: number; plan: "FREE" | "UNLIMITED"; paidUntil: string | null };
 
 // Per-subject daily free budget. UNLIMITED plans bypass checks entirely.
 export async function getSubjectLeft(db: Db, userId: string, subject: string, plan: "FREE" | "UNLIMITED"): Promise<number> {
@@ -34,17 +34,27 @@ export async function subjectLimits(db: Db, userId: string, subjects: string[], 
   return out;
 }
 
-// 24h auto-reset for FREE wallets. UNLIMITED never runs out.
+// 24h auto-reset for FREE wallets. UNLIMITED runs until paid_until, then
+// reverts to FREE (no lockout — they keep the daily free allowance).
 export async function getWallet(db: Db, userId: string): Promise<Wallet | null> {
   const w = await db
-    .prepare('SELECT credits_left AS "creditsLeft", reset_at AS "resetAt", plan FROM wallets WHERE user_id = ?')
-    .get(userId) as { creditsLeft: number; resetAt: string; plan: "FREE" | "UNLIMITED" } | undefined;
+    .prepare('SELECT credits_left AS "creditsLeft", reset_at AS "resetAt", plan, paid_until AS "paidUntil" FROM wallets WHERE user_id = ?')
+    .get(userId) as { creditsLeft: number; resetAt: string; plan: "FREE" | "UNLIMITED"; paidUntil: string | null } | undefined;
   if (!w) return null;
-  if (w.plan === "UNLIMITED") return { creditsLeft: w.creditsLeft, plan: w.plan };
+  const paidUntil = w.paidUntil ?? null;
+  if (w.plan === "UNLIMITED") {
+    const ends = paidUntil ? Date.parse(paidUntil) : NaN;
+    // Still paid up (or a legacy row with no date yet — treat as active).
+    if (!Number.isFinite(ends) || ends > Date.now()) return { creditsLeft: w.creditsLeft, plan: "UNLIMITED", paidUntil };
+    // Expired → fall back to free for the rest of the app.
+    const now = new Date().toISOString();
+    await db.prepare("UPDATE wallets SET plan = 'FREE', credits_left = ?, reset_at = ? WHERE user_id = ?").run(DAILY_FREE, now, userId);
+    return { creditsLeft: DAILY_FREE, plan: "FREE", paidUntil };
+  }
   if (Date.now() - Date.parse(w.resetAt) >= DAY_MS) {
     const now = new Date().toISOString();
     await db.prepare("UPDATE wallets SET credits_left = ?, reset_at = ? WHERE user_id = ?").run(DAILY_FREE, now, userId);
-    return { creditsLeft: DAILY_FREE, plan: "FREE" };
+    return { creditsLeft: DAILY_FREE, plan: "FREE", paidUntil };
   }
-  return { creditsLeft: w.creditsLeft, plan: w.plan };
+  return { creditsLeft: w.creditsLeft, plan: "FREE", paidUntil };
 }

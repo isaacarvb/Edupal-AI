@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { getDb } from "@/lib/db";
+import { getWallet } from "@/lib/credits";
 
 const DIAGNOSTIC_CAP = 10;
 
@@ -15,7 +16,7 @@ export async function GET(req: Request) {
     return NextResponse.json({ error: "userId + subject required" }, { status: 400 });
   }
   const db = await getDb();
-  const wallet = await db.prepare("SELECT plan FROM wallets WHERE user_id = ?").get(userId) as { plan: string } | undefined;
+  const wallet = await getWallet(db, userId);
   const freeOnly = wallet?.plan !== "UNLIMITED";
   const done = await db
     .prepare(

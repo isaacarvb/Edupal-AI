@@ -83,7 +83,8 @@ CREATE TABLE IF NOT EXISTS wallets (
   user_id TEXT PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE,
   credits_left INTEGER NOT NULL DEFAULT 10,
   reset_at TEXT NOT NULL DEFAULT (datetime('now')),
-  plan TEXT NOT NULL DEFAULT 'FREE'
+  plan TEXT NOT NULL DEFAULT 'FREE',
+  paid_until TEXT
 );
 
 CREATE TABLE IF NOT EXISTS parent_links (

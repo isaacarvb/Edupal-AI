@@ -7,33 +7,29 @@ export function paystackConfigured(): boolean {
   return !!process.env.PAYSTACK_SECRET_KEY;
 }
 
-export function planAmountKobo(): number {
-  return Number(process.env.PAYSTACK_PLAN_AMOUNT_KOBO ?? 100000); // ₦1,000 default
-}
-
-export async function initializePayment(email: string, metadata: Record<string, string>, amountKobo?: number): Promise<{ authorizationUrl: string; reference: string }> {
+export async function initializePayment(email: string, metadata: Record<string, string>, amountKobo: number, callbackUrl: string): Promise<{ authorizationUrl: string; reference: string }> {
   const key = process.env.PAYSTACK_SECRET_KEY;
   if (!key) throw new Error("PAYSTACK_SECRET_KEY missing");
-  const base = process.env.NEXTAUTH_URL ?? "http://localhost:3000";
   const res = await fetch(`${BASE}/transaction/initialize`, {
     method: "POST",
     headers: { "Content-Type": "application/json", Authorization: `Bearer ${key}` },
     body: JSON.stringify({
       email,
-      amount: amountKobo ?? planAmountKobo(),
-      callback_url: `${base}/api/checkout/callback`,
+      amount: amountKobo,
+      currency: "NGN",
+      callback_url: callbackUrl,
       metadata
     })
   });
   const data = await res.json();
   if (!res.ok || !data?.status) {
-    console.error(`Paystack init error: ${res.status}`);
+    console.error(`Paystack init error: ${res.status} ${String(data?.message ?? "").slice(0, 200)}`);
     throw new Error("Paystack initialize failed");
   }
   return { authorizationUrl: data.data.authorization_url as string, reference: data.data.reference as string };
 }
 
-export async function verifyPayment(reference: string): Promise<{ paid: boolean; email?: string; userId?: string; classId?: string }> {
+export async function verifyPayment(reference: string): Promise<{ paid: boolean; email?: string; userId?: string; amountKobo?: number; planId?: string }> {
   const key = process.env.PAYSTACK_SECRET_KEY;
   if (!key) throw new Error("PAYSTACK_SECRET_KEY missing");
   const res = await fetch(`${BASE}/transaction/verify/${encodeURIComponent(reference)}`, {
@@ -41,8 +37,14 @@ export async function verifyPayment(reference: string): Promise<{ paid: boolean;
   });
   const data = await res.json();
   if (!res.ok || !data?.status) {
-    console.error(`Paystack verify error: ${res.status}`);
+    console.error(`Paystack verify error: ${res.status} ${String(data?.message ?? "").slice(0, 200)}`);
     return { paid: false };
   }
-  return { paid: data.data?.status === "success", email: data.data?.customer?.email, userId: data.data?.metadata?.userId, classId: data.data?.metadata?.classId };
+  return {
+    paid: data.data?.status === "success",
+    email: data.data?.customer?.email,
+    userId: data.data?.metadata?.userId,
+    amountKobo: Number(data.data?.amount ?? 0),
+    planId: data.data?.metadata?.planId
+  };
 }

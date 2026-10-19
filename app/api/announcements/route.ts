@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { getDb } from "@/lib/db";
+import { getWallet } from "@/lib/credits";
 
 // User side: GET ?userId= — unread announcements for this student (popup + bell).
 // POST {userId, id} — mark one as read.
@@ -10,7 +11,8 @@ export async function GET(req: Request) {
   const db = await getDb();
   let plan = "FREE";
   try {
-    const w = (await db.prepare("SELECT plan FROM wallets WHERE user_id = ?").get(userId)) as { plan: string } | undefined;
+    // getWallet enforces subscription expiry (expired Unlimited segments as free).
+    const w = await getWallet(db, userId);
     if (w?.plan) plan = w.plan;
   } catch { /* wallets missing */ }
   let list: Array<Record<string, unknown>> = [];

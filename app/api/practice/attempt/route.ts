@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { getDb, uid } from "@/lib/db";
 import { explainAnswer, gradeTheory, type TheoryGrade } from "@/lib/ai";
 import { getWallet, getSubjectLeft, consumeSubject } from "@/lib/credits";
-import { todayQuestion } from "@/lib/qotd";
+import { personalizedQuestion } from "@/lib/qotd";
 import { consumeBonus } from "@/lib/referral";
 
 const COST = { MCQ: 1, THEORY: 3 } as const;
@@ -36,7 +36,7 @@ export async function POST(req: Request) {
   if (dupe) return NextResponse.json({ error: "already answered", duplicate: true }, { status: 409 });
   const wallet = await getWallet(db, userId);
   // Question of the Day bypasses the counter — but only today's real pick.
-  const isQotd = !!qotd && (await todayQuestion(db))?.id === questionId;
+  const isQotd = !!qotd && (await personalizedQuestion(db, userId))?.id === questionId;
   // Per-subject daily free limits (UNLIMITED bypasses). Other subjects stay open.
   // Referral bonus covers the cost when the subject budget is out (capped daily).
   let usedBonus = false;

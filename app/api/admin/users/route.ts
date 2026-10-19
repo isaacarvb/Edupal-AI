@@ -56,15 +56,17 @@ export async function POST(req: Request) {
   const db = await getDb();
   const now = new Date().toISOString();
   const existing = (await db.prepare("SELECT id FROM users WHERE email = ?").get(cleanEmail)) as { id: string } | undefined;
+  // Manual grants expire too: UNLIMITED = 30 days from now.
+  const grantUntil = cfg.plan === "UNLIMITED" ? new Date(Date.now() + 30 * 86400000).toISOString() : null;
   if (existing) {
-    await db.prepare("UPDATE wallets SET plan = ?, credits_left = ?, reset_at = ? WHERE user_id = ?").run(cfg.plan, cfg.credits, now, existing.id);
+    await db.prepare("UPDATE wallets SET plan = ?, credits_left = ?, reset_at = ?, paid_until = ? WHERE user_id = ?").run(cfg.plan, cfg.credits, now, grantUntil, existing.id);
     await logAudit(db, adminId, `grant:${cfg.plan}`, cleanEmail);
     return NextResponse.json({ ok: true, userId: existing.id, created: false, plan: cfg.plan });
   }
   const id = uid();
   const tempPass = `Pilot-${Math.random().toString(36).slice(2, 8)}!`;
   await db.prepare("INSERT INTO users (id, name, email, password_hash, role, level) VALUES (?, ?, ?, ?, 'STUDENT', 'SECONDARY')").run(id, String(name ?? cleanEmail.split("@")[0]), cleanEmail, hashPassword(tempPass));
-  await db.prepare("INSERT INTO wallets (user_id, credits_left, reset_at, plan) VALUES (?, ?, ?, ?)").run(id, cfg.credits, now, cfg.plan);
+  await db.prepare("INSERT INTO wallets (user_id, credits_left, reset_at, plan, paid_until) VALUES (?, ?, ?, ?, ?)").run(id, cfg.credits, now, cfg.plan, grantUntil);
   await db.prepare("INSERT INTO streaks (user_id) VALUES (?)").run(id);
   await db.prepare("INSERT INTO profiles (user_id) VALUES (?)").run(id);
   await logAudit(db, adminId, `grant:${cfg.plan}:new`, cleanEmail);
