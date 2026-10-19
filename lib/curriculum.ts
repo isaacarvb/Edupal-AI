@@ -1,5 +1,6 @@
 import fs from "node:fs";
 import path from "node:path";
+import { canonicalSubject } from "./syllabus";
 
 export type CurriculumTopic = {
   id: string;
@@ -34,9 +35,10 @@ function parseMdFile(filePath: string): CurriculumSubject | null {
   const content = fs.readFileSync(filePath, "utf8");
   const lines = content.split("\n");
 
-  // Header: # Subject Name
+  // Header: # Subject Name — normalise so "English Language" and "English"
+  // merge into one card instead of appearing twice.
   const titleLine = lines.find((l) => l.startsWith("# ")) ?? "";
-  const subjectName = titleLine.replace(/^#\s*/, "").trim();
+  const subjectName = canonicalSubject(titleLine.replace(/^#\s*/, "").trim());
 
   // Meta: **Level:** SSS | **Exams:** WAEC, JAMB | **Subject ID:** SSS-ACC
   const metaLine = lines.find((l) => l.includes("**Level:**")) ?? "";
@@ -157,6 +159,7 @@ function parseNerdcJson(content: string): CurriculumSubject[] {
   for (const level of data.nerdc_curriculum.levels) {
     const lvl = level.level === "SSS" ? "SSS" : "JSS";
     for (const subj of level.subjects) {
+      const canon = canonicalSubject(subj.subject);
       const topics: CurriculumTopic[] = [];
       for (const theme of subj.themes) {
         for (const t of theme.topics) {
@@ -164,7 +167,7 @@ function parseNerdcJson(content: string): CurriculumSubject[] {
             id: t.topic_id,
             name: t.topic,
             class: t.class,
-            subject: subj.subject,
+            subject: canon,
             level: lvl,
             exams: subj.exam_relevance ?? [],
             subjectId: subj.subject_id,
@@ -178,7 +181,7 @@ function parseNerdcJson(content: string): CurriculumSubject[] {
       }
       subjects.push({
         id: subj.subject_id.toLowerCase(),
-        name: subj.subject,
+        name: canon,
         level: lvl,
         exams: subj.exam_relevance ?? [],
         topics
@@ -202,34 +205,51 @@ function parseSimpleJson(content: string): { subject: string; level: "SSS" | "JS
 
 // ---------- Merge ----------
 
+// One card per (level, canonical name). Source ids differ ("sss-bio" in the MD
+// files vs "biology" in the simple JSON), so merging by id left duplicate
+// cards. This key makes every source land on the same card.
+function mergeKey(level: "SSS" | "JSS", name: string): string {
+  return `${level}|${canonicalSubject(name)}`;
+}
+
 export function getCurriculumSubjects(): CurriculumSubject[] {
-  const byId = new Map<string, CurriculumSubject>();
+  const byKey = new Map<string, CurriculumSubject>();
+
+  // Fold a parsed subject into the map: first source wins the card (MD files
+  // are richest), later sources only add topics whose names are new.
+  function add(subj: CurriculumSubject) {
+    const key = mergeKey(subj.level, subj.name);
+    const existing = byKey.get(key);
+    if (!existing) {
+      subj.name = canonicalSubject(subj.name);
+      byKey.set(key, subj);
+      return;
+    }
+    const existingTopicNames = new Set(existing.topics.map((t) => t.name.toLowerCase()));
+    for (const t of subj.topics) {
+      if (!existingTopicNames.has(t.name.toLowerCase())) {
+        existingTopicNames.add(t.name.toLowerCase());
+        existing.topics.push({ ...t, subject: existing.name, level: existing.level });
+      } else {
+        // Same topic, but the earlier source had no notes → fill them in.
+        const target = existing.topics.find((x) => x.name.toLowerCase() === t.name.toLowerCase());
+        if (target && target.notes.length === 0 && t.notes.length > 0) target.notes = t.notes;
+      }
+    }
+  }
 
   // 1. MD files (richest source)
   if (fs.existsSync(MD_DIR)) {
     for (const file of fs.readdirSync(MD_DIR).filter((f) => f.endsWith(".md"))) {
       const subj = parseMdFile(path.join(MD_DIR, file));
-      if (subj) byId.set(subj.id, subj);
+      if (subj) add(subj);
     }
   }
 
   // 2. NERDC curriculum JSON (adds missing subjects/topics)
   const nerdcPath = path.join(JSON_DIR, "nerdc_curriculum.json");
   if (fs.existsSync(nerdcPath)) {
-    const nerdcSubjects = parseNerdcJson(fs.readFileSync(nerdcPath, "utf8"));
-    for (const subj of nerdcSubjects) {
-      const existing = byId.get(subj.id);
-      if (existing) {
-        const existingTopicNames = new Set(existing.topics.map((t) => t.name.toLowerCase()));
-        for (const t of subj.topics) {
-          if (!existingTopicNames.has(t.name.toLowerCase())) {
-            existing.topics.push(t);
-          }
-        }
-      } else {
-        byId.set(subj.id, subj);
-      }
-    }
+    for (const subj of parseNerdcJson(fs.readFileSync(nerdcPath, "utf8"))) add(subj);
   }
 
   // 3. Simple JSON notes (add content where missing)
@@ -238,62 +258,40 @@ export function getCurriculumSubjects(): CurriculumSubject[] {
       try {
         const simple = parseSimpleJson(fs.readFileSync(path.join(JSON_DIR, file), "utf8"));
         if (!simple) continue;
-
-        const existing = byId.get(simple.subject.toLowerCase());
-        if (existing) {
-          const existingTopicNames = new Set(existing.topics.map((t) => t.name.toLowerCase()));
-          for (const t of simple.topics) {
-            if (!existingTopicNames.has(t.topic.toLowerCase())) {
-              existing.topics.push({
-                id: `simple-${simple.subject}-${t.topic}`,
-                name: t.topic,
-                class: "",
-                subject: simple.subject,
-                level: simple.level,
-                exams: [],
-                subjectId: "",
-                learningObjectives: [],
-                notes: t.content ? [t.content] : [],
-                activities: [],
-                examFocus: [],
-                source: "json"
-              });
-            }
-          }
-        } else {
-          byId.set(simple.subject.toLowerCase(), {
-            id: simple.subject.toLowerCase(),
-            name: simple.subject,
+        const canon = canonicalSubject(simple.subject);
+        add({
+          id: canon.toLowerCase().replace(/[^a-z0-9]+/g, "-"),
+          name: canon,
+          level: simple.level,
+          exams: [],
+          topics: simple.topics.map((t, i) => ({
+            id: `simple-${canon}-${i}`,
+            name: t.topic,
+            class: "",
+            subject: canon,
             level: simple.level,
             exams: [],
-            topics: simple.topics.map((t, i) => ({
-              id: `simple-${i}`,
-              name: t.topic,
-              class: "",
-              subject: simple.subject,
-              level: simple.level,
-              exams: [],
-              subjectId: "",
-              learningObjectives: [],
-              notes: t.content ? [t.content] : [],
-              activities: [],
-              examFocus: [],
-              source: "json"
-            }))
-          });
-        }
+            subjectId: "",
+            learningObjectives: [],
+            notes: t.content ? [t.content] : [],
+            activities: [],
+            examFocus: [],
+            source: "json"
+          }))
+        });
       } catch {
         /* skip unreadable */
       }
     }
   }
 
-  return [...byId.values()].sort((a, b) => a.name.localeCompare(b.name));
+  return [...byKey.values()].sort((a, b) => a.name.localeCompare(b.name));
 }
 
 export function getCurriculumTopic(subjectId: string, topicName: string): CurriculumTopic | null {
   const subjects = getCurriculumSubjects();
-  const subj = subjects.find((s) => s.id === subjectId || s.name.toLowerCase() === subjectId.toLowerCase());
+  const want = canonicalSubject(subjectId).toLowerCase();
+  const subj = subjects.find((s) => s.id === subjectId || s.name.toLowerCase() === want || s.name.toLowerCase() === subjectId.toLowerCase());
   if (!subj) return null;
   return subj.topics.find((t) => t.name.toLowerCase() === topicName.toLowerCase()) ?? null;
 }

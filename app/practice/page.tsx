@@ -2,7 +2,8 @@
 import { Suspense, useCallback, useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useHiddenSubjects } from "@/components/useHiddenSubjects";
-import { JSS_SUBJECTS, DEPARTMENTS, COMMON_SUBJECTS } from "@/lib/syllabus";
+import FocusSounds from "@/components/FocusSounds";
+import { JSS_SUBJECTS, DEPARTMENTS, COMMON_SUBJECTS, shortSubject } from "@/lib/syllabus";
 
 type Q = { id: string; subject: string; topic: string; type: string; stem: string; optionsJson: string; predictedRepeat: number; difficulty: string };
 type Theory = { score: number; maxScore: number; hits: string[]; misses: string[]; tips: string[]; modelAnswer: string };
@@ -32,6 +33,7 @@ function PracticeInner() {
   const [bank, setBank] = useState<{ subject: string; n: number }[]>([]);
   const hidden = useHiddenSubjects();
   const [department, setDepartment] = useState("");
+  const [ready, setReady] = useState(false);
   const [alt, setAlt] = useState<null | { explanation: string; engine: string }>(null);
   const [altBusy, setAltBusy] = useState(false);
   const [ask, setAsk] = useState("");
@@ -82,7 +84,9 @@ function PracticeInner() {
         .then((d) => {
           setSwitcher(d.subjectLimits ?? []);
           setDepartment(d.profile?.department ?? "");
-        });
+        })
+        .catch(() => setDepartment(""))
+        .finally(() => setReady(true));
       fetch("/api/admin-bank")
         .then((r) => (r.ok ? r.json() : null))
         .then((d) => setBank(d?.counts ?? []));
@@ -228,14 +232,31 @@ function PracticeInner() {
   const allowedSubjects = department
     ? [...COMMON_SUBJECTS, ...DEPARTMENTS[department as keyof typeof DEPARTMENTS]]
     : [...JSS_SUBJECTS];
-  const hubSubjects = (bank.length
+  // Junior students (onboarding sets department to "") practice the junior list.
+  const isJunior = !department;
+  const cardPool = bank.length
     ? bank.map((b) => ({ subject: b.subject, left: switcher.find((s) => s.subject === b.subject)?.left ?? 10, n: b.n }))
-    : switcher.map((s) => ({ ...s, n: 0 }))
-  ).filter((s) => !hidden.includes(s.subject) && allowedSubjects.includes(s.subject));
+    : switcher.map((s) => ({ ...s, n: 0 }));
+  const cardsIn = (list: readonly string[]) => cardPool.filter((s) => !hidden.includes(s.subject) && list.includes(s.subject));
+  const hubSubjects = cardsIn(allowedSubjects);
 
   // No subject chosen → subject picker hub (the Practice section, tiered).
   if (!subjectParam) {
     const jss = [...JSS_SUBJECTS];
+    // Junior students (department "") practice the junior list; senior
+    // students see their department plus a peek at the junior tier.
+    const juniorCardsAll = cardsIn(jss);
+    const seniorCards = isJunior ? [] : hubSubjects;
+    const juniorCards = isJunior ? hubSubjects : juniorCardsAll.filter((s) => !hubSubjects.some((h) => h.subject === s.subject));
+    const juniorSoon = jss.filter((x) => !juniorCards.some((c) => c.subject === x) && !seniorCards.some((h) => h.subject === x));
+    const subjectCard = (s: { subject: string; left: number; n: number }) => (
+      <a key={s.subject} href={`/practice?userId=${userId}&subject=${encodeURIComponent(s.subject)}`}
+        style={{ background: "#fff", border: "2px solid #0F766E", borderRadius: 12, padding: 16, textDecoration: "none", color: "#1E242E" }}>
+        <strong style={{ fontSize: 17 }}>{shortSubject(s.subject)}</strong>
+        <div style={{ fontSize: 13, color: "#5F6E7F", marginTop: 4 }}>{s.left} free left today • {s.n} questions in bank</div>
+        <div style={{ fontSize: 14, fontWeight: 800, color: "#0F766E", marginTop: 8 }}>Start practicing →</div>
+      </a>
+    );
     return (
       <main style={{ maxWidth: 680, margin: "0 auto", padding: 20, color: "#333A45" }}>
         <h1 style={{ color: "#1E242E", fontSize: 24 }}>Practice</h1>
@@ -246,28 +267,41 @@ function PracticeInner() {
           </div>
         )}
         <p style={{ fontSize: 14, color: "#5F6E7F" }}>Choose a subject to start. Budgets reset daily at midnight.</p>
-        <button onClick={() => setSeniorOpen((o) => !o)}
-          style={{ width: "100%", textAlign: "left", background: "#1E242E", color: "#fff", border: 0, borderRadius: 12, padding: 14, fontSize: 16, fontWeight: 800, cursor: "pointer", marginBottom: 8 }}>
-          {seniorOpen ? "▾" : "▸"} Senior Secondary School
-        </button>
-        {seniorOpen && (
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))", gap: 12, marginBottom: 12 }}>
-            {hubSubjects.length === 0 && <p>Loading subjects…</p>}
-            {hubSubjects.map((s) => (
-              <a key={s.subject} href={`/practice?userId=${userId}&subject=${encodeURIComponent(s.subject)}`}
-                style={{ background: "#fff", border: "2px solid #0F766E", borderRadius: 12, padding: 16, textDecoration: "none", color: "#1E242E" }}>
-                <strong style={{ fontSize: 17 }}>{s.subject}</strong>
-                <div style={{ fontSize: 13, color: "#5F6E7F", marginTop: 4 }}>{s.left} free left today • {s.n} questions in bank</div>
-                <div style={{ fontSize: 14, fontWeight: 800, color: "#0F766E", marginTop: 8 }}>Start practicing →</div>
-              </a>
-            ))}
-          </div>
+        {!ready ? (
+          <p style={{ fontSize: 14, color: "#5F6E7F" }}>Loading subjects…</p>
+        ) : (
+          <>
+        {!isJunior && (
+          <>
+            <button onClick={() => setSeniorOpen((o) => !o)}
+              style={{ width: "100%", textAlign: "left", background: "#1E242E", color: "#fff", border: 0, borderRadius: 12, padding: 14, fontSize: 16, fontWeight: 800, cursor: "pointer", marginBottom: 8 }}>
+              {seniorOpen ? "▾" : "▸"} Senior Secondary School
+            </button>
+            {seniorOpen && (
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))", gap: 12, marginBottom: 12 }}>
+                {hubSubjects.length === 0 && <p>Loading subjects…</p>}
+                {seniorCards.map(subjectCard)}
+              </div>
+            )}
+          </>
         )}
-        <div style={{ background: "#F1F5F9", border: "1px solid #E2E8F0", borderRadius: 12, padding: 14, opacity: 0.85 }}>
-          <strong>Junior Secondary School</strong>{" "}
-          <span style={{ fontSize: 11, fontWeight: 800, background: "#F59E0B", color: "#422006", padding: "3px 10px", borderRadius: 999 }}>Coming Soon</span>
-          <div style={{ fontSize: 13, color: "#5F6E7F", marginTop: 6 }}>{jss.join(" • ")}</div>
+        <div style={{ marginTop: isJunior ? 0 : 16, background: "#F8FAFC", border: "1px solid #E2E8F0", borderRadius: 14, padding: 16 }}>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+            <strong style={{ fontSize: 16 }}>Junior Secondary School</strong>
+            <span style={{ fontSize: 11, background: "#CCFBF1", color: "#0F766E", padding: "3px 10px", borderRadius: 999, fontWeight: 800, border: "1px solid #99F6E4" }}>Live</span>
+          </div>
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))", gap: 12, marginTop: 12 }}>
+            {juniorCards.length === 0 && <p style={{ fontSize: 14, color: "#5F6E7F" }}>Loading subjects…</p>}
+            {juniorCards.map(subjectCard)}
+          </div>
+          {juniorSoon.length > 0 && (
+            <div style={{ fontSize: 13, color: "#5F6E7F", marginTop: 10 }}>
+              Coming soon: {juniorSoon.map(shortSubject).join(" • ")}
+            </div>
+          )}
         </div>
+          </>
+        )}
       </main>
     );
   }
@@ -469,6 +503,7 @@ export default function Practice() {
   return (
     <Suspense fallback={<main style={{ padding: 20 }}>Loading…</main>}>
       <PracticeInner />
+      <FocusSounds />
     </Suspense>
   );
 }

@@ -64,6 +64,39 @@ export const JSS_SUBJECTS = [
   "Digital Technologies (Computer Studies/ICT)"
 ] as const;
 
+// One name per subject, everywhere. Notes files, the NERDC curriculum and the
+// question bank all call the same subject by different names ("English Language"
+// vs "English", "Integrated Science" vs the long JSS name). Everything below
+// normalises to the canonical names in SSS_SUBJECTS/JSS_SUBJECTS so merging,
+// filters and practice links all agree.
+const CANONICAL_ALIASES: Record<string, string> = {
+  "english language": "English",
+  english: "English",
+  "physical and health education": "Physical Health Education",
+  "physical health education": "Physical Health Education",
+  "basic science and technology": "Intermediate Science (Basic Science and Technology)",
+  "integrated science": "Intermediate Science (Basic Science and Technology)",
+  "intermediate science": "Intermediate Science (Basic Science and Technology)",
+  "intermediate science (basic science and technology)": "Intermediate Science (Basic Science and Technology)",
+  "citizenship education": "Social and Citizenship Education",
+  "social and citizenship education": "Social and Citizenship Education",
+  "digital technologies": "Digital Technologies (Computer Studies/ICT)",
+  "digital technologies (computer studies/ict)": "Digital Technologies (Computer Studies/ICT)"
+};
+
+export function canonicalSubject(raw: string): string {
+  const t = raw.trim();
+  const hit = CANONICAL_ALIASES[t.toLowerCase()];
+  if (hit) return hit;
+  const known = [...SSS_SUBJECTS, ...JSS_SUBJECTS].find((s) => s.toLowerCase() === t.toLowerCase());
+  return known ?? t;
+}
+
+// Short label for tight UI (cards, chips): drops the parenthetical tail.
+export function shortSubject(name: string): string {
+  return name.replace(/\s*\([^)]*\)/g, "").trim();
+}
+
 export const JSS_SYLLABUS: Record<string, string[]> = {
   Mathematics: ["Fractions", "Basic Algebra", "Geometry Basics"],
   English: ["Parts of Speech", "Comprehension", "Tenses"],
