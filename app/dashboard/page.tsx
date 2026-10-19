@@ -12,7 +12,7 @@ function DashInner() {
   const [profile, setProfile] = useState<Profile | null>(null);
   const [qotd, setQotd] = useState<null | { subject: string; topic: string }>(null);
   const [reminder, setReminder] = useState<string | null>(null);
-  const [schedDismissed, setSchedDismissed] = useState(() => localStorage.getItem(`edupal_sched_dismissed_${userId}`) === "1");
+  const [schedDismissed, setSchedDismissed] = useState(() => typeof window !== "undefined" && localStorage.getItem(`edupal_sched_dismissed_${userId}`) === "1");
   const [limits, setLimits] = useState<{ subject: string; left: number }[]>([]);
   const [lastSubject, setLastSubject] = useState<string | null>(null);
   const [attempts, setAttempts] = useState<number | null>(null);
