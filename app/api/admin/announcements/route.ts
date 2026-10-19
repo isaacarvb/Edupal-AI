@@ -12,7 +12,7 @@ export async function GET(req: Request) {
   const db = await getDb();
   let list: Array<Record<string, unknown>> = [];
   try {
-    list = await db.prepare("SELECT id, title, body, segment, created_by AS createdBy, created_at AS createdAt FROM announcements ORDER BY created_at DESC LIMIT 50").all();
+    list = await db.prepare('SELECT id, title, body, segment, created_by AS "createdBy", created_at AS "createdAt" FROM announcements ORDER BY created_at DESC LIMIT 50').all();
   } catch {
     list = [];
   }
@@ -59,4 +59,43 @@ export async function POST(req: Request) {
   }
   await logAudit(db, admin.id, `announce:${segment}`, title);
   return NextResponse.json({ ok: true, id, emailed: users.length });
+}
+
+// DELETE ?adminId=&id= — remove an announcement everywhere: the popup/bell,
+// its read receipts, and any queued (unsent) emails for it.
+export async function DELETE(req: Request) {
+  const u = new URL(req.url);
+  const id = u.searchParams.get("id");
+  let admin;
+  try {
+    admin = await requireAdmin(u.searchParams.get("adminId") ?? adminIdFrom(req));
+  } catch {
+    return NextResponse.json({ error: "forbidden" }, { status: 403 });
+  }
+  if (!id) return NextResponse.json({ error: "id required" }, { status: 400 });
+  const db = await getDb();
+  const row = (await db.prepare('SELECT title, created_at AS "createdAt" FROM announcements WHERE id = ?').get(id)) as { title: string; createdAt: string } | undefined;
+  if (!row) return NextResponse.json({ error: "not found" }, { status: 404 });
+  await db.prepare("DELETE FROM announcement_reads WHERE announcement_id = ?").run(id);
+  // Queued emails are matched by title; the timestamp compare is done in JS so
+  // the two different DB time formats (sqlite " ", ISO "T") never mismatch.
+  // Mail goes out via an external job, so anything still queued never sends.
+  const parseDbTime = (s: string) => Date.parse(/[zZ]|[+-]\d\d:?\d\d$/.test(s) ? s : s.replace(" ", "T") + "Z");
+  let emailsRemoved = 0;
+  try {
+    const annTime = parseDbTime(String(row.createdAt));
+    const mails = (await db.prepare('SELECT id, created_at AS "createdAt" FROM email_outbox WHERE kind = \'announcement\' AND subject = ?').all(row.title)) as Array<{ id: string; createdAt: string }>;
+    for (const m of mails) {
+      const t = parseDbTime(String(m.createdAt));
+      if (Number.isFinite(t) && t >= annTime - 5000) {
+        await db.prepare("DELETE FROM email_outbox WHERE id = ?").run(m.id);
+        emailsRemoved++;
+      }
+    }
+  } catch (e) {
+    console.error("announcement delete: outbox cleanup failed:", e);
+  }
+  await db.prepare("DELETE FROM announcements WHERE id = ?").run(id);
+  await logAudit(db, admin.id, "announce:delete", row.title);
+  return NextResponse.json({ ok: true, emailsRemoved });
 }

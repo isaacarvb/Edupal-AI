@@ -17,8 +17,8 @@ export async function GET(req: Request) {
   const db = await getDb();
   let rows = (await db
     .prepare(
-      `SELECT t.id, t.email, t.reference, t.amount_kobo AS amountKobo, t.plan, t.status, t.channel, t.promo_code AS promoCode, t.created_at AS createdAt,
-              u.name AS userName
+      `SELECT t.id, t.email, t.reference, t.amount_kobo AS "amountKobo", t.plan, t.status, t.channel, t.promo_code AS "promoCode", t.created_at AS "createdAt",
+              u.name AS "userName"
        FROM transactions t LEFT JOIN users u ON u.id = t.user_id
        ORDER BY t.created_at DESC LIMIT 500`
     )

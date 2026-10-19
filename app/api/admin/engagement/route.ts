@@ -40,7 +40,7 @@ export async function GET(req: Request) {
   const weekAgo = new Date(Date.now() - 7 * 86400000).toISOString().slice(0, 10);
   const sleeping = (await db
     .prepare(
-      `SELECT u.id, u.name, u.email, MAX(a.created_at) AS lastActive, COUNT(a.id) AS attempts
+      `SELECT u.id, u.name, u.email, MAX(a.created_at) AS "lastActive", COUNT(a.id) AS attempts
        FROM users u LEFT JOIN attempts a ON a.user_id = u.id
        WHERE u.role = 'STUDENT' AND u.email != ?
        GROUP BY u.id, u.name, u.email

@@ -33,7 +33,7 @@ export async function POST(req: Request) {
   const cleanPromo = String(promoCode ?? "").trim().toUpperCase();
   if (cleanPromo) {
     try {
-      const row = (await db.prepare("SELECT percent_off AS percentOff, used, max_uses AS maxUses, active, expires_on AS expiresOn FROM promo_codes WHERE code = ?").get(cleanPromo)) as
+      const row = (await db.prepare('SELECT percent_off AS "percentOff", used, max_uses AS "maxUses", active, expires_on AS "expiresOn" FROM promo_codes WHERE code = ?').get(cleanPromo)) as
         | { percentOff: number; used: number; maxUses: number; active: number; expiresOn: string | null }
         | undefined;
       const expired = row?.expiresOn ? row.expiresOn < new Date().toISOString().slice(0, 10) : false;

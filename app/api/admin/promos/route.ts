@@ -11,7 +11,7 @@ export async function GET(req: Request) {
     return NextResponse.json({ error: "forbidden" }, { status: 403 });
   }
   const db = await getDb();
-  const codes = await db.prepare("SELECT code, percent_off AS percentOff, max_uses AS maxUses, used, active, expires_on AS expiresOn FROM promo_codes ORDER BY code").all();
+  const codes = await db.prepare('SELECT code, percent_off AS "percentOff", max_uses AS "maxUses", used, active, expires_on AS "expiresOn" FROM promo_codes ORDER BY code').all();
   return NextResponse.json({ codes });
 }
 

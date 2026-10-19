@@ -20,7 +20,7 @@ export async function GET(req: Request) {
   const limit = Math.min(Number(u.searchParams.get("limit") ?? 50) || 50, 200);
   const db = await getDb();
   let rows = (await db
-    .prepare("SELECT id, exam, subject, topic, type, stem, options_json AS optionsJson, answer_key AS answerKey, marking_rubric AS markingRubric, source FROM questions ORDER BY subject, topic LIMIT 500")
+    .prepare('SELECT id, exam, subject, topic, type, stem, options_json AS "optionsJson", answer_key AS "answerKey", marking_rubric AS "markingRubric", source FROM questions ORDER BY subject, topic LIMIT 500')
     .all()) as Array<Record<string, unknown>>;
   if (subject) rows = rows.filter((r) => r.subject === subject);
   if (exam) rows = rows.filter((r) => r.exam === exam);

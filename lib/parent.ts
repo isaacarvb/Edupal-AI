@@ -21,7 +21,7 @@ export async function registerParentContact(db: Db, userId: string, parentEmail:
 // now or the current paid_until (so buying 2 months while 1 is left adds on).
 export async function unlockUnlimited(db: Db, userId: string, days = 30): Promise<void> {
   const now = new Date();
-  const row = await db.prepare("SELECT paid_until AS paidUntil FROM wallets WHERE user_id = ?").get(userId) as { paidUntil: string | null } | undefined;
+  const row = await db.prepare('SELECT paid_until AS "paidUntil" FROM wallets WHERE user_id = ?').get(userId) as { paidUntil: string | null } | undefined;
   const currentEnd = row?.paidUntil ? Date.parse(row.paidUntil) : NaN;
   const base = Number.isFinite(currentEnd) && currentEnd > now.getTime() ? currentEnd : now.getTime();
   const paidUntil = new Date(base + days * 86400000).toISOString();

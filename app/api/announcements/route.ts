@@ -19,7 +19,7 @@ export async function GET(req: Request) {
   try {
     const all = (await db
       .prepare(
-        `SELECT a.id, a.title, a.body, a.segment, a.created_at AS createdAt
+        `SELECT a.id, a.title, a.body, a.segment, a.created_at AS "createdAt"
          FROM announcements a
          LEFT JOIN announcement_reads r ON r.announcement_id = a.id AND r.user_id = ?
          WHERE r.user_id IS NULL ORDER BY a.created_at DESC LIMIT 10`

@@ -271,6 +271,7 @@ function PracticeInner() {
           <p style={{ fontSize: 14, color: "#5F6E7F" }}>Loading subjects…</p>
         ) : (
           <>
+        {/* Seniors: dark collapsible tier bar + junior peek box below. */}
         {!isJunior && (
           <>
             <button onClick={() => setSeniorOpen((o) => !o)}
@@ -283,23 +284,45 @@ function PracticeInner() {
                 {seniorCards.map(subjectCard)}
               </div>
             )}
+            <div style={{ marginTop: 16, background: "#F8FAFC", border: "1px solid #E2E8F0", borderRadius: 14, padding: 16 }}>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                <strong style={{ fontSize: 16 }}>Junior Secondary School</strong>
+                <span style={{ fontSize: 11, background: "#CCFBF1", color: "#0F766E", padding: "3px 10px", borderRadius: 999, fontWeight: 800, border: "1px solid #99F6E4" }}>Live</span>
+              </div>
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))", gap: 12, marginTop: 12 }}>
+                {juniorCards.length === 0 && <p style={{ fontSize: 14, color: "#5F6E7F" }}>Loading subjects…</p>}
+                {juniorCards.map(subjectCard)}
+              </div>
+              {juniorSoon.length > 0 && (
+                <div style={{ fontSize: 13, color: "#5F6E7F", marginTop: 10 }}>
+                  Coming soon: {juniorSoon.map(shortSubject).join(" • ")}
+                </div>
+              )}
+            </div>
           </>
         )}
-        <div style={{ marginTop: isJunior ? 0 : 16, background: "#F8FAFC", border: "1px solid #E2E8F0", borderRadius: 14, padding: 16 }}>
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-            <strong style={{ fontSize: 16 }}>Junior Secondary School</strong>
-            <span style={{ fontSize: 11, background: "#CCFBF1", color: "#0F766E", padding: "3px 10px", borderRadius: 999, fontWeight: 800, border: "1px solid #99F6E4" }}>Live</span>
-          </div>
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))", gap: 12, marginTop: 12 }}>
-            {juniorCards.length === 0 && <p style={{ fontSize: 14, color: "#5F6E7F" }}>Loading subjects…</p>}
-            {juniorCards.map(subjectCard)}
-          </div>
-          {juniorSoon.length > 0 && (
-            <div style={{ fontSize: 13, color: "#5F6E7F", marginTop: 10 }}>
-              Coming soon: {juniorSoon.map(shortSubject).join(" • ")}
-            </div>
-          )}
-        </div>
+        {/* Juniors see their tier exactly like seniors see theirs: dark bar + cards. */}
+        {isJunior && (
+          <>
+            <button onClick={() => setSeniorOpen((o) => !o)}
+              style={{ width: "100%", textAlign: "left", background: "#1E242E", color: "#fff", border: 0, borderRadius: 12, padding: 14, fontSize: 16, fontWeight: 800, cursor: "pointer", marginBottom: 8 }}>
+              {seniorOpen ? "▾" : "▸"} Junior Secondary School
+            </button>
+            {seniorOpen && (
+              <div>
+                <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))", gap: 12, marginBottom: 12 }}>
+                  {hubSubjects.length === 0 && <p>Loading subjects…</p>}
+                  {juniorCards.map(subjectCard)}
+                </div>
+                {juniorSoon.length > 0 && (
+                  <div style={{ fontSize: 13, color: "#5F6E7F", marginBottom: 12 }}>
+                    Coming soon: {juniorSoon.map(shortSubject).join(" • ")}
+                  </div>
+                )}
+              </div>
+            )}
+          </>
+        )}
           </>
         )}
       </main>

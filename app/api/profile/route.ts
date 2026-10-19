@@ -50,7 +50,7 @@ export async function POST(req: Request) {
   }
   // Examination schedule (Settings → Examination schedule). Independent of profile.
   if (examStart !== undefined || examEnd !== undefined || datesConfirmed !== undefined || department !== undefined) {
-    const cur = (await db.prepare("SELECT exam, department, exam_start AS examStart, exam_end AS examEnd, dates_confirmed AS datesConfirmed FROM profiles WHERE user_id = ?").get(userId)) as
+    const cur = (await db.prepare('SELECT exam, department, exam_start AS "examStart", exam_end AS "examEnd", dates_confirmed AS "datesConfirmed" FROM profiles WHERE user_id = ?').get(userId)) as
       | { exam: string; department: string; examStart: string | null; examEnd: string | null; datesConfirmed: number }
       | undefined;
     const confirmed = datesConfirmed === undefined ? Number(cur?.datesConfirmed ?? 1) !== 0 : !!datesConfirmed;

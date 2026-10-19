@@ -21,10 +21,10 @@ export async function GET(req: Request) {
   const db = await getDb();
   let rows = (await db
     .prepare(
-      `SELECT u.id, u.name, u.email, u.role, u.created_at AS createdAt,
+      `SELECT u.id, u.name, u.email, u.role, u.created_at AS "createdAt",
               COALESCE(w.plan,'FREE') AS plan, COALESCE(w.credits_left,0) AS credits,
               p.exam, p.subjects,
-              (SELECT MAX(created_at) FROM attempts WHERE user_id = u.id) AS lastActive,
+              (SELECT MAX(created_at) FROM attempts WHERE user_id = u.id) AS "lastActive",
               (SELECT COUNT(*) FROM attempts WHERE user_id = u.id) AS attempts
        FROM users u LEFT JOIN wallets w ON w.user_id = u.id LEFT JOIN profiles p ON p.user_id = u.id
        ORDER BY u.created_at DESC LIMIT 500`

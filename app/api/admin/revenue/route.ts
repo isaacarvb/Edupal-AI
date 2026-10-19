@@ -12,7 +12,7 @@ export async function GET(req: Request) {
   }
   const db = await getDb();
   const rows = (await db
-    .prepare("SELECT amount_kobo AS amountKobo, plan, status, SUBSTRING(created_at,1,7) AS month FROM transactions")
+    .prepare('SELECT amount_kobo AS "amountKobo", plan, status, SUBSTRING(created_at,1,7) AS month FROM transactions')
     .all()) as Array<{ amountKobo: number; plan: string; status: string; month: string }>;
   const paid = rows.filter((r) => r.status === "success" || r.status === "mock");
   const totalKobo = paid.reduce((s, r) => s + Number(r.amountKobo ?? 0), 0);

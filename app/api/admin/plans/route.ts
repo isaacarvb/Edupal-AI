@@ -10,7 +10,7 @@ export async function GET(req: Request) {
     return NextResponse.json({ error: "forbidden" }, { status: 403 });
   }
   const db = await getDb();
-  const plans = await db.prepare("SELECT id, name, amount_kobo AS amountKobo, credits, active, created_at AS createdAt FROM plans ORDER BY amount_kobo").all();
+  const plans = await db.prepare('SELECT id, name, amount_kobo AS "amountKobo", credits, active, created_at AS "createdAt" FROM plans ORDER BY amount_kobo').all();
   return NextResponse.json({ plans });
 }
 

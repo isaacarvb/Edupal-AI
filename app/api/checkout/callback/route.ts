@@ -16,7 +16,7 @@ export async function GET(req: Request) {
   const db = await getDb();
   const origin = new URL(req.url).origin;
   try {
-    const existing = (await db.prepare("SELECT status, user_id AS userId FROM transactions WHERE reference = ?").get(reference)) as { status: string; userId: string | null } | undefined;
+    const existing = (await db.prepare('SELECT status, user_id AS "userId" FROM transactions WHERE reference = ?').get(reference)) as { status: string; userId: string | null } | undefined;
     if (existing?.status === "success" && existing.userId) {
       return NextResponse.redirect(`${origin}/subscription?userId=${existing.userId}&paid=1`);
     }
@@ -26,7 +26,7 @@ export async function GET(req: Request) {
       return NextResponse.json({ error: "payment not confirmed", reference }, { status: 402 });
     }
     // Amount guard: what Paystack confirms must match what we asked for.
-    const tx = (await db.prepare("SELECT amount_kobo AS amountKobo, promo_code AS promo FROM transactions WHERE reference = ?").get(reference)) as { amountKobo: number; promo: string } | undefined;
+    const tx = (await db.prepare('SELECT amount_kobo AS "amountKobo", promo_code AS "promo" FROM transactions WHERE reference = ?').get(reference)) as { amountKobo: number; promo: string } | undefined;
     const expected = tx?.amountKobo ? Number(tx.amountKobo) : (findPlan(planId ?? "") ?? defaultPlan()).amountKobo;
     if (amountKobo && expected && Number(amountKobo) !== Number(expected)) {
       await db.prepare("UPDATE transactions SET status = 'failed' WHERE reference = ?").run(reference);

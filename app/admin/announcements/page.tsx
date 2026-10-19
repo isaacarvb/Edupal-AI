@@ -37,6 +37,16 @@ export default function AdminAnnouncements() {
     }
   }
 
+  async function remove(a: A) {
+    if (!window.confirm(`Delete "${a.title}"?\n\nIt disappears from user popups/bells and any unsent emails are cancelled.`)) return;
+    setMsg("");
+    const res = await fetch(`/api/admin/announcements?adminId=${aid()}&id=${a.id}`, { method: "DELETE" });
+    const d = await res.json().catch(() => ({}));
+    if (!res.ok) return setMsg(d.error || "Delete failed.");
+    setMsg(`Deleted${d.emailsRemoved ? ` — ${d.emailsRemoved} unsent email(s) cancelled` : ""}.`);
+    load();
+  }
+
   return (
     <main style={{ maxWidth: 800, margin: "0 auto", padding: 24, color: "#333A45" }}>
       <h1 style={{ fontSize: 22 }}>Announcements</h1>
@@ -59,7 +69,15 @@ export default function AdminAnnouncements() {
       <h2 style={{ fontSize: 18, marginTop: 16 }}>Sent ({list.length})</h2>
       {list.map((a) => (
         <div key={a.id} className="arow" style={{ background: "#fff", border: "1px solid #E2E8F0", borderRadius: 10, padding: 10, margin: "6px 0", fontSize: 14 }}>
-          <strong>{a.title}</strong> <span style={{ fontSize: 12, color: "#fff", background: "#0F766E", borderRadius: 999, padding: "2px 10px" }}>{a.segment}</span>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 8 }}>
+            <div>
+              <strong>{a.title}</strong> <span style={{ fontSize: 12, color: "#fff", background: "#0F766E", borderRadius: 999, padding: "2px 10px" }}>{a.segment}</span>
+            </div>
+            <button onClick={() => remove(a)}
+              style={{ flexShrink: 0, fontSize: 12, fontWeight: 700, color: "#B91C1C", background: "#FEF2F2", border: "1px solid #FECACA", borderRadius: 8, padding: "5px 12px", cursor: "pointer" }}>
+              Delete
+            </button>
+          </div>
           <p style={{ margin: "4px 0" }}>{a.body}</p>
           <div style={{ fontSize: 12, color: "#5F6E7F" }}>{String(a.createdAt).slice(0, 16).replace("T", " ")} • by {a.createdBy}</div>
         </div>
