@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { getDb } from "@/lib/db";
 import { getWallet, subjectLimits } from "@/lib/credits";
+import { maybeSendExpiryNudge } from "@/lib/mail";
 
 // Mastery list + profile summary (countdown, streak, credits) for the dashboard.
 export async function GET(req: Request) {
@@ -25,6 +26,13 @@ export async function GET(req: Request) {
   if (!profile) return NextResponse.json({ error: "unknown user" }, { status: 404 });
   const wallet = await getWallet(db, userId);
   const plan = wallet?.plan ?? "FREE";
+  // Lazy expiry nudge: fire-and-forget, at most one email per expiry date.
+  void maybeSendExpiryNudge(db, {
+    userId,
+    plan,
+    paidUntil: typeof profile.paidUntil === "string" ? profile.paidUntil : null,
+    base: new URL(req.url).origin
+  });
   const subjectList = String((profile as Record<string, unknown>).subjects ?? "English").split(",").map((s) => s.trim()).filter(Boolean);
   const limits = await subjectLimits(db, userId, subjectList, plan);
   const exhaustedAll = plan === "FREE" && limits.length > 0 && limits.every((l) => l.left <= 0);

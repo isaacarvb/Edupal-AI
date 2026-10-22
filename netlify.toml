@@ -25,3 +25,6 @@
 #   DB_FILE         = /tmp/dev.db   (Netlify disk is ephemeral; demo data resets between visits)
 #   GROQ_API_KEY    = gsk_...       (optional; tutor falls back to Local mode without it)
 #   PAYSTACK_SECRET_KEY = sk_test_... (optional; checkout falls back to mock without it)
+#   ZEPTOMAIL_TOKEN = Zoho CPaaS API key (optional; emails are skipped without it)
+#   ZEPTOMAIL_FROM  = noreply@edupal-ai.com
+# Paystack webhook (dashboard → Settings → Webhooks): https://YOUR-SITE.netlify.app/api/paystack/webhook

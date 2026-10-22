@@ -3,6 +3,7 @@ import { getDb } from "@/lib/db";
 import { verifyPayment } from "@/lib/paystack";
 import { findPlan, defaultPlan } from "@/lib/plans";
 import { unlockUnlimited } from "@/lib/parent";
+import { sendReceiptFor } from "@/lib/mail";
 import { logError } from "@/lib/admin";
 
 // Paystack redirects here after payment. Verifies server-side, extends the
@@ -36,6 +37,14 @@ export async function GET(req: Request) {
     await unlockUnlimited(db, userId, plan.days);
     await db.prepare("UPDATE transactions SET status = 'success' WHERE reference = ?").run(reference);
     if (tx?.promo) await db.prepare("UPDATE promo_codes SET used = used + 1 WHERE code = ?").run(tx.promo);
+    // Receipt goes out only on this pending → success transition (idempotent).
+    void sendReceiptFor(db, {
+      userId,
+      reference,
+      planId: plan.id,
+      amountKobo: Number(amountKobo ?? tx?.amountKobo ?? plan.amountKobo),
+      base: origin
+    });
     return NextResponse.redirect(`${origin}/subscription?userId=${userId}&paid=1`);
   } catch (e) {
     await logError(db, "checkout/callback", e instanceof Error ? e.message : String(e));

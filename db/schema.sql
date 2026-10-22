@@ -85,7 +85,8 @@ CREATE TABLE IF NOT EXISTS wallets (
   reset_at TEXT NOT NULL DEFAULT (datetime('now')),
   plan TEXT NOT NULL DEFAULT 'FREE',
   paid_until TEXT,
-  paid_from TEXT
+  paid_from TEXT,
+  nudge_for_until TEXT
 );
 
 CREATE TABLE IF NOT EXISTS parent_links (

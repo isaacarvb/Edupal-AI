@@ -71,6 +71,8 @@ async function sqliteMigrate(): Promise<void> {
   if (!cols("wallets").has("paid_until")) h.exec("ALTER TABLE wallets ADD COLUMN paid_until TEXT");
   // Optional grant start (admin can schedule a trial to begin later).
   if (!cols("wallets").has("paid_from")) h.exec("ALTER TABLE wallets ADD COLUMN paid_from TEXT");
+  // Expiry nudge bookkeeping: paid_until value the "ends soon" email was sent for.
+  if (!cols("wallets").has("nudge_for_until")) h.exec("ALTER TABLE wallets ADD COLUMN nudge_for_until TEXT");
   // One-time grace: existing UNLIMITED rows (test/manual grants) keep 30 days.
   h.exec("UPDATE wallets SET paid_until = strftime('%Y-%m-%dT%H:%M:%fZ','now','+30 days') WHERE plan = 'UNLIMITED' AND paid_until IS NULL");
   // Legacy pilots never had an end date; time-box them to 3 days from now.
@@ -163,6 +165,8 @@ async function pgMigrate(): Promise<void> {
       if (!(await hasWalletCol("paid_until"))) await db.prepare("ALTER TABLE wallets ADD COLUMN paid_until TEXT").run();
       // Optional grant start (admin can schedule a trial to begin later).
       if (!(await hasWalletCol("paid_from"))) await db.prepare("ALTER TABLE wallets ADD COLUMN paid_from TEXT").run();
+      // Expiry nudge bookkeeping: paid_until value the "ends soon" email was sent for.
+      if (!(await hasWalletCol("nudge_for_until"))) await db.prepare("ALTER TABLE wallets ADD COLUMN nudge_for_until TEXT").run();
       // One-time grace: existing UNLIMITED rows (test/manual grants) keep 30 days.
       await db.prepare("UPDATE wallets SET paid_until = to_char(now() + interval '30 days', 'YYYY-MM-DD\"T\"HH24:MI:SS.MS\"Z\"') WHERE plan = 'UNLIMITED' AND paid_until IS NULL").run();
       // Legacy pilots never had an end date; time-box them to 3 days from now.

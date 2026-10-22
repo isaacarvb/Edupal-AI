@@ -84,7 +84,8 @@ CREATE TABLE IF NOT EXISTS wallets (
   reset_at TEXT NOT NULL DEFAULT (TO_CHAR(NOW() AT TIME ZONE 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS.MS"Z"')),
   plan TEXT NOT NULL DEFAULT 'FREE',
   paid_until TEXT,
-  paid_from TEXT
+  paid_from TEXT,
+  nudge_for_until TEXT
 );
 
 CREATE TABLE IF NOT EXISTS parent_links (
