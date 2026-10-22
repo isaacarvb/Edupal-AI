@@ -75,11 +75,15 @@ const CANONICAL_ALIASES: Record<string, string> = {
   "physical and health education": "Physical Health Education",
   "physical health education": "Physical Health Education",
   "basic science and technology": "Intermediate Science (Basic Science and Technology)",
+  "basic science": "Intermediate Science (Basic Science and Technology)",
   "integrated science": "Intermediate Science (Basic Science and Technology)",
   "intermediate science": "Intermediate Science (Basic Science and Technology)",
   "intermediate science (basic science and technology)": "Intermediate Science (Basic Science and Technology)",
   "citizenship education": "Social and Citizenship Education",
   "social and citizenship education": "Social and Citizenship Education",
+  "social studies & citizenship": "Social and Citizenship Education",
+  "social studies and citizenship": "Social and Citizenship Education",
+  "social studies": "Social and Citizenship Education",
   "digital technologies": "Digital Technologies (Computer Studies/ICT)",
   "digital technologies (computer studies/ict)": "Digital Technologies (Computer Studies/ICT)"
 };

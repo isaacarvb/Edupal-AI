@@ -69,8 +69,12 @@ async function sqliteMigrate(): Promise<void> {
   if (!pcols.has("department")) h.exec("ALTER TABLE profiles ADD COLUMN department TEXT NOT NULL DEFAULT ''");
   // Subscriptions expire: paid_until = ISO end date; NULL = no paid time.
   if (!cols("wallets").has("paid_until")) h.exec("ALTER TABLE wallets ADD COLUMN paid_until TEXT");
+  // Optional grant start (admin can schedule a trial to begin later).
+  if (!cols("wallets").has("paid_from")) h.exec("ALTER TABLE wallets ADD COLUMN paid_from TEXT");
   // One-time grace: existing UNLIMITED rows (test/manual grants) keep 30 days.
   h.exec("UPDATE wallets SET paid_until = strftime('%Y-%m-%dT%H:%M:%fZ','now','+30 days') WHERE plan = 'UNLIMITED' AND paid_until IS NULL");
+  // Legacy pilots never had an end date; time-box them to 3 days from now.
+  h.exec("UPDATE wallets SET paid_until = strftime('%Y-%m-%dT%H:%M:%fZ','now','+3 days') WHERE plan = 'PILOT' AND paid_until IS NULL");
   // One-time carry-over: old single exam_date becomes the new start date.
   h.exec("UPDATE profiles SET exam_start = exam_date WHERE (exam_start IS NULL OR exam_start = '') AND exam_date IS NOT NULL AND exam_date != ''");
   // Standardise renamed subjects so old rows keep matching the new lists.
@@ -157,8 +161,12 @@ async function pgMigrate(): Promise<void> {
       const hasWalletCol = async (col: string) =>
         ((await db.prepare("SELECT 1 FROM information_schema.columns WHERE table_name = 'wallets' AND column_name = $1").get(col)) ? true : false);
       if (!(await hasWalletCol("paid_until"))) await db.prepare("ALTER TABLE wallets ADD COLUMN paid_until TEXT").run();
+      // Optional grant start (admin can schedule a trial to begin later).
+      if (!(await hasWalletCol("paid_from"))) await db.prepare("ALTER TABLE wallets ADD COLUMN paid_from TEXT").run();
       // One-time grace: existing UNLIMITED rows (test/manual grants) keep 30 days.
       await db.prepare("UPDATE wallets SET paid_until = to_char(now() + interval '30 days', 'YYYY-MM-DD\"T\"HH24:MI:SS.MS\"Z\"') WHERE plan = 'UNLIMITED' AND paid_until IS NULL").run();
+      // Legacy pilots never had an end date; time-box them to 3 days from now.
+      await db.prepare("UPDATE wallets SET paid_until = to_char(now() + interval '3 days', 'YYYY-MM-DD\"T\"HH24:MI:SS.MS\"Z\"') WHERE plan = 'PILOT' AND paid_until IS NULL").run();
       await db.prepare("UPDATE profiles SET exam_start = exam_date WHERE (exam_start IS NULL OR exam_start = '') AND exam_date IS NOT NULL AND exam_date != ''").run();
       await db.prepare("UPDATE questions SET subject = 'Literature in English' WHERE subject = 'Literature'").run();
       await db.prepare("UPDATE questions SET subject = 'Social and Citizenship Education' WHERE subject = 'Citizenship Education'").run();

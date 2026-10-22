@@ -51,6 +51,9 @@ export default function Login() {
         <p style={{ fontSize: 14, marginTop: 12 }}>
           <a href="/signup" style={{ color: "#0F766E", fontWeight: 700 }}>New here? Start your journey</a>
         </p>
+        <p style={{ fontSize: 11, color: "#94A3B8", marginTop: 8 }}>
+          <a href="/terms" style={{ color: "#5F6E7F" }}>Terms</a> · <a href="/privacy" style={{ color: "#5F6E7F" }}>Privacy</a>
+        </p>
         <p style={{ fontSize: 12, color: "#5F6E7F" }}>New accounts are created during onboarding with your level, exam and subjects.</p>
       </div>
     </main>

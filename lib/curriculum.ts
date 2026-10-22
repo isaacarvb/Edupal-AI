@@ -35,6 +35,79 @@ function parseMdFile(filePath: string): CurriculumSubject | null {
   const content = fs.readFileSync(filePath, "utf8");
   const lines = content.split("\n");
 
+  // New comprehensive format: "# TOPIC 1: Name" sections with full markdown
+  // bodies (the older "### Topic" / section-header style is handled below).
+  if (lines.some((l) => /^#\s*TOPIC\s*\d+/i.test(l))) return parseMd2(content, lines);
+  return parseMd1(lines);
+}
+
+// Title like "SSS Accounting — Comprehensive Study Notes" → "Accounting".
+function normalizeMdTitle(title: string): string {
+  let t = title.replace(/\s*[—–-]\s*Comprehensive Study Notes\s*$/i, "").trim();
+  t = t.replace(/^(SSS|JSS)\s+/i, "").trim();
+  return t;
+}
+
+function parseMd2(content: string, lines: string[]): CurriculumSubject | null {
+  void content;
+  const titleLine = (lines.find((l) => l.startsWith("# ") && !/^#\s*TOPIC\s*\d+/i.test(l)) ?? "").replace(/^#\s*/, "").trim();
+  const subjectName = canonicalSubject(normalizeMdTitle(titleLine));
+
+  const metaLine = lines.find((l) => l.includes("**Level:**")) ?? "";
+  const level: "SSS" | "JSS" = /\bJSS\b/.test(metaLine) ? "JSS" : /\bSSS\b/.test(metaLine) ? "SSS" : "SSS";
+  const exams = metaLine.match(/\*\*Exams:\*\*([^|]+)/)?.[1].split(",").map((e) => e.trim()).filter(Boolean) ?? [];
+
+  const topics: CurriculumTopic[] = [];
+  let cur: { name: string; id?: string; buf: string[] } | null = null;
+  function save() {
+    if (!cur?.name) return;
+    const body = cur.buf.join("\n").replace(/\n{3,}/g, "\n\n").trim();
+    topics.push({
+      id: cur.id || `md2-${topics.length + 1}`,
+      name: cur.name,
+      class: "",
+      subject: subjectName,
+      level,
+      exams,
+      subjectId: "",
+      learningObjectives: [],
+      notes: body ? [body] : [],
+      activities: [],
+      examFocus: [],
+      source: "md"
+    });
+  }
+
+  for (const line of lines) {
+    const t = /^#\s*TOPIC\s*\d+:\s*(.+)$/i.exec(line);
+    if (t) {
+      save();
+      cur = { name: t[1].trim(), buf: [] };
+      continue;
+    }
+    if (!cur) continue;
+    const idMatch = /^\*\*Topic ID:\*\*\s*`?([^`]+?)`?\s*$/.exec(line);
+    if (idMatch) {
+      cur.id = idMatch[1].trim();
+      continue;
+    }
+    cur.buf.push(line);
+  }
+  save();
+
+  return topics.length > 0
+    ? {
+        id: subjectName.toLowerCase().replace(/[^a-z0-9]+/g, "-"),
+        name: subjectName,
+        level,
+        exams,
+        topics
+      }
+    : null;
+}
+
+function parseMd1(lines: string[]): CurriculumSubject | null {
+
   // Header: # Subject Name — normalise so "English Language" and "English"
   // merge into one card instead of appearing twice.
   const titleLine = lines.find((l) => l.startsWith("# ")) ?? "";
@@ -285,7 +358,25 @@ export function getCurriculumSubjects(): CurriculumSubject[] {
     }
   }
 
-  return [...byKey.values()].sort((a, b) => a.name.localeCompare(b.name));
+  const out = [...byKey.values()].sort((a, b) => a.name.localeCompare(b.name));
+  // Ids come from several sources that reuse the same scheme (NERDC topic ids
+  // vs "Topic ID" lines in the notes files) — make them unique per subject so
+  // React keys, toggles and lookups never collide.
+  for (const subj of out) {
+    const seen = new Set<string>();
+    subj.topics.forEach((t, i) => {
+      let id = t.id || `${subj.id || "topic"}-${i + 1}`;
+      if (seen.has(id)) {
+        let n = 2;
+        let candidate = `${id}-${n}`;
+        while (seen.has(candidate)) candidate = `${id}-${++n}`;
+        id = candidate;
+      }
+      seen.add(id);
+      t.id = id;
+    });
+  }
+  return out;
 }
 
 export function getCurriculumTopic(subjectId: string, topicName: string): CurriculumTopic | null {

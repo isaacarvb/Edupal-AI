@@ -118,6 +118,18 @@ export default function Landing() {
         <a href="/signup" className="btn-journey">Start your journey</a>
         <p style={{ fontSize: 13, color: "#5F6E7F" }}>Know what you're learning, where you're weak, and when your exam is.</p>
       </section>
+
+      {/* FOOTER */}
+      <footer style={{ borderTop: "1px solid #E2E8F0", background: "#F8FAFC" }}>
+        <div style={{ maxWidth: 1100, margin: "0 auto", padding: "20px 16px", display: "flex", justifyContent: "space-between", gap: 12, flexWrap: "wrap", alignItems: "center" }}>
+          <span style={{ fontSize: 13, color: "#5F6E7F" }}>© 2026 EduPal AI — made for Nigerian students 🇳🇬</span>
+          <span style={{ display: "flex", gap: 18, flexWrap: "wrap" }}>
+            <a href="/privacy" style={{ fontSize: 13, color: "#0F766E", fontWeight: 700, textDecoration: "none" }}>Privacy Policy</a>
+            <a href="/terms" style={{ fontSize: 13, color: "#0F766E", fontWeight: 700, textDecoration: "none" }}>Terms of Use</a>
+            <a href="/login" style={{ fontSize: 13, color: "#0F766E", fontWeight: 700, textDecoration: "none" }}>Sign in</a>
+          </span>
+        </div>
+      </footer>
     </main>
   );
 }

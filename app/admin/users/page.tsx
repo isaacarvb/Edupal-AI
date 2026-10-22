@@ -10,6 +10,8 @@ export default function AdminUsers() {
   const [msg, setMsg] = useState("");
   const [email, setEmail] = useState("");
   const [access, setAccess] = useState("PILOT_3DAY");
+  const [days, setDays] = useState("3");
+  const [startAt, setStartAt] = useState("");
   const [grantBusy, setGrantBusy] = useState(false);
   const [delBusy, setDelBusy] = useState<string | null>(null);
   const aid = () => localStorage.getItem("edupal_admin") ?? "";
@@ -27,15 +29,28 @@ export default function AdminUsers() {
     if (!email.trim() || grantBusy) return;
     setGrantBusy(true);
     try {
-      const res = await fetch("/api/admin/users", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ adminId: aid(), email, accessType: access }) });
+      const body: Record<string, unknown> = { adminId: aid(), email, accessType: access };
+      if (access !== "FREE_FULL") {
+        if (Number(days) > 0) body.days = Number(days);
+        if (startAt) body.startAt = new Date(startAt).toISOString();
+      }
+      const res = await fetch("/api/admin/users", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
       const d = await res.json();
       if (!res.ok) return setMsg(d.error || "Failed.");
-      setMsg(d.created ? `Created ${email} on ${d.plan}. Temp password: ${d.tempPassword} — share it.` : `Updated ${email} to ${d.plan}.`);
+      const until = d.paidUntil ? ` until ${new Date(d.paidUntil).toLocaleString([], { dateStyle: "medium", timeStyle: "short" })}` : "";
+      const startNote = d.paidFrom && Date.parse(d.paidFrom) > Date.now() + 30000 ? ` (starts ${new Date(d.paidFrom).toLocaleString([], { dateStyle: "medium", timeStyle: "short" })})` : "";
+      setMsg(d.created ? `Created ${email} on ${d.plan}${until}${startNote}. Temp password: ${d.tempPassword} — share it.` : `Updated ${email} to ${d.plan}${until}${startNote}.`);
       setEmail("");
       load();
     } finally {
       setGrantBusy(false);
     }
+  }
+
+  function changeAccess(v: string) {
+    setAccess(v);
+    if (v === "PILOT_3DAY" || v === "TRIAL") setDays("3");
+    else if (v === "UNLIMITED") setDays("30");
   }
 
   async function del(id: string, em: string) {
@@ -63,11 +78,23 @@ export default function AdminUsers() {
         <p style={{ fontSize: 13, color: "#5F6E7F" }}>Type student email, pick access type. New emails get an account + temp password.</p>
         <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
           <input value={email} onChange={(e) => setEmail(e.target.value)} placeholder="student@email.com" style={{ flex: "2 1 220px", height: 44, borderRadius: 10, border: "1px solid #CBD5E1", padding: "0 10px" }} />
-          <select value={access} onChange={(e) => setAccess(e.target.value)} style={{ height: 44, borderRadius: 10, border: "1px solid #CBD5E1" }}>
-            <option value="PILOT_3DAY">3-day pilot</option>
+          <select value={access} onChange={(e) => changeAccess(e.target.value)} style={{ height: 44, borderRadius: 10, border: "1px solid #CBD5E1" }}>
+            <option value="PILOT_3DAY">Pilot / trial (custom days)</option>
             <option value="FREE_FULL">Full free</option>
-            <option value="UNLIMITED">Unlimited (paid)</option>
+            <option value="UNLIMITED">Unlimited (custom days)</option>
           </select>
+          {access !== "FREE_FULL" && (
+            <>
+              <label style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 13, fontWeight: 700 }}>
+                Days
+                <input type="number" min={1} max={3650} value={days} onChange={(e) => setDays(e.target.value)} style={{ width: 76, height: 44, borderRadius: 10, border: "1px solid #CBD5E1", padding: "0 8px", fontSize: 15 }} />
+              </label>
+              <label style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 13, fontWeight: 700 }}>
+                Starts at <span style={{ color: "#94A3B8", fontWeight: 400 }}>(blank = now)</span>
+                <input type="datetime-local" value={startAt} onChange={(e) => setStartAt(e.target.value)} style={{ height: 44, borderRadius: 10, border: "1px solid #CBD5E1", padding: "0 8px", fontSize: 13 }} />
+              </label>
+            </>
+          )}
           <AdminButton onClick={grant} busy={grantBusy}>Give access</AdminButton>
         </div>
         {msg && <p style={{ fontSize: 13 }}>{msg}</p>}

@@ -51,6 +51,9 @@ function SignupInner() {
           style={{ display: "block", width: "100%", height: 52, borderRadius: 12, border: "2px solid #1E242E", background: "#0F766E", color: "#fff", fontWeight: 800, fontSize: 16, cursor: "pointer", boxShadow: "4px 4px 0 #1E242E" }}>
           {busy ? "Creating…" : "Create account & continue"}
         </button>
+        <p style={{ fontSize: 12, color: "#5F6E7F", marginTop: 10, lineHeight: 1.5 }}>
+          By creating an account you agree to our <a href="/terms" target="_blank" style={{ color: "#0F766E", fontWeight: 700 }}>Terms of Use</a> and <a href="/privacy" target="_blank" style={{ color: "#0F766E", fontWeight: 700 }}>Privacy Policy</a>.
+        </p>
         <p style={{ fontSize: 14, marginTop: 12 }}>Already have an account? <a href="/login" style={{ color: "#0F766E", fontWeight: 700 }}>Sign in</a></p>
       </div>
     </main>
