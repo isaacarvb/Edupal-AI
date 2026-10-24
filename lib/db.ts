@@ -99,6 +99,36 @@ async function sqliteMigrate(): Promise<void> {
   h.exec("CREATE TABLE IF NOT EXISTS subject_config (subject TEXT PRIMARY KEY, active INTEGER NOT NULL DEFAULT 1, updated_at TEXT NOT NULL DEFAULT (datetime('now')))");
   h.exec("CREATE TABLE IF NOT EXISTS admin_allowlist (email TEXT PRIMARY KEY, role TEXT NOT NULL DEFAULT 'CONTENT_ADMIN', added_at TEXT NOT NULL DEFAULT (datetime('now')))");
   h.exec("CREATE TABLE IF NOT EXISTS error_logs (id TEXT PRIMARY KEY, source TEXT NOT NULL DEFAULT '', message TEXT NOT NULL DEFAULT '', created_at TEXT NOT NULL DEFAULT (datetime('now')))");
+
+  // ---- Stage C migrations: teacher accounts, lesson notes, assignments, broadcasts ----
+  // CREATE TABLE IF NOT EXISTS handles new databases; ALTER COLUMN handles existing
+  // databases where the table was created by an earlier partial migration.
+  const stCols = cols("school_teachers");
+  if (!stCols.has("id")) h.exec("CREATE TABLE IF NOT EXISTS school_teachers (id TEXT PRIMARY KEY, school_id TEXT NOT NULL REFERENCES schools(id) ON DELETE CASCADE, name TEXT NOT NULL, email TEXT NOT NULL, password_hash TEXT NOT NULL, classes TEXT NOT NULL DEFAULT '', active INTEGER NOT NULL DEFAULT 1, created_at TEXT NOT NULL DEFAULT (datetime('now')))");
+  if (!stCols.has("active")) h.exec("ALTER TABLE school_teachers ADD COLUMN active INTEGER NOT NULL DEFAULT 1");
+  if (!stCols.has("classes")) h.exec("ALTER TABLE school_teachers ADD COLUMN classes TEXT NOT NULL DEFAULT ''");
+
+  const lnCols = cols("lesson_notes");
+  if (!lnCols.has("id")) h.exec("CREATE TABLE IF NOT EXISTS lesson_notes (id TEXT PRIMARY KEY, school_id TEXT NOT NULL REFERENCES schools(id) ON DELETE CASCADE, teacher_id TEXT NOT NULL REFERENCES school_teachers(id) ON DELETE CASCADE, teacher_name TEXT NOT NULL DEFAULT '', class_name TEXT NOT NULL DEFAULT '', subject TEXT NOT NULL, topic TEXT NOT NULL, body TEXT NOT NULL DEFAULT '', status TEXT NOT NULL DEFAULT 'pending', reviewed_by TEXT, reviewed_at TEXT, created_at TEXT NOT NULL DEFAULT (datetime('now')))");
+  if (!lnCols.has("teacher_name")) h.exec("ALTER TABLE lesson_notes ADD COLUMN teacher_name TEXT NOT NULL DEFAULT ''");
+  if (!lnCols.has("reviewed_by")) h.exec("ALTER TABLE lesson_notes ADD COLUMN reviewed_by TEXT");
+  if (!lnCols.has("reviewed_at")) h.exec("ALTER TABLE lesson_notes ADD COLUMN reviewed_at TEXT");
+
+  const asCols = cols("assignments");
+  if (!asCols.has("id")) h.exec("CREATE TABLE IF NOT EXISTS assignments (id TEXT PRIMARY KEY, school_id TEXT NOT NULL REFERENCES schools(id) ON DELETE CASCADE, teacher_id TEXT NOT NULL REFERENCES school_teachers(id) ON DELETE CASCADE, class_name TEXT NOT NULL DEFAULT '', subject TEXT NOT NULL, topic TEXT NOT NULL, instructions TEXT NOT NULL DEFAULT '', due_at TEXT, created_at TEXT NOT NULL DEFAULT (datetime('now')))");
+  if (!asCols.has("school_id")) h.exec("ALTER TABLE assignments ADD COLUMN school_id TEXT NOT NULL DEFAULT ''");
+  if (!asCols.has("teacher_id")) h.exec("ALTER TABLE assignments ADD COLUMN teacher_id TEXT NOT NULL DEFAULT ''");
+  if (!asCols.has("instructions")) h.exec("ALTER TABLE assignments ADD COLUMN instructions TEXT NOT NULL DEFAULT ''");
+  if (!asCols.has("due_at")) h.exec("ALTER TABLE assignments ADD COLUMN due_at TEXT");
+
+  const bcCols = cols("broadcasts");
+  if (!bcCols.has("id")) h.exec("CREATE TABLE IF NOT EXISTS broadcasts (id TEXT PRIMARY KEY, school_id TEXT NOT NULL REFERENCES schools(id) ON DELETE CASCADE, class_name TEXT DEFAULT NULL, body TEXT NOT NULL DEFAULT '', starts_at TEXT NOT NULL DEFAULT (datetime('now')), ends_at TEXT, created_at TEXT NOT NULL DEFAULT (datetime('now')))");
+  if (!bcCols.has("school_id")) h.exec("ALTER TABLE broadcasts ADD COLUMN school_id TEXT NOT NULL DEFAULT ''");
+
+  h.exec("CREATE INDEX IF NOT EXISTS idx_school_teachers_school ON school_teachers(school_id)");
+  h.exec("CREATE INDEX IF NOT EXISTS idx_lesson_notes_school_status ON lesson_notes(school_id, status)");
+  h.exec("CREATE INDEX IF NOT EXISTS idx_assignments_school_class ON assignments(school_id, class_name)");
+  h.exec("CREATE INDEX IF NOT EXISTS idx_broadcasts_school ON broadcasts(school_id, starts_at, ends_at)");
 }
 
 // ---- Postgres branch (Supabase, incl. pooler on :6543) ----
@@ -184,6 +214,33 @@ async function pgMigrate(): Promise<void> {
       await db.prepare("UPDATE profiles SET subjects = REPLACE(subjects, 'Citizenship Education', 'Social and Citizenship Education') WHERE subjects LIKE '%Citizenship Education%' AND subjects NOT LIKE '%Social and Citizenship Education%'").run();
       await db.prepare("UPDATE profiles SET subjects = REPLACE(subjects, 'Intermediate Science', 'Intermediate Science (Basic Science and Technology)') WHERE subjects LIKE '%Intermediate Science%' AND subjects NOT LIKE '%Intermediate Science (%'").run();
       await db.prepare("UPDATE profiles SET subjects = REPLACE(subjects, 'Integrated Science', 'Intermediate Science (Basic Science and Technology)') WHERE subjects LIKE '%Integrated Science%'").run();
+      // ---- Stage C migrations ----
+      const hasStCol = async (col: string) =>
+        ((await db.prepare("SELECT 1 FROM information_schema.columns WHERE table_name = 'school_teachers' AND column_name = $1").get(col)) ? true : false);
+      if (!(await hasStCol("id"))) await db.prepare("CREATE TABLE IF NOT EXISTS school_teachers (id TEXT PRIMARY KEY, school_id TEXT NOT NULL REFERENCES schools(id) ON DELETE CASCADE, name TEXT NOT NULL, email TEXT NOT NULL, password_hash TEXT NOT NULL, classes TEXT NOT NULL DEFAULT '', active INTEGER NOT NULL DEFAULT 1, created_at TEXT NOT NULL DEFAULT (TO_CHAR(NOW() AT TIME ZONE 'UTC', 'YYYY-MM-DD\"T\"HH24:MI:SS.MS\"Z\"')))").run();
+      if (!(await hasStCol("active"))) await db.prepare("ALTER TABLE school_teachers ADD COLUMN active INTEGER NOT NULL DEFAULT 1").run();
+      if (!(await hasStCol("classes"))) await db.prepare("ALTER TABLE school_teachers ADD COLUMN classes TEXT NOT NULL DEFAULT ''").run();
+      const hasLnCol = async (col: string) =>
+        ((await db.prepare("SELECT 1 FROM information_schema.columns WHERE table_name = 'lesson_notes' AND column_name = $1").get(col)) ? true : false);
+      if (!(await hasLnCol("id"))) await db.prepare("CREATE TABLE IF NOT EXISTS lesson_notes (id TEXT PRIMARY KEY, school_id TEXT NOT NULL REFERENCES schools(id) ON DELETE CASCADE, teacher_id TEXT NOT NULL REFERENCES school_teachers(id) ON DELETE CASCADE, teacher_name TEXT NOT NULL DEFAULT '', class_name TEXT NOT NULL DEFAULT '', subject TEXT NOT NULL, topic TEXT NOT NULL, body TEXT NOT NULL DEFAULT '', status TEXT NOT NULL DEFAULT 'pending', reviewed_by TEXT, reviewed_at TEXT, created_at TEXT NOT NULL DEFAULT (TO_CHAR(NOW() AT TIME ZONE 'UTC', 'YYYY-MM-DD\"T\"HH24:MI:SS.MS\"Z\"')))").run();
+      if (!(await hasLnCol("teacher_name"))) await db.prepare("ALTER TABLE lesson_notes ADD COLUMN teacher_name TEXT NOT NULL DEFAULT ''").run();
+      if (!(await hasLnCol("reviewed_by"))) await db.prepare("ALTER TABLE lesson_notes ADD COLUMN reviewed_by TEXT").run();
+      if (!(await hasLnCol("reviewed_at"))) await db.prepare("ALTER TABLE lesson_notes ADD COLUMN reviewed_at TEXT").run();
+      const hasAsCol = async (col: string) =>
+        ((await db.prepare("SELECT 1 FROM information_schema.columns WHERE table_name = 'assignments' AND column_name = $1").get(col)) ? true : false);
+      if (!(await hasAsCol("id"))) await db.prepare("CREATE TABLE IF NOT EXISTS assignments (id TEXT PRIMARY KEY, school_id TEXT NOT NULL REFERENCES schools(id) ON DELETE CASCADE, teacher_id TEXT NOT NULL REFERENCES school_teachers(id) ON DELETE CASCADE, class_name TEXT NOT NULL DEFAULT '', subject TEXT NOT NULL, topic TEXT NOT NULL, instructions TEXT NOT NULL DEFAULT '', due_at TEXT, created_at TEXT NOT NULL DEFAULT (TO_CHAR(NOW() AT TIME ZONE 'UTC', 'YYYY-MM-DD\"T\"HH24:MI:SS.MS\"Z\"')))").run();
+      if (!(await hasAsCol("school_id"))) await db.prepare("ALTER TABLE assignments ADD COLUMN school_id TEXT NOT NULL DEFAULT ''").run();
+      if (!(await hasAsCol("teacher_id"))) await db.prepare("ALTER TABLE assignments ADD COLUMN teacher_id TEXT NOT NULL DEFAULT ''").run();
+      if (!(await hasAsCol("instructions"))) await db.prepare("ALTER TABLE assignments ADD COLUMN instructions TEXT NOT NULL DEFAULT ''").run();
+      if (!(await hasAsCol("due_at"))) await db.prepare("ALTER TABLE assignments ADD COLUMN due_at TEXT").run();
+      const hasBcCol = async (col: string) =>
+        ((await db.prepare("SELECT 1 FROM information_schema.columns WHERE table_name = 'broadcasts' AND column_name = $1").get(col)) ? true : false);
+      if (!(await hasBcCol("id"))) await db.prepare("CREATE TABLE IF NOT EXISTS broadcasts (id TEXT PRIMARY KEY, school_id TEXT NOT NULL REFERENCES schools(id) ON DELETE CASCADE, class_name TEXT DEFAULT NULL, body TEXT NOT NULL DEFAULT '', starts_at TEXT NOT NULL DEFAULT (TO_CHAR(NOW() AT TIME ZONE 'UTC', 'YYYY-MM-DD\"T\"HH24:MI:SS.MS\"Z\"')), ends_at TEXT, created_at TEXT NOT NULL DEFAULT (TO_CHAR(NOW() AT TIME ZONE 'UTC', 'YYYY-MM-DD\"T\"HH24:MI:SS.MS\"Z\"')))").run();
+      if (!(await hasBcCol("school_id"))) await db.prepare("ALTER TABLE broadcasts ADD COLUMN school_id TEXT NOT NULL DEFAULT ''").run();
+      await db.prepare("CREATE INDEX IF NOT EXISTS idx_school_teachers_school ON school_teachers(school_id)").run();
+      await db.prepare("CREATE INDEX IF NOT EXISTS idx_lesson_notes_school_status ON lesson_notes(school_id, status)").run();
+      await db.prepare("CREATE INDEX IF NOT EXISTS idx_assignments_school_class ON assignments(school_id, class_name)").run();
+      await db.prepare("CREATE INDEX IF NOT EXISTS idx_broadcasts_school ON broadcasts(school_id, starts_at, ends_at)").run();
       return; // success
     } catch (e) {
       lastError = e;

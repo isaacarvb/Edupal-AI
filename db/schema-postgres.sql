@@ -292,6 +292,7 @@ CREATE TABLE IF NOT EXISTS lesson_notes (
   id TEXT PRIMARY KEY,
   school_id TEXT NOT NULL REFERENCES schools(id) ON DELETE CASCADE,
   teacher_id TEXT NOT NULL REFERENCES school_teachers(id) ON DELETE CASCADE,
+  teacher_name TEXT NOT NULL DEFAULT '',
   class_name TEXT NOT NULL DEFAULT '',
   subject TEXT NOT NULL,
   topic TEXT NOT NULL,

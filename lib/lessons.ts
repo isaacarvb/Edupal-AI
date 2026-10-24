@@ -119,9 +119,10 @@ export async function getAssignments(db: Db, schoolId: string, opts?: {
   className?: string; teacherId?: string;
 }): Promise<Assignment[]> {
   let sql = `SELECT a.id, a.school_id AS "schoolId", a.teacher_id AS "teacherId",
-    a.teacher_name AS "teacherName", a.class_name AS "className", a.subject, a.topic,
+    st.name AS "teacherName", a.class_name AS "className", a.subject, a.topic,
     a.instructions, a.due_at AS "dueAt", a.created_at AS "createdAt"
-   FROM assignments a WHERE a.school_id = ?`;
+   FROM assignments a JOIN school_teachers st ON st.id = a.teacher_id
+   WHERE a.school_id = ?`;
   const params: unknown[] = [schoolId];
   if (opts?.className) { sql += " AND a.class_name = ?"; params.push(opts.className); }
   if (opts?.teacherId) { sql += " AND a.teacher_id = ?"; params.push(opts.teacherId); }
@@ -144,10 +145,10 @@ export async function createAssignment(db: Db, opts: {
   const now = new Date().toISOString();
   await db
     .prepare(
-      `INSERT INTO assignments (id, school_id, teacher_id, teacher_name, class_name, subject, topic, instructions, due_at)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`
+      `INSERT INTO assignments (id, school_id, teacher_id, class_name, subject, topic, instructions, due_at)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?)`
     )
-    .run(id, opts.schoolId, opts.teacherId, opts.teacherName, opts.className, opts.subject, opts.topic, opts.instructions, opts.dueAt ?? null);
+    .run(id, opts.schoolId, opts.teacherId, opts.className, opts.subject, opts.topic, opts.instructions, opts.dueAt ?? null);
   return {
     id, schoolId: opts.schoolId, teacherId: opts.teacherId, teacherName: opts.teacherName,
     className: opts.className, subject: opts.subject, topic: opts.topic,
