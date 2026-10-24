@@ -94,7 +94,8 @@ CREATE TABLE IF NOT EXISTS parent_links (
   student_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
   parent_email TEXT NOT NULL,
   magic_token TEXT NOT NULL UNIQUE,
-  verified_at TEXT
+  verified_at TEXT,
+  created_at TEXT
 );
 
 -- Local email outbox (stand-in for Mailpit UI; ZeptoMail sends these in prod).

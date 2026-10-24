@@ -270,3 +270,72 @@ export async function maybeSendExpiryNudge(
     console.error("[mail] nudge check failed:", e instanceof Error ? e.message : String(e));
   }
 }
+
+// ---------------------------------------------------------------------------
+// Parent access email (sent once, when the payment succeeds)
+// ---------------------------------------------------------------------------
+
+export async function sendParentWelcomeEmail(opts: {
+  parentEmail: string;
+  childName: string;
+  exam?: string | null;
+  link: string;
+  base: string;
+}): Promise<boolean> {
+  try {
+    const base = siteBase(opts.base);
+    const child = esc(opts.childName || "Your child");
+    const html = shell(
+      "Your child's progress",
+      `<p>Hi,</p>
+<p><strong>${child}</strong> is now studying with EduPal AI${opts.exam ? ` — preparing for <strong>${esc(opts.exam)}</strong>` : ""}. Here is their private, view-only progress page, ready whenever you want to look:</p>
+<p>${button(`Open ${child}'s progress`, opts.link)}</p>
+<p style="color:#64748b;font-size:13px;margin-top:18px;">You will see their study streak, how many practice answers they gave this week, and their weakest topics — so you know exactly what to ask about at home.</p>
+<p style="color:#64748b;font-size:13px;">No action needed — this link is yours to use any time, and it is completely view-only: you can look, but nothing can be changed from this page.</p>`,
+      base
+    );
+    return await sendMail({
+      to: opts.parentEmail,
+      subject: `${child}'s progress on EduPal AI`,
+      html
+    });
+  } catch (e) {
+    console.error("[mail] parent email failed:", e instanceof Error ? e.message : String(e));
+    return false;
+  }
+}
+
+// Called from every payment-success path (callback, webhook, mock) next to the
+// receipt: looks up the student's NEWEST parent link and emails it. No link on
+// file → silent no-op. Fire-and-forget: never rejects.
+export async function sendParentLinkFor(
+  db: Db,
+  opts: { userId: string; base: string }
+): Promise<void> {
+  try {
+    const row = (await db
+      .prepare(
+        `SELECT pl.parent_email AS "parentEmail", pl.magic_token AS token, u.name AS "childName", p.exam
+         FROM parent_links pl
+         JOIN users u ON u.id = pl.student_id
+         LEFT JOIN profiles p ON p.user_id = u.id
+         WHERE pl.student_id = ?
+         ORDER BY COALESCE(pl.created_at, '') DESC
+         LIMIT 1`
+      )
+      .get(opts.userId)) as
+      | { parentEmail: string; token: string; childName: string | null; exam: string | null }
+      | undefined;
+    if (!row?.token) return;
+    const base = siteBase(opts.base);
+    await sendParentWelcomeEmail({
+      parentEmail: row.parentEmail,
+      childName: row.childName ?? "",
+      exam: row.exam ?? "",
+      link: `${base}/parent?token=${row.token}`,
+      base
+    });
+  } catch (e) {
+    console.error("[mail] parent link send failed:", e instanceof Error ? e.message : String(e));
+  }
+}

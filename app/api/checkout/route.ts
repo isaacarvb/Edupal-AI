@@ -3,7 +3,7 @@ import { getDb, uid } from "@/lib/db";
 import { paystackConfigured, initializePayment } from "@/lib/paystack";
 import { findPlan, defaultPlan } from "@/lib/plans";
 import { registerParentContact, unlockUnlimited } from "@/lib/parent";
-import { sendReceiptFor } from "@/lib/mail";
+import { sendReceiptFor, sendParentLinkFor } from "@/lib/mail";
 
 // Checkout: parent contact if SECONDARY (never blocks), optional promoCode,
 // then real Paystack (one-time payment for the chosen months) — or the local
@@ -79,5 +79,6 @@ export async function POST(req: Request) {
   if (promo) await db.prepare("UPDATE promo_codes SET used = used + 1 WHERE code = ?").run(promo);
   // Same receipt email as real payments — lets the whole flow be tested locally.
   void sendReceiptFor(db, { userId, reference: ref, planId: plan.id, amountKobo, base: new URL(req.url).origin });
+  void sendParentLinkFor(db, { userId, base: new URL(req.url).origin });
   return NextResponse.json({ ok: true, mode: "mock", ref, plan: "UNLIMITED", planId: plan.id, magicLinkSent: !!parentEmail, amountKobo, promo });
 }

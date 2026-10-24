@@ -4,8 +4,8 @@ import { uid , Db} from "./db";
 // Shared by mock and real-Paystack checkouts (link activates on payment success).
 export async function registerParentContact(db: Db, userId: string, parentEmail: string): Promise<string> {
   const token = uid();
-  await db.prepare("INSERT INTO parent_links (id, student_id, parent_email, magic_token) VALUES (?, ?, ?, ?)").run(
-    uid(), userId, parentEmail, token
+  await db.prepare("INSERT INTO parent_links (id, student_id, parent_email, magic_token, created_at) VALUES (?, ?, ?, ?, ?)").run(
+    uid(), userId, parentEmail, token, new Date().toISOString()
   );
   const base = process.env.NEXTAUTH_URL ?? "http://localhost:3000";
   const magicLink = `${base}/parent?token=${token}`;

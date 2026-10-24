@@ -23,6 +23,8 @@ function SubscriptionInner() {
   const [parentEmail, setParentEmail] = useState("");
   const [payMsg, setPayMsg] = useState("");
   const [paid, setPaid] = useState(false);
+  const [parentLink, setParentLink] = useState<string | null>(null);
+  const [linkCopied, setLinkCopied] = useState(false);
   const [plans, setPlans] = useState<PlanInfo[]>([]);
   const [planId, setPlanId] = useState("");
   const [promoCode, setPromoCode] = useState("");
@@ -64,7 +66,21 @@ function SubscriptionInner() {
       return;
     }
     setPaid(true);
+    // Local mock: refresh plan/expiry so the success card shows the real date.
+    fetch(`/api/topics?userId=${userId}`).then((r) => r.json()).then((d) => {
+      setPlan(d.profile?.plan ?? "FREE");
+      setPaidUntil(d.profile?.paidUntil ?? null);
+    }).catch(() => {});
   }
+
+  // Payment success → fetch the parent link for the "share a copy" box.
+  useEffect(() => {
+    if (!paid || !userId) return;
+    fetch(`/api/parent/link?userId=${userId}`)
+      .then((r) => r.json())
+      .then((d) => setParentLink(d.link ?? null))
+      .catch(() => {});
+  }, [paid, userId]);
 
   if (!userId) return <main style={{ padding: 20 }}>Missing user. Start from <a href="/signup">signup</a>.</main>;
 
@@ -132,7 +148,20 @@ function SubscriptionInner() {
 
       {paid && (
         <div style={{ ...card, background: "#F0FDF4", border: "1px solid #BBF7D0" }}>
-          <p style={{ color: "#166534", fontWeight: 700, margin: 0 }}>✓ Payment received — Unlimited unlocked{paidUntil ? ` until ${fmtDate(paidUntil)}` : ""}. Parent link sent.</p>
+          <p style={{ color: "#166534", fontWeight: 700, margin: "0 0 4px" }}>✓ Payment received — Unlimited unlocked{paidUntil ? ` until ${fmtDate(paidUntil)}` : ""}.</p>
+          {parentLink ? (
+            <>
+              <p style={{ fontSize: 13, color: "#166534", margin: "0 0 8px" }}>Your parent's progress link is already in their inbox — share a copy here too:</p>
+              <div style={{ display: "flex", gap: 8 }}>
+                <input readOnly value={parentLink} style={{ flex: 1, height: 44, borderRadius: 10, border: "1px solid #BBF7D0", padding: "0 10px", fontSize: 12, minWidth: 0, background: "#fff" }} />
+                <button onClick={() => { navigator.clipboard?.writeText(parentLink); setLinkCopied(true); }} style={{ height: 44, borderRadius: 10, border: 0, background: "#0F766E", color: "#fff", fontWeight: 700, padding: "0 16px", cursor: "pointer" }}>
+                  {linkCopied ? "Copied ✓" : "Copy link"}
+                </button>
+              </div>
+            </>
+          ) : (
+            <p style={{ fontSize: 13, color: "#166534", margin: 0 }}>Parent link sent.</p>
+          )}
         </div>
       )}
 

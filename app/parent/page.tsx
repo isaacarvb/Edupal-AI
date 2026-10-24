@@ -7,7 +7,7 @@ function ParentInner() {
   const token = params.get("token") ?? "";
   const [data, setData] = useState<null | {
     parentEmail: string;
-    summary: { exam: string; streak: number; plan: string; weekAttempts: number };
+    summary: { exam: string; childName: string; streak: number; plan: string; weekAttempts: number };
     weak: { subject: string; topic: string; accuracy: number; label: string }[];
   }>(null);
   const [err, setErr] = useState("");
@@ -25,7 +25,7 @@ function ParentInner() {
 
   return (
     <main style={{ maxWidth: 420, margin: "0 auto", padding: 20, color: "#333A45" }}>
-      <h1 style={{ color: "#1E242E", fontSize: 22 }}>Progress overview</h1>
+      <h1 style={{ color: "#1E242E", fontSize: 22 }}>{data.summary.childName ? `${data.summary.childName}'s progress` : "Progress overview"}</h1>
       <p style={{ fontSize: 14, color: "#5F6E7F" }}>For {data.parentEmail} • view-only</p>
       <div style={{ background: "#fff", border: "1px solid #E2E8F0", borderRadius: 16, padding: 12 }}>
         <p>Exam: <strong>{data.summary.exam}</strong> • Plan: <strong>{data.summary.plan}</strong></p>

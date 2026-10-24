@@ -3,7 +3,7 @@ import { createHmac, timingSafeEqual } from "crypto";
 import { getDb } from "@/lib/db";
 import { findPlan, defaultPlan } from "@/lib/plans";
 import { unlockUnlimited } from "@/lib/parent";
-import { sendReceiptFor } from "@/lib/mail";
+import { sendReceiptFor, sendParentLinkFor } from "@/lib/mail";
 import { logError } from "@/lib/admin";
 
 // Paystack pushes payment events here as the always-on backup to the browser
@@ -88,6 +88,11 @@ export async function POST(req: Request) {
           reference,
           planId: plan.id,
           amountKobo: paid || Number(tx.amountKobo),
+          base: process.env.NEXTAUTH_URL ?? "https://edupal-ai-app.netlify.app"
+        });
+        // Parent progress link — same once-only transition as the receipt.
+        void sendParentLinkFor(db, {
+          userId,
           base: process.env.NEXTAUTH_URL ?? "https://edupal-ai-app.netlify.app"
         });
       }

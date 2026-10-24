@@ -93,7 +93,8 @@ CREATE TABLE IF NOT EXISTS parent_links (
   student_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
   parent_email TEXT NOT NULL,
   magic_token TEXT NOT NULL UNIQUE,
-  verified_at TEXT
+  verified_at TEXT,
+  created_at TEXT
 );
 
 CREATE TABLE IF NOT EXISTS email_outbox (

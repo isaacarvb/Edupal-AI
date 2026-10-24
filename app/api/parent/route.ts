@@ -17,7 +17,7 @@ export async function GET(req: Request) {
   const weekAgo = new Date(Date.now() - 7 * 86400000).toISOString().slice(0, 10);
   const summary = await db
     .prepare(
-      `SELECT p.exam, s.current AS streak, w.plan,
+      `SELECT p.exam, u.name AS "childName", s.current AS streak, w.plan,
               (SELECT COUNT(*) FROM attempts WHERE user_id = ? AND SUBSTRING(created_at,1,10) >= ?) AS "weekAttempts"
        FROM users u LEFT JOIN profiles p ON p.user_id = u.id
        LEFT JOIN streaks s ON s.user_id = u.id LEFT JOIN wallets w ON w.user_id = u.id
