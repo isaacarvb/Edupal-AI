@@ -43,6 +43,13 @@ export default function SchoolPortal() {
   const [creds, setCreds] = useState<Credential[] | null>(null);
   const [copied, setCopied] = useState(false);
   const [roster, setRoster] = useState<{ name: string; className: string; email: string; joinedAt: string }[]>([]);
+  const [tab, setTab] = useState<"overview" | "roster">("overview");
+  const [ov, setOv] = useState<null | {
+    summary: { total: number; activeWeek: number; answers: number; avgStreak: number };
+    weak: { subject: string; topic: string; students: number; accuracy: number }[];
+    classes: { className: string; students: number; activeWeek: number; avgStreak: number }[];
+    top: { name: string; className: string; answers: number }[];
+  }>(null);
 
   useEffect(() => {
     const id = localStorage.getItem("edupal_user");
@@ -55,6 +62,10 @@ export default function SchoolPortal() {
         setInfo(d);
       })
       .catch(() => setDenied(true));
+    fetch(`/api/school/overview?userId=${id}`)
+      .then((r) => (r.ok ? r.json() : null))
+      .then((d) => d && setOv(d))
+      .catch(() => {});
     fetch(`/api/school/roster?userId=${id}`)
       .then((r) => (r.ok ? r.json() : null))
       .then((d) => d && setRoster(d.roster ?? []))
@@ -148,6 +159,94 @@ export default function SchoolPortal() {
         )}
       </div>
 
+      <div style={{ display: "flex", gap: 8, marginBottom: 12 }}>
+        {(["overview", "roster"] as const).map((t) => (
+          <button key={t} onClick={() => setTab(t)}
+            style={{ height: 40, borderRadius: 999, border: tab === t ? 0 : "1px solid #CBD5E1", background: tab === t ? "#0F766E" : "#fff",
+              color: tab === t ? "#fff" : "#333A45", fontWeight: 700, padding: "0 18px", cursor: "pointer", fontSize: 14 }}>
+            {t === "overview" ? "Overview" : "Students & logins"}
+          </button>
+        ))}
+        <a href={`/school/classroom?userId=${userId ?? ""}`} style={{ height: 40, borderRadius: 999, border: "1px solid #1E242E", background: "#1E242E", color: "#fff",
+          fontWeight: 700, padding: "0 18px", fontSize: 14, display: "flex", alignItems: "center", marginLeft: "auto", textDecoration: "none" }}>
+          🖥 Classroom mode
+        </a>
+      </div>
+
+      {tab === "overview" && (
+        <>
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(150px, 1fr))", gap: 10, marginBottom: 12 }}>
+            {[
+              { label: "Students", value: ov ? String(ov.summary.total) : "…" },
+              { label: "Active this week", value: ov ? String(ov.summary.activeWeek) : "…" },
+              { label: "Answers this week", value: ov ? String(ov.summary.answers) : "…" },
+              { label: "Average streak", value: ov ? `${ov.summary.avgStreak} days` : "…" }
+            ].map((s) => (
+              <div key={s.label} style={{ ...card, margin: 0, textAlign: "center" }}>
+                <div style={{ fontSize: 26, fontWeight: 800, color: "#0F766E" }}>{s.value}</div>
+                <div style={{ fontSize: 12, color: "#5F6E7F", fontWeight: 700 }}>{s.label}</div>
+              </div>
+            ))}
+          </div>
+
+          <div style={card}>
+            <h2 style={{ color: "#1E242E", fontSize: 16, margin: "0 0 8px" }}>🎯 Weakest topics across the school</h2>
+            {ov && ov.weak.length > 0 ? (
+              <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+                {ov.weak.map((w) => (
+                  <div key={`${w.subject}-${w.topic}`} style={{ display: "flex", alignItems: "center", gap: 10, fontSize: 14 }}>
+                    <span style={{ flex: 1 }}><strong>{w.topic}</strong> <span style={{ color: "#5F6E7F" }}>· {w.subject}</span></span>
+                    <span style={{ fontSize: 12, color: "#5F6E7F" }}>{w.students} student{w.students === 1 ? "" : "s"}</span>
+                    <span style={{ fontSize: 13, fontWeight: 800, color: w.accuracy < 50 ? "#DC2626" : "#F59E0B", minWidth: 42, textAlign: "right" }}>{w.accuracy}%</span>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <p style={{ fontSize: 13, color: "#5F6E7F", margin: 0 }}>No weak topics recorded yet — they appear once students start practising.</p>
+            )}
+          </div>
+
+          {(ov?.classes?.length ?? 0) > 0 && (
+            <div style={card}>
+              <h2 style={{ color: "#1E242E", fontSize: 16, margin: "0 0 8px" }}>🏫 By class</h2>
+              <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
+                <thead><tr style={{ textAlign: "left", color: "#5F6E7F", fontSize: 12 }}>
+                  <th style={{ padding: "6px 8px" }}>Class</th><th style={{ padding: "6px 8px" }}>Students</th><th style={{ padding: "6px 8px" }}>Active this week</th><th style={{ padding: "6px 8px" }}>Avg streak</th>
+                </tr></thead>
+                <tbody>
+                  {ov!.classes.map((c) => (
+                    <tr key={c.className} style={{ borderTop: "1px solid #F1F5F9" }}>
+                      <td style={{ padding: "8px", fontWeight: 700 }}>{c.className}</td>
+                      <td style={{ padding: "8px" }}>{c.students}</td>
+                      <td style={{ padding: "8px" }}>{c.activeWeek}</td>
+                      <td style={{ padding: "8px" }}>{c.avgStreak}d</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+
+          {(ov?.top?.length ?? 0) > 0 && (
+            <div style={{ ...card, background: "#FFFBEB", border: "1px solid #FDE68A" }}>
+              <h2 style={{ color: "#92400E", fontSize: 16, margin: "0 0 8px" }}>🏆 Top performers this week</h2>
+              <div style={{ display: "flex", flexDirection: "column", gap: 5 }}>
+                {ov!.top.map((t, i) => (
+                  <div key={`${t.name}-${i}`} style={{ display: "flex", alignItems: "center", gap: 10, fontSize: 14 }}>
+                    <span style={{ width: 24, fontWeight: 800, color: "#92400E" }}>{i + 1}.</span>
+                    <span style={{ flex: 1, fontWeight: 700 }}>{t.name}</span>
+                    <span style={{ fontSize: 12, color: "#92400E" }}>{t.className}</span>
+                    <span style={{ fontWeight: 800 }}>{t.answers} answers</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+        </>
+      )}
+
+      {tab === "roster" && (
+      <>
       <div style={card}>
         <h2 style={{ color: "#1E242E", fontSize: 16, margin: "0 0 4px" }}>Add students</h2>
         <p style={{ fontSize: 13, color: "#5F6E7F", margin: "0 0 10px" }}>
@@ -213,6 +312,8 @@ export default function SchoolPortal() {
           </div>
           <p style={{ fontSize: 12, color: "#94A3B8", margin: "8px 0 0" }}>Passwords can't be re-shown here — keep the downloaded CSV safe, or ask the student to tell you their old one.</p>
         </div>
+      )}
+      </>
       )}
     </main>
   );

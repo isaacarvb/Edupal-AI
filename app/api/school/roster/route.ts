@@ -17,11 +17,11 @@ export async function GET(req: Request) {
     const { school } = await requireSchoolAdmin(db, userId);
     const roster = (await db
       .prepare(
-        `SELECT u.name, u.email, sm.class_name AS "className", sm.created_at AS "joinedAt"
+        `SELECT u.id AS "userId", u.name, u.email, sm.class_name AS "className", sm.created_at AS "joinedAt"
          FROM school_members sm JOIN users u ON u.id = sm.user_id
          WHERE sm.school_id = ? ORDER BY sm.class_name, u.name`
       )
-      .all(school.id)) as Array<{ name: string | null; email: string | null; className: string; joinedAt: string }>;
+      .all(school.id)) as Array<{ userId: string; name: string | null; email: string | null; className: string; joinedAt: string }>;
     return NextResponse.json({ roster: roster.map((r) => ({ ...r, name: r.name ?? "" })), total: roster.length });
   } catch (e) {
     return NextResponse.json({ error: e instanceof Error ? e.message : "failed" }, { status: e instanceof Error && e.message.includes("forbidden") ? 403 : 500 });

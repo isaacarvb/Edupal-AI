@@ -47,5 +47,5 @@ export async function GET(req: Request) {
        WHERE a.user_id = ? ORDER BY a.created_at DESC LIMIT 1`
     )
     .get(userId) as { s: string } | undefined;
-  return NextResponse.json({ profile: { ...profile, creditsLeft: limits.reduce((s, l) => s + l.left, 0), plan }, topics, subjectLimits: limits, exhaustedAll, lastSubject: lastRow?.s ?? null });
+  return NextResponse.json({ profile: { ...profile, creditsLeft: limits.reduce((s, l) => s + l.left, 0), plan, planSource: wallet?.source ?? "personal", effectivePaidUntil: wallet?.paidUntil ?? null }, topics, subjectLimits: limits, exhaustedAll, lastSubject: lastRow?.s ?? null });
 }

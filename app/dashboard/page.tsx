@@ -2,7 +2,7 @@
 import { Suspense, useEffect, useState } from "react";
 import { useSearchParams } from "next/navigation";
 
-type Profile = { name: string | null; level: string; exam: string; examDate: string | null; examStart: string | null; examEnd: string | null; datesConfirmed: number | null; department: string | null; subjects: string; language: string; creditsLeft: number; plan: string; paidUntil: string | null; streak: number; freezeAvailable: number };
+type Profile = { name: string | null; level: string; exam: string; examDate: string | null; examStart: string | null; examEnd: string | null; datesConfirmed: number | null; department: string | null; subjects: string; language: string; creditsLeft: number; plan: string; planSource?: string; paidUntil: string | null; streak: number; freezeAvailable: number };
 
 const card: React.CSSProperties = { background: "#fff", border: "1px solid #E2E8F0", borderRadius: 16, padding: 16, margin: "0 0 12px" };
 
@@ -84,7 +84,7 @@ function DashInner() {
           {days !== null && <span style={chipStyle(days)}>{countdownText(profile.exam, days)}</span>}
           <span style={{ fontSize: 13, background: "#0F766E", color: "#fff", padding: "6px 10px", borderRadius: 999 }}>🔥 Streak {profile.streak}</span>
           <span style={{ fontSize: 13, background: "#333A45", color: "#fff", padding: "6px 10px", borderRadius: 999 }}>
-            {profile.plan === "UNLIMITED" ? `∞ Unlimited${paidDaysLeft ? ` · ${paidDaysLeft}d left` : ""}` : `${profile.creditsLeft} free left today`}
+            {profile.plan === "UNLIMITED" ? `∞ Unlimited${profile.planSource === "school" ? " · via school" : ""}${paidDaysLeft ? ` · ${paidDaysLeft}d left` : ""}` : `${profile.creditsLeft} free left today`}
           </span>
           <span style={{ fontSize: 13, background: "#333A45", color: "#fff", padding: "6px 10px", borderRadius: 999 }}>{profile.freezeAvailable ? "🧊 Freeze ready" : "🧊 Freeze used"}</span>
         </div>

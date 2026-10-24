@@ -1,11 +1,12 @@
 import type { Db } from "./db";
 import { getSiteSettings, subjectPeriodKey, currentPeriodStart } from "./site-settings";
+import { schoolIsActive } from "./schools";
 
 // Fallback only — the live limit comes from site settings (admin → Settings).
 export const DAILY_FREE = 10;
 export const SUBJECT_DAILY_LIMIT = 10;
 
-export type Wallet = { creditsLeft: number; plan: "FREE" | "UNLIMITED"; paidUntil: string | null };
+export type Wallet = { creditsLeft: number; plan: "FREE" | "UNLIMITED"; paidUntil: string | null; source?: "personal" | "school" };
 
 // Per-subject daily free budget. UNLIMITED plans bypass checks entirely.
 export async function getSubjectLeft(db: Db, userId: string, subject: string, plan: "FREE" | "UNLIMITED"): Promise<number> {
@@ -40,7 +41,32 @@ export async function subjectLimits(db: Db, userId: string, subjects: string[], 
 // Free wallets refill at the admin-set period (days + time, Lagos) and whenever
 // the admin changes the daily limit. UNLIMITED and PILOT run inside their
 // paid_from..paid_until window, then fall back to FREE (no lockout).
+//
+// Two doors: a student's plan comes from their PERSONAL wallet (payments,
+// admin grants) OR from their school's subscription — whichever gives access.
+// School access is READ-ONLY: it never writes to the wallet row, so a personal
+// subscription and a school subscription never clobber each other.
 export async function getWallet(db: Db, userId: string): Promise<Wallet | null> {
+  const personal = await getPersonalWallet(db, userId);
+  if (!personal) return null;
+  if (personal.plan === "UNLIMITED") return { ...personal, source: "personal" };
+
+  // Personal side is free → does the school door open? (indexed lookup, one row)
+  const school = (await db
+    .prepare(
+      `SELECT s.expires_at AS "expiresAt", s.active
+       FROM school_members sm JOIN schools s ON s.id = sm.school_id
+       WHERE sm.user_id = ?`
+    )
+    .get(userId)) as { expiresAt: string | null; active: number } | undefined;
+  if (school && schoolIsActive({ active: Number(school.active), expiresAt: school.expiresAt })) {
+    return { creditsLeft: 9999, plan: "UNLIMITED", paidUntil: school.expiresAt, source: "school" };
+  }
+  return { ...personal, source: "personal" };
+}
+
+// The wallet row's own state (personal payments + grants), expiry enforced.
+async function getPersonalWallet(db: Db, userId: string): Promise<Wallet | null> {
   const s = await getSiteSettings();
   const w = await db
     .prepare('SELECT credits_left AS "creditsLeft", reset_at AS "resetAt", plan, paid_until AS "paidUntil", paid_from AS "paidFrom" FROM wallets WHERE user_id = ?')

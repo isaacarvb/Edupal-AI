@@ -34,6 +34,7 @@ export default function Shell({ children }: { children: React.ReactNode }) {
   const [open, setOpen] = useState(false);
   const [collapsed, setCollapsed] = useState(false);
   const [adminView, setAdminView] = useState(false);
+  const [classroom, setClassroom] = useState(false);
   const [tip, setTip] = useState<{ text: string; top: number } | null>(null);
   const tipTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -111,6 +112,33 @@ export default function Shell({ children }: { children: React.ReactNode }) {
       setAdminView(search?.get("adminView") === "1");
     }
   }, [search]);
+
+  // Classroom mode ticket: set when a student starts from the school's
+  // tap-your-name picker, so a "Switch student" pill floats on every page.
+  useEffect(() => {
+    try {
+      if (search?.get("classroom") === "1") {
+        sessionStorage.setItem("edupal_classroom", "1");
+        setClassroom(true);
+      } else {
+        setClassroom(sessionStorage.getItem("edupal_classroom") === "1");
+      }
+    } catch {
+      setClassroom(search?.get("classroom") === "1");
+    }
+  }, [search]);
+
+  function exitClassroom() {
+    try { sessionStorage.removeItem("edupal_classroom"); } catch { /* private mode */ }
+    const staff = localStorage.getItem("edupal_school_staff");
+    if (staff) {
+      localStorage.setItem("edupal_user", staff);
+      localStorage.setItem("edupal_role", "SCHOOL_ADMIN");
+      window.location.href = `/school?userId=${staff}`;
+    } else {
+      setClassroom(false);
+    }
+  }
 
   async function logout() {
     localStorage.removeItem("edupal_user");
@@ -260,6 +288,16 @@ export default function Shell({ children }: { children: React.ReactNode }) {
         {children}
       </div>
       {userId && <NoticeBell userId={userId} />}
+      {classroom && (
+        <div style={{ position: "fixed", bottom: 14, left: "50%", transform: "translateX(-50%)", zIndex: 70,
+          background: "#1E242E", color: "#fff", borderRadius: 999, padding: "8px 8px 8px 16px",
+          display: "flex", alignItems: "center", gap: 10, fontSize: 13, border: "1px solid #0F766E",
+          boxShadow: "0 8px 24px rgb(0 0 0 / 0.35)", maxWidth: "92vw" }}>
+          <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>🏫 {name !== "Student" ? name.trim().split(/\s+/)[0] : "Student"} is practising</span>
+          <a href="/school/classroom" style={{ background: "#0F766E", color: "#fff", borderRadius: 999, padding: "6px 12px", textDecoration: "none", fontWeight: 700, flexShrink: 0 }}>Switch student</a>
+          <button onClick={exitClassroom} style={{ background: "transparent", border: 0, color: "#A7F3D0", cursor: "pointer", fontWeight: 700, flexShrink: 0 }}>Exit</button>
+        </div>
+      )}
     </div>
   );
 }
