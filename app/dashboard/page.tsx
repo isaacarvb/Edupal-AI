@@ -16,6 +16,10 @@ function DashInner() {
   const [limits, setLimits] = useState<{ subject: string; left: number }[]>([]);
   const [lastSubject, setLastSubject] = useState<string | null>(null);
   const [attempts, setAttempts] = useState<number | null>(null);
+  const [schoolMember, setSchoolMember] = useState<{ schoolId: string; className: string } | null>(null);
+  const [schoolNotes, setSchoolNotes] = useState<Array<{ id: string; subject: string; topic: string; body: string; teacherName: string }>>([]);
+  const [schoolBroadcasts, setSchoolBroadcasts] = useState<Array<{ id: string; body: string; className: string | null }>>([]);
+  const [schoolAssignments, setSchoolAssignments] = useState<Array<{ id: string; subject: string; topic: string; instructions: string; dueAt: string | null; teacherName: string }>>([]);
   const limited = params.get("limited") ?? "";
 
   function chipStyle(days: number | null): React.CSSProperties {
@@ -57,6 +61,18 @@ function DashInner() {
         setReminder("Your examination dates are not yet confirmed. Once the official timetable is released, you can update your examination schedule in Settings to help EduPal AI organise your preparation more effectively.");
       }
     });
+    // School content: membership → notes, broadcasts, assignments for the class.
+    fetch(`/api/student/lesson-notes?userId=${userId}`)
+      .then((r) => r.json())
+      .then((d) => { setSchoolNotes(d.notes ?? []); if (d.className) setSchoolMember((p) => p ? { ...p, className: d.className } : null); });
+    fetch(`/api/student/broadcasts?userId=${userId}`)
+      .then((r) => r.json())
+      .then((d) => { setSchoolBroadcasts(d.broadcasts ?? []); if (d.className) setSchoolMember((p) => p ? { ...p, className: d.className } : null); });
+    fetch(`/api/student/assignments?userId=${userId}`)
+      .then((r) => r.json())
+      .then((d) => { setSchoolAssignments(d.assignments ?? []); if (d.className) setSchoolMember((p) => p ? { ...p, className: d.className } : null); });
+    // Fetch membership directly to get schoolId (needed if other endpoints return empty).
+    fetch(`/api/school/member?userId=${userId}`).then((r) => r.ok ? r.json() : null).then((d) => { if (d?.schoolId) setSchoolMember({ schoolId: d.schoolId, className: d.className ?? "" }); }).catch(() => {});
   }
 
   useEffect(refresh, [userId]);
@@ -120,6 +136,58 @@ function DashInner() {
           <strong>Your Unlimited plan ended on {paidEndDate}.</strong>
           <p style={{ fontSize: 14, margin: "4px 0 8px" }}>Free daily questions still work — renew to unlock every subject and feature again.</p>
           <a href={`/subscription?userId=${userId}`} style={{ display: "inline-block", background: "#0F766E", color: "#fff", borderRadius: 10, height: 44, lineHeight: "44px", fontWeight: 700, fontSize: 14, padding: "0 18px", textDecoration: "none" }}>Renew Unlimited</a>
+        </div>
+      )}
+
+      {/* SCHOOL BROADCAST */}
+      {schoolBroadcasts.length > 0 && (
+        <div style={{ background: "#FFF7ED", border: "2px solid #FDBA74", borderRadius: 16, padding: 14, margin: "0 0 12px" }}>
+          <strong style={{ color: "#9A3412" }}>📢 From your school:</strong>
+          <div style={{ display: "flex", gap: 10, flexWrap: "wrap", marginTop: 6 }}>
+            {schoolBroadcasts.map((b) => (
+              <span key={b.id} style={{ background: "#fff", border: "1px solid #FED7AA", borderRadius: 8, padding: "6px 10px", fontSize: 13, color: "#451a03" }}>{b.body}</span>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* SCHOOL NOTES & ASSIGNMENTS */}
+      {(schoolNotes.length > 0 || schoolAssignments.length > 0) && (
+        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, margin: "0 0 12px" }}>
+          {schoolNotes.length > 0 && (
+            <div style={{ ...card, gridColumn: "span 2" }}>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
+                <h2 style={{ color: "#1E242E", fontSize: 16, margin: 0 }}>📝 Lesson Notes for your class</h2>
+                <span style={{ fontSize: 11, fontWeight: 800, padding: "2px 8px", borderRadius: 999, background: "#DC2626", color: "#fff" }}>Approved by VP Academics</span>
+              </div>
+              <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                {schoolNotes.map((n) => (
+                  <div key={n.id} style={{ borderBottom: "1px solid #F1F5F9", paddingBottom: 8, fontSize: 13 }}>
+                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", marginBottom: 4 }}>
+                      <strong>{n.topic}</strong> <span style={{ fontSize: 11, color: "#5F6E7F" }}>{n.subject} · by {n.teacherName}</span>
+                    </div>
+                    <p style={{ margin: 0, color: "#333A45" }}>{n.body.slice(0, 200)}{n.body.length > 200 ? "…" : ""}</p>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+          {schoolAssignments.length > 0 && (
+            <div style={{ ...card, gridColumn: "span 2" }}>
+              <h2 style={{ color: "#1E242E", fontSize: 16, margin: "0 0 8px" }}>✅ Assignments for your class</h2>
+              <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                {schoolAssignments.map((a) => (
+                  <div key={a.id} style={{ borderBottom: "1px solid #F1F5F9", paddingBottom: 8, fontSize: 13 }}>
+                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", marginBottom: 4 }}>
+                      <strong>{a.topic}</strong> <span style={{ fontSize: 11, color: "#5F6E7F" }}>{a.subject} · by {a.teacherName}{a.dueAt ? ` · due ${new Date(a.dueAt).toLocaleDateString("en-NG", { day: "numeric", month: "short" })}` : ""}</span>
+                    </div>
+                    <p style={{ margin: 0, color: "#333A45" }}>{a.instructions.slice(0, 200)}{a.instructions.length > 200 ? "…" : ""}</p>
+                    <a href={`/practice?userId=${userId}&subject=${encodeURIComponent(a.subject)}`} style={{ display: "inline-block", marginTop: 6, background: "#0F766E", color: "#fff", borderRadius: 8, padding: "4px 12px", fontSize: 12, fontWeight: 700, textDecoration: "none" }}>Practice {a.subject}</a>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
         </div>
       )}
 

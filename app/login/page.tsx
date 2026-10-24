@@ -25,10 +25,11 @@ export default function Login() {
         return setErr("Dev account has no dashboard yet — create yours via Start your journey.");
       }
       localStorage.setItem("edupal_user", id);
-      // Real role from the session — SCHOOL_ADMIN staff unlock the School Portal.
       const role = (session?.user?.role as string | undefined) || "STUDENT";
       localStorage.setItem("edupal_role", role);
-      router.push(role === "SCHOOL_ADMIN" ? `/school?userId=${id}` : `/dashboard?userId=${id}`);
+      if (role === "SCHOOL_ADMIN") router.push(`/school?userId=${id}`);
+      else if (role === "SCHOOL_TEACHER") router.push(`/teacher/dashboard?userId=${id}`);
+      else router.push(`/dashboard?userId=${id}`);
     } finally {
       setBusy(false);
     }

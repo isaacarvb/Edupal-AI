@@ -17,6 +17,9 @@ const TIPS: Record<string, string> = {
   "Progress Analytics": "Track your performance over time across all subjects and topics",
   "Parent Portal": "Your parent or guardian's view of your progress and activity",
   "School Portal": "Your school's students, classes and login management",
+  "My Classes": "Your classes, roster and per-student activity",
+  "Lesson Notes": "Write lesson notes for VP review — approved notes show to students",
+  "Assignments": "Set practice assignments for your classes and track completion",
   "Subscription & Credits": "Manage your plan, view daily credits, and upgrade your account",
   "Exam Info": "Key dates, registration deadlines, and exam tips",
   Settings: "Update your profile, password, language, and display preferences"
@@ -28,6 +31,7 @@ export default function Shell({ children }: { children: React.ReactNode }) {
   const search = useSearchParams();
   const [userId, setUserId] = useState<string | null>(null);
   const [schoolAdmin, setSchoolAdmin] = useState(false);
+  const [teacher, setTeacher] = useState(false);
   const [name, setName] = useState("Student");
   const [daysLeft, setDaysLeft] = useState<number | null>(null);
   const [mobile, setMobile] = useState(false);
@@ -72,6 +76,7 @@ export default function Shell({ children }: { children: React.ReactNode }) {
     const id = localStorage.getItem("edupal_user");
     setUserId(id);
     setSchoolAdmin(localStorage.getItem("edupal_role") === "SCHOOL_ADMIN");
+    setTeacher(localStorage.getItem("edupal_role") === "SCHOOL_TEACHER");
     setOpen(false);
     if (id) {
       fetch(`/api/topics?userId=${id}`)
@@ -160,6 +165,12 @@ export default function Shell({ children }: { children: React.ReactNode }) {
     { href: "/parent", match: "/parent", label: "Parent Portal", emoji: "👨‍👩‍👧", badge: "" },
     // School Portal: visible ONLY to school staff accounts (role SCHOOL_ADMIN).
     ...(schoolAdmin ? [{ href: userId ? `/school?userId=${userId}` : "/school", match: "/school", label: "School Portal", emoji: "🏫", badge: "" }] : []),
+    // Teacher items: visible ONLY to SCHOOL_TEACHER accounts.
+    ...(teacher ? [
+      { href: userId ? `/teacher/dashboard?userId=${userId}` : "/teacher/dashboard", match: "/teacher/dashboard", label: "My Classes", emoji: "📚", badge: "" },
+      { href: "/teacher/lesson-notes", match: "/teacher/lesson-notes", label: "Lesson Notes", emoji: "📝", badge: "" },
+      { href: "/teacher/assignments", match: "/teacher/assignments", label: "Assignments", emoji: "✅", badge: "" }
+    ] : []),
     { href: userId ? `/subscription?userId=${userId}` : "/onboarding", match: "/subscription", label: "Subscription & Credits", emoji: "💳", badge: "" },
     { href: "/deadlines", match: "/deadlines", label: "Exam Info", emoji: "📅", badge: "" }
   ];

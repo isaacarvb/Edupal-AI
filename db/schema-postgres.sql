@@ -270,3 +270,62 @@ CREATE TABLE IF NOT EXISTS school_members (
   UNIQUE(user_id)
 );
 CREATE INDEX IF NOT EXISTS idx_school_members_school ON school_members(school_id);
+
+-- Stage C: teacher accounts, lesson notes with VP approval, assignments, broadcasts.
+-- Teachers are normal EduPal users (role SCHOOL_TEACHER) who can log in at /login.
+-- school_teachers links them to a school and records which classes they teach.
+CREATE TABLE IF NOT EXISTS school_teachers (
+  id TEXT PRIMARY KEY,
+  school_id TEXT NOT NULL REFERENCES schools(id) ON DELETE CASCADE,
+  name TEXT NOT NULL,
+  email TEXT NOT NULL,
+  password_hash TEXT NOT NULL,
+  classes TEXT NOT NULL DEFAULT '',
+  active INTEGER NOT NULL DEFAULT 1,
+  created_at TEXT NOT NULL DEFAULT (TO_CHAR(NOW() AT TIME ZONE 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS.MS"Z"'))
+);
+CREATE INDEX IF NOT EXISTS idx_school_teachers_school ON school_teachers(school_id);
+
+-- Lesson notes: teachers write them (pending), VP Academics approves/rejects them.
+-- Only approved notes are visible to students in the target class.
+CREATE TABLE IF NOT EXISTS lesson_notes (
+  id TEXT PRIMARY KEY,
+  school_id TEXT NOT NULL REFERENCES schools(id) ON DELETE CASCADE,
+  teacher_id TEXT NOT NULL REFERENCES school_teachers(id) ON DELETE CASCADE,
+  class_name TEXT NOT NULL DEFAULT '',
+  subject TEXT NOT NULL,
+  topic TEXT NOT NULL,
+  body TEXT NOT NULL DEFAULT '',
+  status TEXT NOT NULL DEFAULT 'pending',
+  reviewed_by TEXT,
+  reviewed_at TEXT,
+  created_at TEXT NOT NULL DEFAULT (TO_CHAR(NOW() AT TIME ZONE 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS.MS"Z"'))
+);
+CREATE INDEX IF NOT EXISTS idx_lesson_notes_school_status ON lesson_notes(school_id, status);
+
+-- Assignments: teachers set work for a class (subject, topic, due date).
+-- Completion is measured from existing attempts on that topic.
+CREATE TABLE IF NOT EXISTS assignments (
+  id TEXT PRIMARY KEY,
+  school_id TEXT NOT NULL REFERENCES schools(id) ON DELETE CASCADE,
+  teacher_id TEXT NOT NULL REFERENCES school_teachers(id) ON DELETE CASCADE,
+  class_name TEXT NOT NULL DEFAULT '',
+  subject TEXT NOT NULL,
+  topic TEXT NOT NULL,
+  instructions TEXT NOT NULL DEFAULT '',
+  due_at TEXT,
+  created_at TEXT NOT NULL DEFAULT (TO_CHAR(NOW() AT TIME ZONE 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS.MS"Z"'))
+);
+CREATE INDEX IF NOT EXISTS idx_assignments_school_class ON assignments(school_id, class_name);
+
+-- Broadcasts: one-line messages to a whole class (or the whole school when class_name is NULL).
+CREATE TABLE IF NOT EXISTS broadcasts (
+  id TEXT PRIMARY KEY,
+  school_id TEXT NOT NULL REFERENCES schools(id) ON DELETE CASCADE,
+  class_name TEXT DEFAULT NULL,
+  body TEXT NOT NULL DEFAULT '',
+  starts_at TEXT NOT NULL DEFAULT (TO_CHAR(NOW() AT TIME ZONE 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS.MS"Z"')),
+  ends_at TEXT,
+  created_at TEXT NOT NULL DEFAULT (TO_CHAR(NOW() AT TIME ZONE 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS.MS"Z"'))
+);
+CREATE INDEX IF NOT EXISTS idx_broadcasts_school ON broadcasts(school_id, starts_at, ends_at);

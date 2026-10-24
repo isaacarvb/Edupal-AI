@@ -43,13 +43,14 @@ export default function SchoolPortal() {
   const [creds, setCreds] = useState<Credential[] | null>(null);
   const [copied, setCopied] = useState(false);
   const [roster, setRoster] = useState<{ name: string; className: string; email: string; joinedAt: string }[]>([]);
-  const [tab, setTab] = useState<"overview" | "roster">("overview");
+  const [tab, setTab] = useState<"overview" | "roster" | "notes">("overview");
   const [ov, setOv] = useState<null | {
     summary: { total: number; activeWeek: number; answers: number; avgStreak: number };
     weak: { subject: string; topic: string; students: number; accuracy: number }[];
     classes: { className: string; students: number; activeWeek: number; avgStreak: number }[];
     top: { name: string; className: string; answers: number }[];
   }>(null);
+  const [pendingNotes, setPendingNotes] = useState<Array<{ id: string; teacherName: string; className: string; subject: string; topic: string; body: string; createdAt: string }>>([]);
 
   useEffect(() => {
     const id = localStorage.getItem("edupal_user");
@@ -69,6 +70,10 @@ export default function SchoolPortal() {
     fetch(`/api/school/roster?userId=${id}`)
       .then((r) => (r.ok ? r.json() : null))
       .then((d) => d && setRoster(d.roster ?? []))
+      .catch(() => {});
+    fetch(`/api/school/lesson-notes?userId=${id}&status=pending`)
+      .then((r) => (r.ok ? r.json() : null))
+      .then((d) => d && setPendingNotes(d.notes ?? []))
       .catch(() => {});
   }, []);
 
@@ -90,6 +95,25 @@ export default function SchoolPortal() {
       setPaste("");
       setMsg(`${d.created} student account${d.created === 1 ? "" : "s"} created${d.skipped?.length ? ` (${d.skipped.length} skipped)` : ""}. Print or download the logins below — passwords are shown only once.`);
       fetch(`/api/school/roster?userId=${userId}`).then((r) => r.json()).then((x) => setRoster(x.roster ?? [])).catch(() => {});
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function reviewNote(noteId: string, status: "approved" | "rejected") {
+    if (!userId || busy) return;
+    setBusy(true);
+    try {
+      const res = await fetch("/api/school/lesson-notes", {
+        method: "PATCH", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ userId, noteId, status })
+      });
+      const d = await res.json();
+      if (!res.ok) return setMsg(d.error || "Review failed.");
+      setMsg(`Note ${status}.`);
+      setPendingNotes(pendingNotes.filter((n) => n.id !== noteId));
+      fetch(`/api/school/lesson-notes?userId=${userId}&status=pending`)
+        .then((r) => r.json()).then((d) => setPendingNotes(d.notes ?? [])).catch(() => {});
     } finally {
       setBusy(false);
     }
@@ -160,11 +184,11 @@ export default function SchoolPortal() {
       </div>
 
       <div style={{ display: "flex", gap: 8, marginBottom: 12 }}>
-        {(["overview", "roster"] as const).map((t) => (
+        {(["overview", "roster", "notes"] as const).map((t) => (
           <button key={t} onClick={() => setTab(t)}
             style={{ height: 40, borderRadius: 999, border: tab === t ? 0 : "1px solid #CBD5E1", background: tab === t ? "#0F766E" : "#fff",
               color: tab === t ? "#fff" : "#333A45", fontWeight: 700, padding: "0 18px", cursor: "pointer", fontSize: 14 }}>
-            {t === "overview" ? "Overview" : "Students & logins"}
+            {t === "overview" ? "Overview" : t === "roster" ? "Students & logins" : "Lesson Notes"}
           </button>
         ))}
         <a href={`/school/classroom?userId=${userId ?? ""}`} style={{ height: 40, borderRadius: 999, border: "1px solid #1E242E", background: "#1E242E", color: "#fff",
@@ -314,6 +338,46 @@ export default function SchoolPortal() {
         </div>
       )}
       </>
+      )}
+
+      {tab === "notes" && pendingNotes.length > 0 && (
+        <div style={card}>
+          <h2 style={{ color: "#1E242E", fontSize: 16, margin: "0 0 10px" }}>⏳ Lesson notes awaiting your review</h2>
+          <p style={{ fontSize: 13, color: "#5F6E7F", margin: "0 0 10px" }}>
+            Teachers have written these notes. Approve them so students in the class can see them on their dashboard, or reject if they need changes.
+          </p>
+          {pendingNotes.map((n) => (
+            <div key={n.id} style={{ borderBottom: "1px solid #F1F5F9", padding: "10px 0", fontSize: 13 }}>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", marginBottom: 6 }}>
+                <div>
+                  <strong style={{ fontSize: 14 }}>{n.topic}</strong>
+                  <span style={{ fontSize: 11, color: "#5F6E7F", marginLeft: 6 }}>{n.subject} · {n.className}</span>
+                </div>
+                <span style={{ fontSize: 10, fontWeight: 800, padding: "2px 8px", borderRadius: 999, background: "#F59E0B", color: "#fff" }}>Pending</span>
+              </div>
+              <div style={{ color: "#5F6E7F", fontSize: 11, marginBottom: 6 }}>
+                by {n.teacherName} · {new Date(n.createdAt).toLocaleDateString("en-NG", { day: "numeric", month: "short" })}
+              </div>
+              <p style={{ margin: "0 0 8px", color: "#333A45" }}>{n.body.slice(0, 300)}{n.body.length > 300 ? "…" : ""}</p>
+              <div style={{ display: "flex", gap: 8 }}>
+                <button onClick={() => reviewNote(n.id, "approved")}
+                  style={{ height: 36, borderRadius: 8, border: 0, background: "#16A34A", color: "#fff", fontWeight: 700, padding: "0 14px", cursor: "pointer", flex: 1 }}>
+                  Approve
+                </button>
+                <button onClick={() => reviewNote(n.id, "rejected")}
+                  style={{ height: 36, borderRadius: 8, border: 0, background: "#DC2626", color: "#fff", fontWeight: 700, padding: "0 14px", cursor: "pointer", flex: 1 }}>
+                  Reject
+                </button>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+      {tab === "notes" && pendingNotes.length === 0 && (
+        <div style={card}>
+          <h2 style={{ color: "#1E242E", fontSize: 16, margin: "0 0 8px" }}>⏳ Lesson notes awaiting your review</h2>
+          <p style={{ fontSize: 13, color: "#5F6E7F", margin: 0 }}>No pending notes. Teachers' notes will appear here for your review.</p>
+        </div>
       )}
     </main>
   );
