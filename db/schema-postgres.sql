@@ -1,4 +1,4 @@
--- EduPal AI — Postgres schema (Supabase). Same tables/columns as db/schema.sql.
+-- EduPal AI â€” Postgres schema (Supabase). Same tables/columns as db/schema.sql.
 -- Timestamps stay TEXT ISO-8601 so every query behaves identically on both engines.
 
 CREATE TABLE IF NOT EXISTS users (
@@ -237,3 +237,36 @@ CREATE TABLE IF NOT EXISTS error_logs (
   message TEXT NOT NULL DEFAULT '',
   created_at TEXT NOT NULL DEFAULT (TO_CHAR(NOW() AT TIME ZONE 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS.MS"Z"'))
 );
+
+-- School Portal (institutional accounts). A school subscribes and its students
+-- are normal EduPal users ADDITIONALLY linked to the school â€” personal
+-- accounts and subscriptions are untouched by any of this.
+-- NOTE: do not use semicolons inside comments - pgMigrate splits on them
+CREATE TABLE IF NOT EXISTS school_groups (
+  id TEXT PRIMARY KEY,
+  name TEXT NOT NULL,
+  created_at TEXT NOT NULL DEFAULT (TO_CHAR(NOW() AT TIME ZONE 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS.MS"Z"'))
+);
+CREATE TABLE IF NOT EXISTS schools (
+  id TEXT PRIMARY KEY,
+  group_id TEXT REFERENCES school_groups(id) ON DELETE SET NULL,
+  name TEXT NOT NULL,
+  code TEXT NOT NULL UNIQUE,
+  admin_user_id TEXT REFERENCES users(id) ON DELETE SET NULL,
+  active INTEGER NOT NULL DEFAULT 0,
+  expires_at TEXT,
+  max_seats INTEGER NOT NULL DEFAULT 1000,
+  ai_prompts INTEGER NOT NULL DEFAULT 0,
+  created_at TEXT NOT NULL DEFAULT (TO_CHAR(NOW() AT TIME ZONE 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS.MS"Z"'))
+);
+-- A student belongs to at most ONE school (UNIQUE user_id) with class grouping
+-- inside the school (SS2, JSS3, ...).
+CREATE TABLE IF NOT EXISTS school_members (
+  id TEXT PRIMARY KEY,
+  school_id TEXT NOT NULL REFERENCES schools(id) ON DELETE CASCADE,
+  user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  class_name TEXT NOT NULL DEFAULT '',
+  created_at TEXT NOT NULL DEFAULT (TO_CHAR(NOW() AT TIME ZONE 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS.MS"Z"')),
+  UNIQUE(user_id)
+);
+CREATE INDEX IF NOT EXISTS idx_school_members_school ON school_members(school_id);

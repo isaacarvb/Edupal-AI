@@ -16,6 +16,7 @@ const TIPS: Record<string, string> = {
   "Likely Questions": "AI-predicted questions most likely to appear in your exam",
   "Progress Analytics": "Track your performance over time across all subjects and topics",
   "Parent Portal": "Your parent or guardian's view of your progress and activity",
+  "School Portal": "Your school's students, classes and login management",
   "Subscription & Credits": "Manage your plan, view daily credits, and upgrade your account",
   "Exam Info": "Key dates, registration deadlines, and exam tips",
   Settings: "Update your profile, password, language, and display preferences"
@@ -26,6 +27,7 @@ export default function Shell({ children }: { children: React.ReactNode }) {
   const path = usePathname();
   const search = useSearchParams();
   const [userId, setUserId] = useState<string | null>(null);
+  const [schoolAdmin, setSchoolAdmin] = useState(false);
   const [name, setName] = useState("Student");
   const [daysLeft, setDaysLeft] = useState<number | null>(null);
   const [mobile, setMobile] = useState(false);
@@ -68,6 +70,7 @@ export default function Shell({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     const id = localStorage.getItem("edupal_user");
     setUserId(id);
+    setSchoolAdmin(localStorage.getItem("edupal_role") === "SCHOOL_ADMIN");
     setOpen(false);
     if (id) {
       fetch(`/api/topics?userId=${id}`)
@@ -127,6 +130,8 @@ export default function Shell({ children }: { children: React.ReactNode }) {
     { href: userId ? `/likely-questions${q}` : "/onboarding", match: "/likely-questions", label: "Likely Questions", emoji: "🔥", badge: userId ? likelyBadge : "" },
     { href: "/metrics", match: "/metrics", label: "Progress Analytics", emoji: "📊", badge: "" },
     { href: "/parent", match: "/parent", label: "Parent Portal", emoji: "👨‍👩‍👧", badge: "" },
+    // School Portal: visible ONLY to school staff accounts (role SCHOOL_ADMIN).
+    ...(schoolAdmin ? [{ href: userId ? `/school?userId=${userId}` : "/school", match: "/school", label: "School Portal", emoji: "🏫", badge: "" }] : []),
     { href: userId ? `/subscription?userId=${userId}` : "/onboarding", match: "/subscription", label: "Subscription & Credits", emoji: "💳", badge: "" },
     { href: "/deadlines", match: "/deadlines", label: "Exam Info", emoji: "📅", badge: "" }
   ];
