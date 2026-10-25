@@ -3,8 +3,10 @@ import { DatabaseSync } from "node:sqlite";
 import fs from "node:fs";
 import path from "node:path";
 import { QUESTIONS } from "../lib/question-bank.mjs";
+import { importQuestions } from "./import-questions.mjs";
 
-// Self-contained (no TS imports): opens ./dev.db, applies db/schema.sql, seeds shared bank.
+// Self-contained (no TS imports): opens ./dev.db, applies db/schema.sql,
+// seeds shared bank + past-question CSVs.
 const root = process.cwd();
 const db = new DatabaseSync(path.join(root, process.env.DB_FILE ?? "dev.db"));
 db.exec("PRAGMA journal_mode = WAL;");
@@ -25,5 +27,9 @@ for (const q of QUESTIONS) {
   );
   added += Number(r.changes);
 }
-console.log(`Seed done: ${added} new question(s).`);
+console.log(`Seed done: ${added} new question(s) from inline bank.`);
+
+// Also import past-question CSVs into the same DB connection
+await importQuestions(db);
+
 db.close();
