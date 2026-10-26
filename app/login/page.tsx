@@ -27,7 +27,7 @@ export default function Login() {
       localStorage.setItem("edupal_user", id);
       const role = (session?.user?.role as string | undefined) || "STUDENT";
       localStorage.setItem("edupal_role", role);
-      if (role === "SCHOOL_ADMIN") router.push(`/school?userId=${id}`);
+      if (role === "SCHOOL_ADMIN") router.push(`/school/dashboard?userId=${id}`);
       else if (role === "SCHOOL_TEACHER") router.push(`/teacher/dashboard?userId=${id}`);
       else router.push(`/dashboard?userId=${id}`);
     } finally {

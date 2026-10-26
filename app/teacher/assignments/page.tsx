@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 const card: React.CSSProperties = { background: "#fff", border: "1px solid #E2E8F0", borderRadius: 16, padding: 16, margin: "0 0 12px" };
 const input: React.CSSProperties = { height: 44, borderRadius: 10, border: "1px solid #CBD5E1", padding: "0 12px", fontSize: 14, width: "100%", boxSizing: "border-box" };
 
-type Assignment = { id: string; subject: string; topic: string; instructions: string; dueAt: string | null; className: string; teacherName: string; createdAt: string };
+type Assignment = { id: string; subject: string; topic: string; instructions: string; dueAt: string | null; className: string; createdAt: string };
 
 export default function TeacherAssignments() {
   const [userId, setUserId] = useState<string | null>(null);
@@ -27,15 +27,13 @@ export default function TeacherAssignments() {
     const params = new URLSearchParams(window.location.search);
     setClassParam(params.get("class") ?? "");
     fetch(`/api/school/assignments?userId=${id}&teacherId=${id}`)
-      .then(async (r) => {
-        if (!r.ok) return setDenied(true);
-        const d = await r.json();
-        setAssignments((d.assignments ?? []).map((a: any) => ({
+      .then((r) => (r.ok ? r.json() : null))
+      .then((d) => {
+        if (d?.assignments) setAssignments(d.assignments.map((a: any) => ({
           id: a.id, subject: a.subject, topic: a.topic, instructions: a.instructions,
-          dueAt: a.dueAt, className: a.className, teacherName: a.teacherName, createdAt: a.createdAt
+          dueAt: a.dueAt, className: a.className, createdAt: a.createdAt
         })));
-      })
-      .catch(() => setDenied(true));
+      });
   }, []);
 
   if (denied) {
@@ -64,9 +62,10 @@ export default function TeacherAssignments() {
       setMsg("Assignment set for your class.");
       setSubject(""); setTopic(""); setInstructions(""); setDueAt("");
       fetch(`/api/school/assignments?userId=${userId}&teacherId=${userId}`)
-        .then((r) => r.json()).then((d) => setAssignments((d.assignments ?? []).map((a: any) => ({
+        .then((r) => (r.ok ? r.json() : null))
+        .then((d) => d?.assignments && setAssignments(d.assignments.map((a: any) => ({
           id: a.id, subject: a.subject, topic: a.topic, instructions: a.instructions,
-          dueAt: a.dueAt, className: a.className, teacherName: a.teacherName, createdAt: a.createdAt
+          dueAt: a.dueAt, className: a.className, createdAt: a.createdAt
         }))));
     } finally {
       setBusy(false);
@@ -89,7 +88,7 @@ export default function TeacherAssignments() {
       <div style={card}>
         <h2 style={{ color: "#1E242E", fontSize: 16, margin: "0 0 10px" }}>Set a new assignment</h2>
         <p style={{ fontSize: 13, color: "#5F6E7F", margin: "0 0 10px" }}>
-          Students see the assignment on their dashboard and can practise the topic. You'll see who completed it from their activity.
+          Students see the assignment on their dashboard and can practise the topic.
         </p>
         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10, marginBottom: 10 }}>
           <input value={className} onChange={(e) => setClassName(e.target.value)} placeholder="Class (e.g. SS2)"
@@ -109,15 +108,17 @@ export default function TeacherAssignments() {
         <div style={{ marginTop: 10 }}>
           <button onClick={createAssignment} disabled={busy}
             style={{ height: 44, borderRadius: 10, border: 0, background: "#0F766E", color: "#fff", fontWeight: 800, padding: "0 20px", cursor: "pointer" }}>
-            {busy ? "Setting…" : "Set assignment"}
+            {busy ? "Setting…" : "Set Assignment"}
           </button>
-          {msg && <p style={{ fontSize: 13, color: msg.startsWith("Class") ? "#DC2626" : "#166534", marginTop: 8 }}>{msg}</p>}
+          {msg && <p style={{ fontSize: 13, color: msg.startsWith("Fill") ? "#DC2626" : "#166534", marginTop: 8 }}>{msg}</p>}
         </div>
       </div>
 
       <div style={card}>
-        <h2 style={{ color: "#1E242E", fontSize: 16, margin: "0 0 10px" }}>Your assignments ({assignments.length})</h2>
-        {assignments.length === 0 && <p style={{ fontSize: 13, color: "#5F6E7F", margin: 0 }}>No assignments yet. Set one above.</p>}
+        <h2 style={{ color: "#1E242E", fontSize: 16, margin: "0 0 10px" }}>Your Assignments ({assignments.length})</h2>
+        {assignments.length === 0 && (
+          <p style={{ fontSize: 13, color: "#5F6E7F", margin: 0 }}>No assignments yet. Set one above.</p>
+        )}
         {assignments.map((a) => (
           <div key={a.id} style={{ borderBottom: "1px solid #F1F5F9", padding: "10px 0", fontSize: 13 }}>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", marginBottom: 4 }}>
@@ -126,20 +127,15 @@ export default function TeacherAssignments() {
                 <span style={{ fontSize: 11, color: "#5F6E7F", marginLeft: 6 }}>{a.subject}</span>
               </div>
               {a.dueAt && (
-                <span style={{ fontSize: 10, fontWeight: 800, padding: "2px 8px", borderRadius: 999, background: "#F1F5F9", color: "#333A45" }}>
+                <span style={{ fontSize: 10, fontWeight: 800, padding: "4px 8px", borderRadius: 999, background: "#F1F5F9", color: "#333A45" }}>
                   Due {new Date(a.dueAt).toLocaleDateString("en-NG", { day: "numeric", month: "short" })}
                 </span>
               )}
             </div>
             <div style={{ color: "#5F6E7F", fontSize: 11, marginBottom: 4 }}>
-              {a.className} · set by {a.teacherName}
+              {a.className}
             </div>
             <p style={{ margin: 0, color: "#333A45" }}>{a.instructions.slice(0, 300)}{a.instructions.length > 300 ? "…" : ""}</p>
-            <div style={{ marginTop: 6, display: "flex", gap: 8 }}>
-              <a href={`/practice?userId=${userId}&subject=${encodeURIComponent(a.subject)}`}
-                style={{ background: "#0F766E", color: "#fff", borderRadius: 8, padding: "4px 12px", fontSize: 12, fontWeight: 700, textDecoration: "none" }}>Practice {a.subject}</a>
-              <button onClick={() => remove(a.id)} style={{ background: "#DC2626", color: "#fff", borderRadius: 8, padding: "4px 12px", fontSize: 12, fontWeight: 700, border: 0, cursor: "pointer" }}>Remove</button>
-            </div>
           </div>
         ))}
       </div>

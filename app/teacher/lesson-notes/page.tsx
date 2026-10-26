@@ -4,12 +4,11 @@ import { useEffect, useState } from "react";
 const card: React.CSSProperties = { background: "#fff", border: "1px solid #E2E8F0", borderRadius: 16, padding: 16, margin: "0 0 12px" };
 const input: React.CSSProperties = { height: 44, borderRadius: 10, border: "1px solid #CBD5E1", padding: "0 12px", fontSize: 14, width: "100%", boxSizing: "border-box" };
 
-type Note = { id: string; subject: string; topic: string; body: string; status: string; className: string; teacherName: string; createdAt: string };
+type Note = { id: string; subject: string; topic: string; body: string; status: string; className: string; createdAt: string };
 
 export default function TeacherLessonNotes() {
   const [userId, setUserId] = useState<string | null>(null);
   const [classParam, setClassParam] = useState("");
-  const [schoolParam, setSchoolParam] = useState("");
   const [denied, setDenied] = useState(false);
   const [notes, setNotes] = useState<Note[]>([]);
   const [subject, setSubject] = useState("");
@@ -26,17 +25,14 @@ export default function TeacherLessonNotes() {
     if (localStorage.getItem("edupal_role") !== "SCHOOL_TEACHER") return setDenied(true);
     const params = new URLSearchParams(window.location.search);
     setClassParam(params.get("class") ?? "");
-    setSchoolParam(params.get("school") ?? "");
     fetch(`/api/school/lesson-notes?userId=${id}&teacherId=${id}`)
-      .then(async (r) => {
-        if (!r.ok) return setDenied(true);
-        const d = await r.json();
-        setNotes((d.notes ?? []).map((n: any) => ({
+      .then((r) => (r.ok ? r.json() : null))
+      .then((d) => {
+        if (d?.notes) setNotes(d.notes.map((n: any) => ({
           id: n.id, subject: n.subject, topic: n.topic, body: n.body,
-          status: n.status, className: n.className, teacherName: n.teacherName, createdAt: n.createdAt
+          status: n.status, className: n.className, createdAt: n.createdAt
         })));
-      })
-      .catch(() => setDenied(true));
+      });
   }, []);
 
   if (denied) {
@@ -49,9 +45,6 @@ export default function TeacherLessonNotes() {
       </main>
     );
   }
-
-  const statusColor = (s: string) => s === "approved" ? "#16A34A" : s === "rejected" ? "#DC2626" : "#F59E0B";
-  const statusLabel = (s: string) => s === "approved" ? "Approved" : s === "rejected" ? "Rejected" : "Pending VP review";
 
   async function createNote() {
     if (!userId || busy) return;
@@ -68,14 +61,18 @@ export default function TeacherLessonNotes() {
       setMsg("Note sent to VP Academics for review.");
       setSubject(""); setTopic(""); setBody("");
       fetch(`/api/school/lesson-notes?userId=${userId}&teacherId=${userId}`)
-        .then((r) => r.json()).then((d) => setNotes((d.notes ?? []).map((n: any) => ({
+        .then((r) => (r.ok ? r.json() : null))
+        .then((d) => d?.notes && setNotes(d.notes.map((n: any) => ({
           id: n.id, subject: n.subject, topic: n.topic, body: n.body,
-          status: n.status, className: n.className, teacherName: n.teacherName, createdAt: n.createdAt
+          status: n.status, className: n.className, createdAt: n.createdAt
         }))));
     } finally {
       setBusy(false);
     }
   }
+
+  const statusColor = (s: string) => s === "approved" ? "#16A34A" : s === "rejected" ? "#DC2626" : "#F59E0B";
+  const statusLabel = (s: string) => s === "approved" ? "Approved" : s === "rejected" ? "Rejected" : "Pending VP Review";
 
   return (
     <main style={{ maxWidth: 800, margin: "0 auto", padding: 20, color: "#333A45" }}>
@@ -112,8 +109,10 @@ export default function TeacherLessonNotes() {
       </div>
 
       <div style={card}>
-        <h2 style={{ color: "#1E242E", fontSize: 16, margin: "0 0 10px" }}>Your notes ({notes.length})</h2>
-        {notes.length === 0 && <p style={{ fontSize: 13, color: "#5F6E7F", margin: 0 }}>No notes yet. Write one above — it will appear here after the VP reviews it.</p>}
+        <h2 style={{ color: "#1E242E", fontSize: 16, margin: "0 0 10px" }}>Your Notes ({notes.length})</h2>
+        {notes.length === 0 && (
+          <p style={{ fontSize: 13, color: "#5F6E7F", margin: 0 }}>No notes yet. Write one above — it will appear here after the VP reviews it.</p>
+        )}
         {notes.map((n) => (
           <div key={n.id} style={{ borderBottom: "1px solid #F1F5F9", padding: "10px 0", fontSize: 13 }}>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", marginBottom: 4 }}>
@@ -121,7 +120,9 @@ export default function TeacherLessonNotes() {
                 <strong style={{ fontSize: 14 }}>{n.topic}</strong>
                 <span style={{ fontSize: 11, color: "#5F6E7F", marginLeft: 6 }}>{n.subject}</span>
               </div>
-              <span style={{ fontSize: 10, fontWeight: 800, padding: "2px 8px", borderRadius: 999, background: statusColor(n.status), color: "#fff" }}>{statusLabel(n.status)}</span>
+              <span style={{ fontSize: 10, fontWeight: 800, padding: "2px 8px", borderRadius: 999, background: statusColor(n.status), color: "#fff" }}>
+                {statusLabel(n.status)}
+              </span>
             </div>
             <div style={{ color: "#5F6E7F", fontSize: 11, marginBottom: 4 }}>
               {n.className} · {new Date(n.createdAt).toLocaleDateString("en-NG", { day: "numeric", month: "short" })}

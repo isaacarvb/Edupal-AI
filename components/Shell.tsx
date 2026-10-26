@@ -5,33 +5,17 @@ import { signOut } from "next-auth/react";
 import TopBar from "./TopBar";
 import AdminViewBanner from "./AdminViewBanner";
 import NoticeBell from "./NoticeBell";
+import SchoolShell from "./SchoolShell";
+import TeacherShell from "./TeacherShell";
 
 const PUBLIC_ROUTES = ["/", "/login", "/signup"];
-
-const TIPS: Record<string, string> = {
-  Dashboard: "Your home screen — streaks, practice summary, and quick actions",
-  Practice: "Answer questions and get instant AI feedback on your answers",
-  "Weak Topics": "See the topics you struggle with most and drill them specifically",
-  "Curriculum & Notes": "Browse the syllabus and access study notes by subject and topic",
-  "Likely Questions": "AI-predicted questions most likely to appear in your exam",
-  "Progress Analytics": "Track your performance over time across all subjects and topics",
-  "Parent Portal": "Your parent or guardian's view of your progress and activity",
-  "School Portal": "Your school's students, classes and login management",
-  "My Classes": "Your classes, roster and per-student activity",
-  "Lesson Notes": "Write lesson notes for VP review — approved notes show to students",
-  "Assignments": "Set practice assignments for your classes and track completion",
-  "Subscription & Credits": "Manage your plan, view daily credits, and upgrade your account",
-  "Exam Info": "Key dates, registration deadlines, and exam tips",
-  Settings: "Update your profile, password, language, and display preferences"
-};
 
 // Persistent app shell: collapsible dark sidebar (desktop), hamburger drawer (mobile).
 export default function Shell({ children }: { children: React.ReactNode }) {
   const path = usePathname();
   const search = useSearchParams();
   const [userId, setUserId] = useState<string | null>(null);
-  const [schoolAdmin, setSchoolAdmin] = useState(false);
-  const [teacher, setTeacher] = useState(false);
+  const [role, setRole] = useState<string | null>(null);
   const [name, setName] = useState("Student");
   const [daysLeft, setDaysLeft] = useState<number | null>(null);
   const [mobile, setMobile] = useState(false);
@@ -41,6 +25,10 @@ export default function Shell({ children }: { children: React.ReactNode }) {
   const [classroom, setClassroom] = useState(false);
   const [tip, setTip] = useState<{ text: string; top: number } | null>(null);
   const tipTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // Environment detection: STUDENT → individual app, SCHOOL_ADMIN → school portal,
+  // SCHOOL_TEACHER → teacher workspace.
+  const env = role === "SCHOOL_ADMIN" ? "school" : role === "SCHOOL_TEACHER" ? "teacher" : "individual";
 
   useEffect(() => {
     const mq = window.matchMedia("(max-width: 820px)");
@@ -69,34 +57,31 @@ export default function Shell({ children }: { children: React.ReactNode }) {
     return () => window.removeEventListener("hashchange", apply);
   }, [path]);
   const here = `${path}${hash}`;
-  // Exact match on path + anchor: /dashboard lights only Dashboard, not #topics/#upgrade.
   const isActive = (match: string) => match === here;
 
   useEffect(() => {
     const id = localStorage.getItem("edupal_user");
     setUserId(id);
-    setSchoolAdmin(localStorage.getItem("edupal_role") === "SCHOOL_ADMIN");
-    setTeacher(localStorage.getItem("edupal_role") === "SCHOOL_TEACHER");
+    setRole(localStorage.getItem("edupal_role"));
     setOpen(false);
-    if (id) {
+    if (id && env === "individual") {
       fetch(`/api/topics?userId=${id}`)
-        .then((r) => r.json())
+        .then((r) => (r.ok ? r.json() : null))
         .then((d) => {
-          if (d.profile?.name) setName(String(d.profile.name));
+          if (d?.profile?.name) setName(String(d.profile.name));
           const ed = d.profile?.examDate as string | null;
           setDaysLeft(ed ? Math.ceil((Date.parse(ed) - Date.now()) / 86400000) : null);
         });
     }
-  }, [path, search]);
+  }, [path, search, env]);
 
   function showTip(label: string, el: HTMLElement) {
     if (tipTimer.current) clearTimeout(tipTimer.current);
     tipTimer.current = setTimeout(() => {
       const r = el.getBoundingClientRect();
-      setTip({ text: TIPS[label] ?? label, top: r.top + r.height / 2 });
+      setTip({ text: label, top: r.top + r.height / 2 });
     }, 300);
   }
-
   function hideTip() {
     if (tipTimer.current) clearTimeout(tipTimer.current);
     setTip(null);
@@ -139,7 +124,7 @@ export default function Shell({ children }: { children: React.ReactNode }) {
     if (staff) {
       localStorage.setItem("edupal_user", staff);
       localStorage.setItem("edupal_role", "SCHOOL_ADMIN");
-      window.location.href = `/school?userId=${staff}`;
+      window.location.href = `/school/dashboard?userId=${staff}`;
     } else {
       setClassroom(false);
     }
@@ -148,10 +133,20 @@ export default function Shell({ children }: { children: React.ReactNode }) {
   async function logout() {
     localStorage.removeItem("edupal_user");
     localStorage.removeItem("edupal_role");
+    localStorage.removeItem("edupal_school_staff");
     await signOut({ redirect: false });
     window.location.href = "/login";
   }
 
+  // Route to the correct environment based on role.
+  if (env === "school") {
+    return <SchoolShell>{children}</SchoolShell>;
+  }
+  if (env === "teacher") {
+    return <TeacherShell>{children}</TeacherShell>;
+  }
+
+  // Individual student shell.
   const q = userId ? `?userId=${userId}${adminView ? "&adminView=1" : ""}` : "";
   const likelyBadge =
     daysLeft === null ? "Locked" : daysLeft > 7 ? `${daysLeft} left` : "Live";
@@ -163,14 +158,6 @@ export default function Shell({ children }: { children: React.ReactNode }) {
     { href: userId ? `/likely-questions${q}` : "/onboarding", match: "/likely-questions", label: "Likely Questions", emoji: "🔥", badge: userId ? likelyBadge : "" },
     { href: "/metrics", match: "/metrics", label: "Progress Analytics", emoji: "📊", badge: "" },
     { href: "/parent", match: "/parent", label: "Parent Portal", emoji: "👨‍👩‍👧", badge: "" },
-    // School Portal: visible ONLY to school staff accounts (role SCHOOL_ADMIN).
-    ...(schoolAdmin ? [{ href: userId ? `/school?userId=${userId}` : "/school", match: "/school", label: "School Portal", emoji: "🏫", badge: "" }] : []),
-    // Teacher items: visible ONLY to SCHOOL_TEACHER accounts.
-    ...(teacher ? [
-      { href: userId ? `/teacher/dashboard?userId=${userId}` : "/teacher/dashboard", match: "/teacher/dashboard", label: "My Classes", emoji: "📚", badge: "" },
-      { href: "/teacher/lesson-notes", match: "/teacher/lesson-notes", label: "Lesson Notes", emoji: "📝", badge: "" },
-      { href: "/teacher/assignments", match: "/teacher/assignments", label: "Assignments", emoji: "✅", badge: "" }
-    ] : []),
     { href: userId ? `/subscription?userId=${userId}` : "/onboarding", match: "/subscription", label: "Subscription & Credits", emoji: "💳", badge: "" },
     { href: "/deadlines", match: "/deadlines", label: "Exam Info", emoji: "📅", badge: "" }
   ];
@@ -304,7 +291,7 @@ export default function Shell({ children }: { children: React.ReactNode }) {
           background: "#1E242E", color: "#fff", borderRadius: 999, padding: "8px 8px 8px 16px",
           display: "flex", alignItems: "center", gap: 10, fontSize: 13, border: "1px solid #0F766E",
           boxShadow: "0 8px 24px rgb(0 0 0 / 0.35)", maxWidth: "92vw" }}>
-          <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>🏫 {name !== "Student" ? name.trim().split(/\s+/)[0] : "Student"} is practising</span>
+          <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>🏫 {name.trim().split(/\s+/)[0] || "Student"} is practising</span>
           <a href="/school/classroom" style={{ background: "#0F766E", color: "#fff", borderRadius: 999, padding: "6px 12px", textDecoration: "none", fontWeight: 700, flexShrink: 0 }}>Switch student</a>
           <button onClick={exitClassroom} style={{ background: "transparent", border: 0, color: "#A7F3D0", cursor: "pointer", fontWeight: 700, flexShrink: 0 }}>Exit</button>
         </div>
