@@ -122,6 +122,14 @@ export default function SchoolShell({ children }: { children: React.ReactNode })
     { href: `/school/settings${q}`, match: "/school/settings", label: "School Settings", emoji: "⚙️" }
   ];
 
+  // Group links by section header — each section renders ONCE with its items below.
+  const sections: Record<string, typeof LINKS> = {};
+  LINKS.forEach((l) => {
+    const section = getSection(l.label) || "GENERAL";
+    if (!sections[section]) sections[section] = [];
+    sections[section].push(l);
+  });
+
   const sidebar = (
     <aside
       style={{
@@ -151,16 +159,14 @@ export default function SchoolShell({ children }: { children: React.ReactNode })
         </div>
       </div>
       <nav style={{ padding: 10, display: "flex", flexDirection: "column", gap: 2, flex: 1 }}>
-        {LINKS.map((l) => {
-          const section = getSection(l.label);
-          return (
-            <React.Fragment key={l.label}>
-              {section && (
-                <div style={{ padding: wide ? "8px 12px" : "8px", fontSize: 10, fontWeight: 800, letterSpacing: 1, color: "#94A3B8", textTransform: "uppercase", marginBottom: 4 }}>
-                  {section}
-                </div>
-              )}
+        {Object.entries(sections).map(([sectionName, items]) => (
+          <React.Fragment key={sectionName}>
+            <div style={{ padding: wide ? "8px 12px" : "8px", fontSize: 10, fontWeight: 800, letterSpacing: 1, color: "#94A3B8", textTransform: "uppercase", marginBottom: 4 }}>
+              {sectionName}
+            </div>
+            {items.map((l) => (
               <a
+                key={l.label}
                 href={l.href}
                 onMouseEnter={(e) => showTip(l.label, e.currentTarget)}
                 onMouseLeave={hideTip}
@@ -174,9 +180,9 @@ export default function SchoolShell({ children }: { children: React.ReactNode })
                 <span style={{ fontSize: 16 }}>{l.emoji}</span>
                 {wide && <span style={{ flex: 1 }}>{l.label}</span>}
               </a>
-            </React.Fragment>
-          )
-        })}
+            ))}
+          </React.Fragment>
+        ))}
       </nav>
       <div style={{ padding: 10, borderTop: "1px solid #333A45" }}>
         {wide ? (
