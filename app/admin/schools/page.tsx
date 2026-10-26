@@ -188,7 +188,7 @@ export default function AdminSchools() {
     <main style={{ maxWidth: 760, margin: "0 auto", padding: 24, color: "#333A45" }}>
       <h1 style={{ fontSize: 22 }}>Schools</h1>
       <p style={{ fontSize: 13, color: "#5F6E7F" }}>
-        Institutional subscriptions. Create the school + its staff login, then activate with an end date (6 or 12 months from payment). While active, the school's students enjoy full access; when it lapses they drop to free automatically.
+        Institutional subscriptions. Create the school + its staff login, then activate with an end date (4, 8, or 12 months from payment). While active, the school's students enjoy full access; when it lapses they drop to free automatically.
       </p>
       {msg && <p style={{ fontSize: 14 }}>{msg}</p>}
 
@@ -224,11 +224,12 @@ export default function AdminSchools() {
               <AdminButton size="sm" variant="dangerOutline" busy={busy} onClick={() => deactivate(s)}>Deactivate</AdminButton>
             ) : (
               <span style={{ display: "flex", gap: 6, alignItems: "center" }}>
-                <select value={expForm[s.id] ?? "12"} onChange={(e) => setExpForm({ ...expForm, [s.id]: e.target.value })}
+                <select value={expForm[s.id] ?? "4"} onChange={(e) => setExpForm({ ...expForm, [s.id]: e.target.value })}
                   style={{ height: 34, borderRadius: 8, border: "1px solid #CBD5E1", fontSize: 13 }}>
-                  <option value="6">6 months</option>
-                  <option value="12">12 months</option>
-                  <option value="none">No end date</option>
+                  <option value="4">4 months (₦1,000,000)</option>
+                  <option value="8">8 months (₦1,900,000)</option>
+                  <option value="12">12 months (₦2,800,000)</option>
+                  <option value="none">No end date (free)</option>
                 </select>
                 <AdminButton size="sm" busy={busy} onClick={() => activate(s)}>Activate</AdminButton>
               </span>

@@ -5,10 +5,16 @@ const card: React.CSSProperties = { background: "#fff", border: "1px solid #E2E8
 
 type SchoolInfo = { id: string; name: string; code: string; active: number; expiresAt: string | null; maxSeats: number; ai_prompts: number };
 
+const PLANS = [
+  { months: 4, price: 1000000, label: "4 Months" },
+  { months: 8, price: 1900000, label: "8 Months" },
+  { months: 12, price: 2800000, label: "12 Months" },
+];
+
 export default function SubscriptionBilling() {
   const [userId, setUserId] = useState<string | null>(null);
   const [school, setSchool] = useState<SchoolInfo | null>(null);
-  const [months, setMonths] = useState("12");
+  const [selectedMonths, setSelectedMonths] = useState<number | null>(null);
   const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState("");
 
@@ -23,39 +29,18 @@ export default function SubscriptionBilling() {
       });
   }, []);
 
-  async function activate() {
+  async function subscribe(months: number) {
     setMsg("");
-    if (busy) return;
+    if (busy || !userId || !school) return;
     setBusy(true);
     try {
-      const expiresAt = months === "none" ? null : new Date(Date.now() + Number(months) * 30 * 86400000).toISOString();
-      const res = await fetch("/api/admin/schools", {
-        method: "PATCH", headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ adminId: userId, schoolId: school?.id, active: true, expiresAt })
+      const res = await fetch("/api/school/subscribe", {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ userId, months })
       });
       const d = await res.json();
-      if (!res.ok) return setMsg(d.error || "Failed.");
-      setMsg(`Activated${expiresAt ? ` until ${new Date(expiresAt).toLocaleDateString("en-NG", { day: "numeric", month: "short", year: "numeric" })}` : " with no end date"}.`);
-      fetch(`/api/school?userId=${userId}`)
-        .then((r) => (r.ok ? r.json() : null))
-        .then((d) => d?.school && setSchool(d.school));
-    } finally {
-      setBusy(false);
-    }
-  }
-
-  async function deactivate() {
-    setMsg("");
-    if (busy) return;
-    setBusy(true);
-    try {
-      const res = await fetch("/api/admin/schools", {
-        method: "PATCH", headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ adminId: userId, schoolId: school?.id, active: false })
-      });
-      const d = await res.json();
-      if (!res.ok) return setMsg(d.error || "Failed.");
-      setMsg("Deactivated.");
+      if (!res.ok) return setMsg(d.error || "Failed to subscribe.");
+      setMsg(`School subscribed for ${months} months until ${new Date(d.expiresAt).toLocaleDateString("en-NG", { day: "numeric", month: "short", year: "numeric" })}.`);
       fetch(`/api/school?userId=${userId}`)
         .then((r) => (r.ok ? r.json() : null))
         .then((d) => d?.school && setSchool(d.school));
@@ -65,6 +50,8 @@ export default function SubscriptionBilling() {
   }
 
   if (!school) return <div style={{ padding: 20 }}>Loading…</div>;
+
+  const isActive = school.active === 1 && school.expiresAt && Date.parse(school.expiresAt) > Date.now();
 
   return (
     <main style={{ maxWidth: 1100, margin: "0 auto", padding: 20, color: "#333A45" }}>
@@ -86,34 +73,41 @@ export default function SubscriptionBilling() {
         <div style={{ fontSize: 13, color: "#5F6E7F", marginBottom: 12 }}>
           Students: {school.maxSeats ? "0 / " + school.maxSeats : "—"} · AI prompts used: {school.ai_prompts ?? 0} · Expires: {school.expiresAt || "No end date"}
         </div>
-        {school.active === 1 ? (
-          <button onClick={deactivate} disabled={busy}
-            style={{ height: 44, borderRadius: 10, border: 0, background: "#DC2626", color: "#fff", fontWeight: 800, padding: "0 20px", cursor: "pointer" }}>
-            {busy ? "Deactivating…" : "Deactivate Subscription"}
+
+        {isActive ? (
+          <button onClick={() => {}} disabled style={{ height: 44, borderRadius: 10, border: 0, background: "#16A34A", color: "#fff", fontWeight: 800, padding: "0 20px", cursor: "not-allowed" }}>
+            Active Subscription
           </button>
         ) : (
-          <div style={{ display: "flex", gap: 10, alignItems: "center" }}>
-            <select value={months} onChange={(e) => setMonths(e.target.value)} style={{ height: 44, borderRadius: 10, border: "1px solid #CBD5E1", padding: "0 12px" }}>
-              <option value="6">6 months</option>
-              <option value="12">12 months</option>
-              <option value="none">No end date</option>
-            </select>
-            <button onClick={activate} disabled={busy}
-              style={{ height: 44, borderRadius: 10, border: 0, background: "#0F766E", color: "#fff", fontWeight: 800, padding: "0 20px", cursor: "pointer" }}>
-              {busy ? "Activating…" : "Activate Subscription"}
-            </button>
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))", gap: 10 }}>
+            {PLANS.map((p) => (
+              <div key={p.months} style={card}>
+                <div style={{ fontSize: 12, fontWeight: 800, letterSpacing: 1, color: "#5F6E7F", textTransform: "uppercase", marginBottom: 6 }}>{p.label}</div>
+                <div style={{ fontSize: 24, fontWeight: 800, color: "#1E242E", marginBottom: 4 }}>₦{p.price.toLocaleString()}</div>
+                <button onClick={() => subscribe(p.months)} disabled={busy}
+                  style={{ width: "100%", height: 40, borderRadius: 8, border: 0, background: "#0F766E", color: "#fff", fontWeight: 800, cursor: "pointer" }}>
+                  {busy ? "Subscribing…" : "Subscribe"}
+                </button>
+              </div>
+            ))}
           </div>
         )}
       </div>
 
       <div style={card}>
-        <h2 style={{ fontSize: 16, margin: "0 0 12px", color: "#1E242E" }}>Pricing</h2>
-        <p style={{ fontSize: 13, color: "#5F6E7F", margin: 0 }}>
-          Institutional subscriptions are billed manually. Contact EduPal AI to receive an invoice. Once paid, activate the subscription here to unlock student access.
+        <h2 style={{ fontSize: 16, margin: "0 0 12px", color: "#1E242E" }}>How It Works</h2>
+        <p style={{ fontSize: 13, color: "#5F6E7F", margin: "0 0 8px" }}>
+          Your school subscription unlocks full access for all your students. Once subscribed, students can practise Unlimited until the expiry date.
         </p>
+        <ul style={{ fontSize: 13, color: "#5F6E7F", lineHeight: "1.8", margin: 0 }}>
+          <li>Choose a plan (4, 8, or 12 months) and subscribe.</li>
+          <li>Your school becomes active and all students get full access.</li>
+          <li>When the subscription lapses, students drop to free access until you renew.</li>
+          <li>Contact EduPal AI to receive an invoice for your chosen plan.</li>
+        </ul>
       </div>
 
-      {msg && <p style={{ fontSize: 13, color: msg.startsWith("Activated") || msg.startsWith("Deactivated") ? "#166534" : "#DC2626", marginTop: 12 }}>{msg}</p>}
+      {msg && <p style={{ fontSize: 13, color: msg.startsWith("School subscribed") ? "#166534" : "#DC2626", marginTop: 12 }}>{msg}</p>}
     </main>
   );
 }
