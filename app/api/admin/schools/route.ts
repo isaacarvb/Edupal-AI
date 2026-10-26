@@ -130,3 +130,40 @@ export async function PATCH(req: Request) {
   await logAudit(db, admin.id, `school:${next.active ? "activate" : "deactivate"}`, `${school.name} until ${next.expiresAt ?? "—"} (${next.maxSeats} seats)`);
   return NextResponse.json({ ok: true, status: schoolIsActive({ active: next.active, expiresAt: next.expiresAt }) ? "ACTIVE" : "INACTIVE" });
 }
+
+export async function DELETE(req: Request) {
+  const { searchParams } = new URL(req.url);
+  const schoolId = searchParams.get("schoolId");
+  let admin;
+  try {
+    admin = await requireAdmin(searchParams.get("adminId") ?? adminIdFrom(req));
+    if (!isSuper(admin)) throw new Error("super only");
+  } catch {
+    return NextResponse.json({ error: "forbidden: super admin only" }, { status: 403 });
+  }
+  if (!schoolId) return NextResponse.json({ error: "schoolId required" }, { status: 400 });
+  const db = await getDb();
+  const school = await getSchoolById(db, schoolId);
+  if (!school) return NextResponse.json({ error: "school not found" }, { status: 404 });
+
+  // Delete all related data in dependency order.
+  await db.prepare("DELETE FROM broadcasts WHERE school_id = ?").run(schoolId);
+  await db.prepare("DELETE FROM assignments WHERE school_id = ?").run(schoolId);
+  await db.prepare("DELETE FROM lesson_notes WHERE school_id = ?").run(schoolId);
+  await db.prepare("DELETE FROM school_teachers WHERE school_id = ?").run(schoolId);
+  await db.prepare("DELETE FROM school_members WHERE school_id = ?").run(schoolId);
+  await db.prepare("DELETE FROM schools WHERE id = ?").run(schoolId);
+
+  // If the school's admin user exists and is still a SCHOOL_ADMIN, revert them to STUDENT.
+  if (school.adminUserId) {
+    const stillAdmin = await db
+      .prepare("SELECT role FROM users WHERE id = ? AND role = 'SCHOOL_ADMIN'")
+      .get(school.adminUserId);
+    if (stillAdmin) {
+      await db.prepare("UPDATE users SET role = 'STUDENT' WHERE id = ?").run(school.adminUserId);
+    }
+  }
+
+  await logAudit(db, admin.id, "school:delete", `${school.name} (${school.code})`);
+  return NextResponse.json({ ok: true });
+}

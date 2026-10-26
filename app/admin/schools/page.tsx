@@ -163,6 +163,22 @@ export default function AdminSchools() {
     loadTeachers(schoolId);
   }
 
+  async function deleteSchool(schoolId: string, schoolName: string) {
+    if (!confirm(`Delete school "${schoolName}"? This permanently removes the school, all students, teachers, lesson notes, assignments, and broadcasts. This cannot be undone.`)) return;
+    setMsg("");
+    if (busy) return;
+    setBusy(true);
+    try {
+      const res = await fetch(`/api/admin/schools?schoolId=${encodeURIComponent(schoolId)}&adminId=${aid()}`, { method: "DELETE" });
+      const d = await res.json();
+      if (!res.ok) return setMsg(d.error || "Failed to delete school.");
+      setMsg(`School "${schoolName}" deleted.`);
+      load();
+    } finally {
+      setBusy(false);
+    }
+  }
+
   const f = (k: keyof typeof form, label: string, type = "text") => (
     <input value={form[k]} onChange={(e) => setForm({ ...form, [k]: e.target.value })} placeholder={label} type={type}
       style={{ flex: "1 1 160px", height: 42, borderRadius: 8, border: "1px solid #CBD5E1", padding: "0 10px", boxSizing: "border-box" }} />
@@ -220,6 +236,7 @@ export default function AdminSchools() {
             <AdminButton size="sm" onClick={() => openTeacherMgmt(s.id)}>
               {managingSchoolId === s.id ? "Hide teachers" : "Manage teachers"}
             </AdminButton>
+            <AdminButton size="sm" variant="dangerOutline" onClick={() => deleteSchool(s.id, s.name)}>Delete School</AdminButton>
           </div>
 
           {managingSchoolId === s.id && (
