@@ -4,6 +4,7 @@ import { useSearchParams } from "next/navigation";
 
 const input: React.CSSProperties = { width: "100%", height: 44, borderRadius: 10, border: "1px solid #CBD5E1", padding: "0 12px", fontSize: 15, margin: "6px 0 10px", boxSizing: "border-box" };
 const group: React.CSSProperties = { background: "#fff", border: "1px solid #E2E8F0", borderRadius: 16, padding: 16, marginBottom: 12 };
+const card: React.CSSProperties = { background: "#fff", border: "1px solid #E2E8F0", borderRadius: 16, padding: 16, margin: "0 0 12px" };
 
 function SettingsInner() {
   const params = useSearchParams();
@@ -23,6 +24,17 @@ function SettingsInner() {
   const [notConfirmed, setNotConfirmed] = useState(false);
   const [schedMsg, setSchedMsg] = useState("");
   const [schedBusy, setSchedBusy] = useState(false);
+
+  // Two-factor auth state
+  const [tfEnabled, setTFEnabled] = useState(false);
+  const [tfSetupStep, setTFSetupStep] = useState<"none" | "show" | "verify">("none");
+  const [tfSecret, setTFSecret] = useState("");
+  const [verifyCode, setVerifyCode] = useState("");
+  const [recoveryCodes, setRecoveryCodes] = useState<string[]>([]);
+
+  // Delete account state
+  const [confirmDeleteOpen, setConfirmDeleteOpen] = useState(false);
+  const [confirmText, setConfirmText] = useState("");
 
   useEffect(() => {
     setUserId(params.get("userId") ?? localStorage.getItem("edupal_user") ?? "");
@@ -92,6 +104,83 @@ function SettingsInner() {
     }
   }
 
+  // ---------- Two-factor authentication ----------
+  async function toggle2FA() {
+    if (tfEnabled) {
+      await disable2FA();
+    } else {
+      await enable2FA();
+    }
+  }
+
+  async function enable2FA() {
+    setMsg("");
+    const res = await fetch("/api/auth/totp/setup", {
+      method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ userId })
+    });
+    const d = await res.json();
+    if (!res.ok) return setMsg(d.error || "Failed to start setup.");
+    setTFSecret(d.secret);
+    setTFSetupStep("show");
+  }
+
+  async function verify2FA() {
+    if (!verifyCode.trim()) return setMsg("Enter the 6-digit code.");
+    const res = await fetch("/api/auth/totp/verify", {
+      method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ userId, token: verifyCode.trim(), secret: tfSecret })
+    });
+    const d = await res.json();
+    if (!res.ok) return setMsg(d.error || "Invalid code.");
+    setTFEnabled(true);
+    setTFSetupStep("none");
+    setVerifyCode("");
+    setTFSecret("");
+    setMsg("Two-factor authentication enabled ✓");
+  }
+
+  async function disable2FA() {
+    if (!window.confirm("Disable two-factor authentication? You'll only need your password to log in.")) return;
+    const res = await fetch("/api/auth/totp/disable", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ userId }) });
+    const d = await res.json();
+    if (!res.ok) return setMsg(d.error || "Failed.");
+    setTFEnabled(false);
+    setMsg("Two-factor authentication disabled.");
+  }
+
+  async function copySecret() {
+    await navigator.clipboard.writeText(tfSecret);
+    setMsg("Secret copied to clipboard.");
+  }
+
+  async function showRecoveryCodes() {
+    const res = await fetch("/api/auth/totp/codes", { method: "GET", headers: { "Content-Type": "application/json" } });
+    const d = await res.json();
+    if (!res.ok) return setMsg(d.error || "Failed.");
+    setRecoveryCodes(d.codes || []);
+    setMsg("Recovery codes shown above — save them safely.");
+  }
+
+  // ---------- Delete account ----------
+  async function startDelete() {
+    setConfirmDeleteOpen(true);
+  }
+
+  async function doDeleteAccount() {
+    if (confirmText !== "DELETE") return setMsg("Type DELETE to confirm.");
+    const res = await fetch("/api/auth/delete-account", {
+      method: "DELETE", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ userId })
+    });
+    const d = await res.json();
+    if (!res.ok) return setMsg(d.error || "Failed to delete account.");
+    setMsg("Account deleted. Redirecting...");
+    localStorage.removeItem("edupal_user");
+    localStorage.removeItem("edupal_role");
+    setTimeout(() => window.location.href = "/login", 1500);
+  }
+
   function toggleLite() {
     setLite((v) => {
       localStorage.setItem("edupal_lite", v ? "0" : "1");
@@ -126,7 +215,7 @@ function SettingsInner() {
 
       <div style={group}>
         <h2 style={{ fontSize: 16, margin: "0 0 8px" }}>Account</h2>
-        <label style={{ fontSize: 13, fontWeight: 700 }}>Display name</label>
+        <label style={{ fontSize: 13, fontWeight: 800 }}>Display name</label>
         <div style={{ display: "flex", gap: 8 }}>
           <input value={name} onChange={(e) => setName(e.target.value)} placeholder="Your name" style={{ ...input, marginBottom: 0, flex: 1 }} />
           <button onClick={saveName} style={{ height: 44, borderRadius: 10, border: 0, background: "#0F766E", color: "#fff", fontWeight: 700, padding: "0 18px", cursor: "pointer" }}>Save</button>
@@ -179,6 +268,61 @@ function SettingsInner() {
         </div>
         <Toggle on={dark} onClick={toggleDark} label="Dark mode (Appearance)" />
         <Toggle on={lite} onClick={toggleLite} label="Reduced data mode (text-only)" />
+      </div>
+
+      <div style={group}>
+        <h2 style={{ fontSize: 16, margin: "0 0 8px", color: "#1E242E" }}>Security</h2>
+        <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 12 }}>
+          <span style={{ fontSize: 13, fontWeight: 800 }}>Two-factor authentication</span>
+          <Toggle on={tfEnabled} onClick={toggle2FA} label="Two-factor auth" />
+        </div>
+        {tfEnabled ? (
+          <div style={{ display: "flex", gap: 8, marginBottom: 8 }}>
+            <button onClick={disable2FA} style={{ height: 40, borderRadius: 8, border: 0, background: "#DC2626", color: "#fff", fontWeight: 700, padding: "0 14px", cursor: "pointer" }}>Disable 2FA</button>
+            <button onClick={showRecoveryCodes} style={{ height: 40, borderRadius: 8, border: "1px solid #CBD5E1", color: "#333A45", padding: "0 14px", cursor: "pointer" }}>Show recovery codes</button>
+          </div>
+        ) : (
+          <button onClick={enable2FA} style={{ height: 44, borderRadius: 10, border: 0, background: "#0F766E", color: "#fff", fontWeight: 800, padding: "0 20px", cursor: "pointer" }}>Enable two-factor authentication</button>
+        )}
+        {tfSetupStep === "show" && (
+          <div style={{ ...card, marginTop: 12 }}>
+            <h2 style={{ fontSize: 16, margin: "0 0 8px", color: "#1E242E" }}>Set up authenticator app</h2>
+            <p style={{ fontSize: 13, color: "#5F6E7F", margin: "0 0 10px" }}>
+              Open Google Authenticator, Authy, or similar app and scan the QR code or enter the key manually:
+            </p>
+            <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 8 }}>
+              <div style={{ fontFamily: "monospace", fontSize: 13, padding: "8px 12px", background: "#F1F5F9", borderRadius: 8, flex: 1 }}>{tfSecret}</div>
+              <button onClick={copySecret} style={{ height: 40, borderRadius: 8, border: 0, background: "#1E242E", color: "#fff", fontWeight: 700, padding: "0 14px", cursor: "pointer" }}>Copy</button>
+            </div>
+            <div style={{ display: "flex", gap: 8 }}>
+              <input value={verifyCode} onChange={(e) => setVerifyCode(e.target.value)} placeholder="6-digit code" style={{ ...input, flex: 1 }} />
+              <button onClick={verify2FA} style={{ height: 44, borderRadius: 8, border: 0, background: "#0F766E", color: "#fff", fontWeight: 700, padding: "0 16px", cursor: "pointer" }}>Verify &amp; enable</button>
+            </div>
+            <p style={{ fontSize: 12, color: "#5F6E7F", marginTop: 6 }}>
+              Save your recovery codes somewhere safe — you can use them if you lose access to your authenticator app.
+            </p>
+          </div>
+        )}
+      </div>
+
+      <div style={group}>
+        <h2 style={{ fontSize: 16, margin: "0 0 8px", color: "#1E242E" }}>Danger zone</h2>
+        <p style={{ fontSize: 13, color: "#5F6E7F", margin: "0 0 8px" }}>
+          Permanently delete your EduPal AI account and all your data (practice history, streak, notes, etc.). This cannot be undone.
+        </p>
+        <button onClick={startDelete} style={{ height: 44, borderRadius: 10, border: "1px solid #DC2626", color: "#DC2626", fontWeight: 700, padding: "0 20px", cursor: "pointer" }}>Delete my account</button>
+        {confirmDeleteOpen && (
+          <div style={{ marginTop: 10 }}>
+            <p style={{ fontSize: 13, color: "#DC2626", marginBottom: 8 }}>
+              Type <strong>"DELETE"</strong> to confirm permanent deletion of your account:
+            </p>
+            <input value={confirmText} onChange={(e) => setConfirmText(e.target.value)} placeholder="Type DELETE" style={input} />
+            <div style={{ display: "flex", gap: 8, marginTop: 8 }}>
+              <button onClick={() => setConfirmDeleteOpen(false)} style={{ height: 40, borderRadius: 8, border: "1px solid #CBD5E1", color: "#333A45", padding: "0 14px", cursor: "pointer" }}>Cancel</button>
+              <button onClick={doDeleteAccount} disabled={confirmText !== "DELETE"} style={{ height: 40, borderRadius: 8, border: 0, background: "#DC2626", color: "#fff", fontWeight: 700, padding: "0 14px", cursor: "pointer" }}>Permanently delete</button>
+            </div>
+          </div>
+        )}
       </div>
     </main>
   );

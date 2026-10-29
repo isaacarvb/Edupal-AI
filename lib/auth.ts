@@ -18,10 +18,45 @@ export const authOptions = {
         if (!email || !password) return null;
         const db = await getDb();
         const row = await db
-          .prepare("SELECT id, email, role, password_hash AS hash FROM users WHERE email = ?")
-          .get(email) as { id: string; email: string; role: string; hash: string | null } | undefined;
+          .prepare("SELECT id, email, role, password_hash AS hash, failed_login_attempts AS attempts, locked_until AS locked FROM users WHERE email = ?")
+          .get(email) as { id: string; email: string; role: string; hash: string | null; attempts: number; locked: string | null } | undefined;
+
+        // --- Check if account is locked ---
+        if (row?.locked) {
+          const lockedUntil = Date.parse(row.locked);
+          if (Number.isFinite(lockedUntil) && lockedUntil > Date.now()) {
+            return null; // Account is locked
+          }
+          // Lock expired — reset attempts
+          if (row) {
+            await db
+              .prepare("UPDATE users SET failed_login_attempts = 0, locked_until = NULL WHERE id = ?")
+              .run(row.id);
+          }
+        }
+
+        // --- Verify password ---
         if (row?.hash && verifyPassword(password, row.hash)) {
+          // Successful login — reset attempts
+          await db
+            .prepare("UPDATE users SET failed_login_attempts = 0, locked_until = NULL WHERE id = ?")
+            .run(row.id);
           return { id: row.id, email: row.email, name: "EduPal user", role: row.role };
+        }
+
+        // Wrong password — increment attempts and lock if >= 3
+        if (row) {
+          const newAttempts = (row.attempts ?? 0) + 1;
+          if (newAttempts >= 3) {
+            const lockedUntil = new Date(Date.now() + 30 * 60000).toISOString(); // 30 minutes
+            await db
+              .prepare("UPDATE users SET failed_login_attempts = ?, locked_until = ? WHERE id = ?")
+              .run(newAttempts, lockedUntil, row.id);
+          } else {
+            await db
+              .prepare("UPDATE users SET failed_login_attempts = ? WHERE id = ?")
+              .run(newAttempts, row.id);
+          }
         }
         // Legacy dev seed (pre-password accounts).
         if (

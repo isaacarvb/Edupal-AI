@@ -10,7 +10,13 @@ CREATE TABLE IF NOT EXISTS users (
   password_hash TEXT,
   role TEXT NOT NULL DEFAULT 'STUDENT',
   level TEXT NOT NULL DEFAULT 'SECONDARY',
-  created_at TEXT NOT NULL DEFAULT (datetime('now'))
+  created_at TEXT NOT NULL DEFAULT (datetime('now')),
+  -- Failed login tracking
+  failed_login_attempts INTEGER NOT NULL DEFAULT 0,
+  locked_until TEXT,
+  -- Two-factor authentication
+  two_factor_enabled INTEGER NOT NULL DEFAULT 0,
+  two_factor_secret TEXT
 );
 
 CREATE TABLE IF NOT EXISTS profiles (

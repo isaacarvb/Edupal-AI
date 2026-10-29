@@ -129,6 +129,13 @@ async function sqliteMigrate(): Promise<void> {
   h.exec("CREATE INDEX IF NOT EXISTS idx_lesson_notes_school_status ON lesson_notes(school_id, status)");
   h.exec("CREATE INDEX IF NOT EXISTS idx_assignments_school_class ON assignments(school_id, class_name)");
   h.exec("CREATE INDEX IF NOT EXISTS idx_broadcasts_school ON broadcasts(school_id, starts_at, ends_at)");
+
+  // ---- Security migration: failed login tracking + two-factor auth ----
+  const ucols = cols("users");
+  if (!ucols.has("failed_login_attempts")) h.exec("ALTER TABLE users ADD COLUMN failed_login_attempts INTEGER NOT NULL DEFAULT 0");
+  if (!ucols.has("locked_until")) h.exec("ALTER TABLE users ADD COLUMN locked_until TEXT");
+  if (!ucols.has("two_factor_enabled")) h.exec("ALTER TABLE users ADD COLUMN two_factor_enabled INTEGER NOT NULL DEFAULT 0");
+  if (!ucols.has("two_factor_secret")) h.exec("ALTER TABLE users ADD COLUMN two_factor_secret TEXT");
 }
 
 // ---- Postgres branch (Supabase, incl. pooler on :6543) ----
@@ -241,6 +248,13 @@ async function pgMigrate(): Promise<void> {
       await db.prepare("CREATE INDEX IF NOT EXISTS idx_lesson_notes_school_status ON lesson_notes(school_id, status)").run();
       await db.prepare("CREATE INDEX IF NOT EXISTS idx_assignments_school_class ON assignments(school_id, class_name)").run();
       await db.prepare("CREATE INDEX IF NOT EXISTS idx_broadcasts_school ON broadcasts(school_id, starts_at, ends_at)").run();
+      // ---- Security migration: failed login tracking + two-factor auth ----
+      const hasUCol = async (col: string) =>
+        ((await db.prepare("SELECT 1 FROM information_schema.columns WHERE table_name = 'users' AND column_name = $1").get(col)) ? true : false);
+      if (!(await hasUCol("failed_login_attempts"))) await db.prepare("ALTER TABLE users ADD COLUMN failed_login_attempts INTEGER NOT NULL DEFAULT 0").run();
+      if (!(await hasUCol("locked_until"))) await db.prepare("ALTER TABLE users ADD COLUMN locked_until TEXT").run();
+      if (!(await hasUCol("two_factor_enabled"))) await db.prepare("ALTER TABLE users ADD COLUMN two_factor_enabled INTEGER NOT NULL DEFAULT 0").run();
+      if (!(await hasUCol("two_factor_secret"))) await db.prepare("ALTER TABLE users ADD COLUMN two_factor_secret TEXT").run();
       return; // success
     } catch (e) {
       lastError = e;

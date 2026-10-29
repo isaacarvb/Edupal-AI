@@ -16,7 +16,18 @@ export default function Login() {
     setErr("");
     try {
       const res = await signIn("credentials", { email: email.trim(), password, redirect: false });
-      if (!res?.ok) return setErr("Wrong email or password. Try again or start your journey below.");
+      if (!res?.ok) {
+        // Check if account is locked
+        try {
+          const lockRes = await fetch(`/api/auth/lock-status?email=${encodeURIComponent(email.trim())}`);
+          const lockData = await lockRes.json();
+          if (lockData.locked) {
+            const mins = Math.ceil((Date.parse(lockData.locked_until) - Date.now()) / 60000);
+            return setErr(`Account locked due to too many failed attempts. Try again in ${mins} minute(s).`);
+          }
+        } catch { /* ignore */ }
+        return setErr("Wrong email or password. Try again or start your journey below.");
+      }
       const session = await fetch("/api/auth/session").then((r) => r.json());
       const id = session?.user?.id as string | undefined;
       if (!id || id === "local-amina") {
