@@ -73,10 +73,10 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
     setUvBusy(true);
     try {
       const adminId = localStorage.getItem("edupal_admin") ?? "";
-      const res = await fetch("/api/admin/switch-user-view", {
+      const res = await fetch(`/api/admin/switch-user-view?adminId=${encodeURIComponent(adminId)}`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ adminId, role }),
+        body: JSON.stringify({ role }),
       });
       const d = await res.json();
       if (!res.ok) {
