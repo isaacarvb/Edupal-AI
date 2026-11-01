@@ -3,6 +3,59 @@ import { getDb, uid } from "@/lib/db";
 import { hashPassword } from "@/lib/password";
 import { requireAdmin, adminIdFrom } from "@/lib/admin";
 
+// Ensure a preview school exists so teacher/school-admin previews have a school
+// to belong to. Returns the school id.
+async function ensurePreviewSchool(db: any): Promise<string> {
+  const existing = (await db.prepare("SELECT id FROM schools WHERE code = 'PREVIEW' LIMIT 1").get()) as { id: string } | undefined;
+  if (existing) return existing.id;
+
+  const schoolId = uid();
+  const adminId = uid();
+  const now = new Date().toISOString();
+  await db.prepare(
+    "INSERT INTO users (id, name, email, password_hash, role, level) VALUES (?, ?, ?, ?, 'SCHOOL_ADMIN', 'SECONDARY')"
+  ).run(adminId, "Preview School Admin", "preview-school@edupal.local", await hashPassword("preview-school-" + adminId));
+  await db.prepare("INSERT INTO wallets (user_id, credits_left, reset_at, plan) VALUES (?, 10, ?, 'FREE')").run(adminId, now, "FREE");
+  await db.prepare(
+    "INSERT INTO schools (id, name, code, admin_user_id, active, expires_at, max_seats) VALUES (?, ?, ?, ?, 1, NULL, 1000)"
+  ).run(schoolId, "Preview School", "PREVIEW", adminId);
+  return schoolId;
+}
+
+// Ensure a preview teacher exists for the given school.
+async function ensurePreviewTeacher(db: any, schoolId: string): Promise<{ id: string; name: string; email: string }> {
+  const existing = (await db.prepare("SELECT id, name, email FROM school_teachers WHERE school_id = ? AND email = ? LIMIT 1").get(schoolId, "preview-teacher@edupal.local")) as { id: string; name: string; email: string } | undefined;
+  if (existing) return existing;
+
+  const id = uid();
+  const now = new Date().toISOString();
+  await db.prepare(
+    "INSERT INTO users (id, name, email, password_hash, role, level) VALUES (?, ?, ?, ?, 'SCHOOL_TEACHER', 'SECONDARY')"
+  ).run(id, "Preview Teacher", "preview-teacher@edupal.local", await hashPassword("preview-teacher-" + id));
+  await db.prepare("INSERT INTO wallets (user_id, credits_left, reset_at, plan) VALUES (?, 10, ?, 'FREE')").run(id, now, "FREE");
+  await db.prepare(
+    "INSERT INTO school_teachers (id, school_id, name, email, password_hash, classes, active) VALUES (?, ?, ?, ?, ?, '', 1)"
+  ).run(id, schoolId, "Preview Teacher", "preview-teacher@edupal.local", await hashPassword("preview-teacher-" + id));
+  return { id, name: "Preview Teacher", email: "preview-teacher@edupal.local" };
+}
+
+// Ensure a preview school admin (staff) exists for the given school.
+async function ensurePreviewSchoolAdmin(db: any, schoolId: string): Promise<{ id: string; name: string; email: string }> {
+  const existing = (await db.prepare("SELECT id, name, email FROM school_teachers WHERE school_id = ? AND email = ? LIMIT 1").get(schoolId, "preview-staff@edupal.local")) as { id: string; name: string; email: string } | undefined;
+  if (existing) return existing;
+
+  const id = uid();
+  const now = new Date().toISOString();
+  await db.prepare(
+    "INSERT INTO users (id, name, email, password_hash, role, level) VALUES (?, ?, ?, ?, 'SCHOOL_ADMIN', 'SECONDARY')"
+  ).run(id, "Preview School Admin", "preview-staff@edupal.local", await hashPassword("preview-staff-" + id));
+  await db.prepare("INSERT INTO wallets (user_id, credits_left, reset_at, plan) VALUES (?, 10, ?, 'FREE')").run(id, now, "FREE");
+  await db.prepare(
+    "INSERT INTO school_teachers (id, school_id, name, email, password_hash, classes, active) VALUES (?, ?, ?, ?, ?, '', 1)"
+  ).run(id, schoolId, "Preview School Admin", "preview-staff@edupal.local", await hashPassword("preview-staff-" + id));
+  return { id, name: "Preview School Admin", email: "preview-staff@edupal.local" };
+}
+
 export async function POST(req: Request) {
   try {
     const adminId = adminIdFrom(req);
@@ -32,27 +85,18 @@ export async function POST(req: Request) {
     }
 
     if (role === "teacher") {
-      let teacher = (await db.prepare("SELECT id FROM school_teachers LIMIT 1").get()) as { id: string } | undefined;
-      if (!teacher) {
-        const id = uid();
-        const email = `teacher-${Date.now()}@edupal.local`;
-        await db.prepare("INSERT INTO users (id, name, email, password_hash, role, level) VALUES (?, ?, ?, ?, 'SCHOOL_TEACHER', 'SECONDARY')").run(id, "Demo Teacher", email, await hashPassword("teacher-" + id));
-        await db.prepare("INSERT INTO school_teachers (id, school_id, name, email, password_hash, classes, active) VALUES (?, NULL, ?, ?, ?, '', 1)").run(id, "Demo Teacher", email, await hashPassword("teacher-" + id));
-        return NextResponse.json({ userId: id, role: "SCHOOL_TEACHER", redirectUrl: `/teacher/dashboard?userId=${id}&adminView=1` });
-      }
+      const schoolId = await ensurePreviewSchool(db);
+      const teacher = await ensurePreviewTeacher(db, schoolId);
       return NextResponse.json({ userId: teacher.id, role: "SCHOOL_TEACHER", redirectUrl: `/teacher/dashboard?userId=${teacher.id}&adminView=1` });
     }
 
     if (role === "school") {
-      let staff = (await db.prepare("SELECT id FROM school_teachers WHERE school_id IS NOT NULL LIMIT 1").get()) as { id: string } | undefined;
-      if (!staff) {
-        const id = uid();
-        const email = `staff-${Date.now()}@edupal.local`;
-        await db.prepare("INSERT INTO users (id, name, email, password_hash, role, level) VALUES (?, ?, ?, ?, 'SCHOOL_ADMIN', 'SECONDARY')").run(id, "Demo School Admin", email, await hashPassword("staff-" + id));
-        await db.prepare("INSERT INTO school_teachers (id, school_id, name, email, password_hash, classes, active) VALUES (?, NULL, ?, ?, ?, '', 1)").run(id, "Demo School Admin", email, await hashPassword("staff-" + id));
-        await db.prepare("INSERT INTO wallets (user_id, credits_left, reset_at, plan) VALUES (?, 10, ?, 'FREE')").run(id, new Date().toISOString());
-        await db.prepare("INSERT INTO streaks (user_id) VALUES (?)").run(id);
-        return NextResponse.json({ userId: id, role: "SCHOOL_ADMIN", redirectUrl: `/school/dashboard?userId=${id}&adminView=1` });
+      const schoolId = await ensurePreviewSchool(db);
+      const staff = await ensurePreviewSchoolAdmin(db, schoolId);
+      // Point the school's admin_user_id at this staff user if not already set.
+      const school = (await db.prepare("SELECT admin_user_id FROM schools WHERE id = ?").get(schoolId)) as { admin_user_id: string | null } | undefined;
+      if (school && !school.admin_user_id) {
+        await db.prepare("UPDATE schools SET admin_user_id = ? WHERE id = ?").run(staff.id, schoolId);
       }
       return NextResponse.json({ userId: staff.id, role: "SCHOOL_ADMIN", redirectUrl: `/school/dashboard?userId=${staff.id}&adminView=1` });
     }
