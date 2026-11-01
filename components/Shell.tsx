@@ -138,6 +138,11 @@ export default function Shell({ children }: { children: React.ReactNode }) {
     window.location.href = "/login";
   }
 
+  // Skip sidebar shell for /admin/* (it has its own admin layout).
+  if (path?.startsWith("/admin")) {
+    return <>{children}</>;
+  }
+
   // Route to the correct environment based on role.
   if (env === "school") {
     return <SchoolShell>{children}</SchoolShell>;
@@ -253,11 +258,6 @@ export default function Shell({ children }: { children: React.ReactNode }) {
         {children}
       </>
     );
-  }
-
-  // Skip sidebar shell for /admin/* (it has its own layout).
-  if (path?.startsWith("/admin")) {
-    return <>{children}</>;
   }
 
   return (
