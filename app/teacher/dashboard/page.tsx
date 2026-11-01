@@ -66,6 +66,8 @@ export default function TeacherDashboard() {
                 style={{ fontSize: 13, color: "#0F766E", fontWeight: 700, textDecoration: "none" }}>Write Note →</a>
               <a href={`/teacher/assignments?class=${encodeURIComponent(c.className)}`}
                 style={{ fontSize: 13, color: "#0F766E", fontWeight: 700, textDecoration: "none", marginLeft: 12 }}>Set Assignment →</a>
+              <a href={`/teacher/questions?class=${encodeURIComponent(c.className)}`}
+                style={{ fontSize: 13, color: "#0F766E", fontWeight: 700, textDecoration: "none", marginLeft: 12 }}>Question Bank →</a>
             </div>
           </div>
           <div style={{ overflowX: "auto" }}>

@@ -1,0 +1,1084 @@
+<!doctype html><html><head><meta charset=utf8><meta name=viewport content="width=device-width,initial-scale=1,viewport-fit=cover"><style>:root{color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}html{scroll-padding-top:env(safe-area-inset-top,0px)}body{margin:0;padding:0;font:14px -apple-system,BlinkMacSystemFont,sans-serif;background:#fff;color:#000}img{max-width:100%}[hidden]:not([hidden=until-found i]){display:none!important}</style></head><body>
+<title>EduPal School</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Plus+Jakarta+Sans:wght@600;700;800&display=swap">
+
+<style>
+/* ─── Tokens ─── */
+:root {
+  --bg:       #F1F5F9;
+  --surface:  #FFFFFF;
+  --surface2: #F8FAFC;
+  --border:   #E2E8F0;
+  --fg:       #0F172A;
+  --fg2:      #475569;
+  --fg3:      #94A3B8;
+  --accent:   #10B981;
+  --accent2:  #059669;
+  --indigo:   #6366F1;
+  --amber:    #F59E0B;
+  --rose:     #F43F5E;
+  --sky:      #0EA5E9;
+  --sidebar:  #0F172A;
+  --sidebar2: #1E293B;
+  --sidebar-fg: #CBD5E1;
+  --sidebar-active: #10B981;
+  --card-shadow: 0 1px 3px rgba(0,0,0,.08), 0 1px 2px rgba(0,0,0,.04);
+  color-scheme: light;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg:       #020617;
+    --surface:  #0F172A;
+    --surface2: #1E293B;
+    --border:   #334155;
+    --fg:       #F1F5F9;
+    --fg2:      #94A3B8;
+    --fg3:      #475569;
+    --card-shadow: 0 1px 3px rgba(0,0,0,.4), 0 1px 2px rgba(0,0,0,.3);
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg:       #020617;
+  --surface:  #0F172A;
+  --surface2: #1E293B;
+  --border:   #334155;
+  --fg:       #F1F5F9;
+  --fg2:      #94A3B8;
+  --fg3:      #475569;
+  --card-shadow: 0 1px 3px rgba(0,0,0,.4), 0 1px 2px rgba(0,0,0,.3);
+  color-scheme: dark;
+}
+
+/* ─── Reset / Base ─── */
+*, *::before, *::after { box-sizing: border-box; margin: 0; }
+body {
+  font-family: 'Inter', system-ui, sans-serif;
+  font-size: 14px;
+  line-height: 1.5;
+  background: var(--bg);
+  color: var(--fg);
+  display: flex;
+  height: 100vh;
+  overflow: hidden;
+  padding-left: max(0px, env(safe-area-inset-left, 0px));
+  padding-right: max(0px, env(safe-area-inset-right, 0px));
+}
+
+/* ─── Sidebar ─── */
+.sidebar {
+  width: 236px;
+  flex-shrink: 0;
+  background: var(--sidebar);
+  display: flex;
+  flex-direction: column;
+  overflow-y: auto;
+  z-index: 10;
+}
+.sidebar-logo {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 20px 16px 16px;
+  border-bottom: 1px solid #1E293B;
+}
+.logo-mark {
+  width: 32px; height: 32px;
+  background: linear-gradient(135deg, #10B981, #059669);
+  border-radius: 8px;
+  display: grid; place-items: center;
+  font-family: 'Plus Jakarta Sans', sans-serif;
+  font-weight: 800; font-size: 16px; color: #fff;
+}
+.logo-text { font-family: 'Plus Jakarta Sans', sans-serif; font-weight: 700; font-size: 16px; color: #fff; }
+.logo-sub  { font-size: 10px; color: #64748B; margin-top: -2px; }
+
+/* Role switcher */
+.role-switcher {
+  padding: 12px;
+  border-bottom: 1px solid #1E293B;
+}
+.role-label { font-size: 10px; font-weight: 600; color: #475569; letter-spacing: .08em; text-transform: uppercase; margin-bottom: 6px; padding: 0 4px; }
+.role-btn {
+  display: flex; align-items: center; gap: 8px;
+  width: 100%; padding: 7px 10px;
+  border: none; background: transparent; cursor: pointer;
+  border-radius: 7px; color: var(--sidebar-fg);
+  font-family: 'Inter', sans-serif; font-size: 13px; font-weight: 500;
+  transition: background .15s;
+  text-align: left;
+}
+.role-btn:hover { background: #1E293B; }
+.role-btn.active { background: rgba(16,185,129,.15); color: #10B981; }
+.role-dot {
+  width: 28px; height: 28px; border-radius: 50%;
+  display: grid; place-items: center;
+  font-size: 13px; flex-shrink: 0;
+}
+
+/* Nav */
+.nav-section { padding: 12px 12px 6px; }
+.nav-section-label { font-size: 10px; font-weight: 600; color: #475569; letter-spacing: .08em; text-transform: uppercase; margin-bottom: 4px; padding: 0 4px; }
+.nav-item {
+  display: flex; align-items: center; gap: 10px;
+  padding: 8px 10px; border-radius: 7px;
+  color: #94A3B8; font-size: 13px; font-weight: 500;
+  cursor: pointer; transition: background .15s, color .15s;
+  margin-bottom: 1px;
+}
+.nav-item:hover { background: #1E293B; color: #CBD5E1; }
+.nav-item.active { background: rgba(16,185,129,.12); color: #10B981; }
+.nav-icon { font-size: 15px; width: 20px; text-align: center; flex-shrink: 0; }
+.nav-badge { margin-left: auto; background: #10B981; color: #fff; font-size: 10px; font-weight: 700; padding: 1px 6px; border-radius: 20px; }
+.nav-badge.amber { background: var(--amber); }
+
+.sidebar-footer {
+  margin-top: auto;
+  padding: 12px;
+  border-top: 1px solid #1E293B;
+}
+.school-info { display: flex; align-items: center; gap: 10px; padding: 8px 10px; border-radius: 7px; cursor: pointer; }
+.school-info:hover { background: #1E293B; }
+.school-avatar { width: 32px; height: 32px; border-radius: 8px; background: linear-gradient(135deg,#6366F1,#8B5CF6); display: grid; place-items: center; font-size: 13px; font-weight: 700; color: #fff; flex-shrink:0; }
+.school-name { font-size: 12px; font-weight: 600; color: #CBD5E1; }
+.school-plan { font-size: 11px; color: #475569; }
+
+/* ─── Main ─── */
+.main { flex: 1; overflow-y: auto; display: flex; flex-direction: column; min-width: 0; }
+
+.topbar {
+  position: sticky; top: 0; z-index: 5;
+  background: var(--surface);
+  border-bottom: 1px solid var(--border);
+  display: flex; align-items: center; gap: 12px;
+  padding: 0 24px; height: 56px;
+}
+.page-title { font-family: 'Plus Jakarta Sans', sans-serif; font-weight: 700; font-size: 16px; }
+.topbar-spacer { flex: 1; }
+.search-bar {
+  display: flex; align-items: center; gap: 8px;
+  background: var(--surface2); border: 1px solid var(--border);
+  border-radius: 8px; padding: 6px 12px;
+  color: var(--fg2); font-size: 13px; cursor: text;
+}
+.avatar-pill {
+  display: flex; align-items: center; gap: 8px;
+  background: var(--surface2); border: 1px solid var(--border);
+  border-radius: 20px; padding: 4px 12px 4px 4px;
+  cursor: pointer;
+}
+.avatar-circle { width: 28px; height: 28px; border-radius: 50%; background: linear-gradient(135deg,#10B981,#059669); display: grid; place-items: center; font-size: 12px; font-weight: 700; color: #fff; }
+.avatar-name { font-size: 13px; font-weight: 500; }
+
+.content { padding: 24px; display: flex; flex-direction: column; gap: 20px; }
+
+/* ─── Stat Cards ─── */
+.stat-row { display: grid; grid-template-columns: repeat(4,1fr); gap: 14px; }
+.stat-card {
+  background: var(--surface); border-radius: 12px;
+  padding: 16px 18px; box-shadow: var(--card-shadow);
+  display: flex; flex-direction: column; gap: 6px;
+  border: 1px solid var(--border);
+}
+.stat-label { font-size: 12px; color: var(--fg2); font-weight: 500; display: flex; align-items: center; gap: 6px; }
+.stat-value { font-family: 'Plus Jakarta Sans', sans-serif; font-size: 26px; font-weight: 700; }
+.stat-meta { font-size: 11px; color: var(--fg3); }
+.stat-up   { color: var(--accent); }
+.stat-icon { width: 32px; height: 32px; border-radius: 8px; display: grid; place-items: center; font-size: 16px; margin-left: auto; }
+
+/* ─── Cards ─── */
+.card {
+  background: var(--surface); border-radius: 12px;
+  padding: 18px 20px; box-shadow: var(--card-shadow);
+  border: 1px solid var(--border);
+}
+.card-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 14px; }
+.card-title { font-weight: 600; font-size: 14px; }
+.card-action { font-size: 12px; color: var(--accent); cursor: pointer; font-weight: 500; }
+.two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+
+/* ─── Table ─── */
+table { width: 100%; border-collapse: collapse; }
+th { font-size: 11px; font-weight: 600; color: var(--fg3); text-transform: uppercase; letter-spacing: .06em; padding: 6px 10px; border-bottom: 1px solid var(--border); text-align: left; }
+td { padding: 10px 10px; border-bottom: 1px solid var(--border); font-size: 13px; vertical-align: middle; }
+tr:last-child td { border-bottom: none; }
+tbody tr:hover { background: var(--surface2); }
+
+/* ─── Badge ─── */
+.badge { display: inline-flex; align-items: center; padding: 2px 8px; border-radius: 20px; font-size: 11px; font-weight: 600; }
+.badge-green  { background: rgba(16,185,129,.12); color: #059669; }
+.badge-indigo { background: rgba(99,102,241,.12); color: var(--indigo); }
+.badge-amber  { background: rgba(245,158,11,.12);  color: #D97706; }
+.badge-rose   { background: rgba(244,63,94,.12);   color: #E11D48; }
+.badge-sky    { background: rgba(14,165,233,.12);  color: #0284C7; }
+
+/* ─── Bar Chart (CSS only) ─── */
+.bar-chart { display: flex; align-items: flex-end; gap: 8px; height: 100px; }
+.bar-wrap { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 4px; height: 100%; }
+.bar-fill { width: 100%; border-radius: 4px 4px 0 0; transition: height .4s ease; min-height: 4px; }
+.bar-lbl  { font-size: 10px; color: var(--fg3); font-weight: 500; }
+.chart-row { display: flex; align-items: center; gap: 12px; }
+.chart-legend { display: flex; gap: 12px; flex-wrap: wrap; }
+.legend-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+.legend-item { display: flex; align-items: center; gap: 5px; font-size: 11px; color: var(--fg2); }
+
+/* ─── Donut ─── */
+.donut-wrap { position: relative; width: 90px; height: 90px; flex-shrink: 0; }
+.donut-wrap svg { transform: rotate(-90deg); }
+.donut-center { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; font-family: 'Plus Jakarta Sans', sans-serif; }
+.donut-pct   { font-size: 20px; font-weight: 700; }
+.donut-sub   { font-size: 9px; color: var(--fg3); }
+
+/* ─── Progress bars ─── */
+.prog-row { display: flex; flex-direction: column; gap: 4px; margin-bottom: 10px; }
+.prog-meta { display: flex; justify-content: space-between; font-size: 12px; }
+.prog-bar  { height: 6px; border-radius: 3px; background: var(--border); overflow: hidden; }
+.prog-fill { height: 100%; border-radius: 3px; }
+
+/* ─── Avatar stack ─── */
+.av-stack { display: flex; }
+.av-stack .av { width: 24px; height: 24px; border-radius: 50%; border: 2px solid var(--surface); display: grid; place-items: center; font-size: 10px; font-weight: 700; color: #fff; margin-left: -6px; }
+.av-stack .av:first-child { margin-left: 0; }
+
+/* ─── Subscription card ─── */
+.sub-card { background: linear-gradient(135deg,#0F172A 0%,#1E293B 100%); border-radius: 12px; padding: 18px 20px; color: #fff; border: 1px solid #334155; }
+.sub-plan { font-family: 'Plus Jakarta Sans',sans-serif; font-size: 20px; font-weight: 700; margin-bottom: 4px; }
+.sub-pill { display: inline-block; background: rgba(16,185,129,.2); color: #10B981; font-size: 11px; font-weight: 600; padding: 2px 8px; border-radius: 20px; margin-bottom: 12px; }
+.sub-meta { font-size: 12px; color: #94A3B8; margin-bottom: 14px; }
+.sub-row  { display: flex; gap: 24px; margin-top: 10px; }
+.sub-stat { display: flex; flex-direction: column; }
+.sub-stat-val { font-weight: 700; font-size: 18px; }
+.sub-stat-lbl { font-size: 11px; color: #64748B; }
+.sub-btn { display: inline-flex; align-items: center; gap: 6px; margin-top: 14px; background: #10B981; color: #fff; border: none; border-radius: 7px; padding: 7px 14px; font-size: 12px; font-weight: 600; cursor: pointer; }
+
+/* ─── Buttons ─── */
+.btn { display: inline-flex; align-items: center; gap: 6px; padding: 7px 14px; border-radius: 7px; font-size: 13px; font-weight: 600; cursor: pointer; border: none; transition: opacity .15s; }
+.btn:hover { opacity: .85; }
+.btn-primary { background: var(--accent); color: #fff; }
+.btn-outline { background: transparent; border: 1px solid var(--border); color: var(--fg); }
+.btn-indigo  { background: var(--indigo); color: #fff; }
+.btn-sm { padding: 4px 10px; font-size: 12px; }
+.btn-rose { background: var(--rose); color: #fff; }
+
+/* ─── Tag ─── */
+.tag { font-size: 11px; font-weight: 500; padding: 2px 7px; border-radius: 4px; background: var(--surface2); border: 1px solid var(--border); color: var(--fg2); display: inline-block; }
+
+/* ─── Assign card ─── */
+.assign-card { display: flex; align-items: flex-start; gap: 12px; padding: 12px 14px; border-radius: 9px; background: var(--surface2); border: 1px solid var(--border); margin-bottom: 10px; }
+.assign-icon { width: 36px; height: 36px; border-radius: 8px; display: grid; place-items: center; font-size: 17px; flex-shrink: 0; }
+.assign-title { font-size: 13px; font-weight: 600; margin-bottom: 2px; }
+.assign-meta  { font-size: 12px; color: var(--fg2); display: flex; gap: 12px; }
+.assign-due   { margin-left: auto; font-size: 11px; font-weight: 600; color: var(--amber); white-space: nowrap; }
+
+/* ─── Question bank row ─── */
+.qb-row { display: flex; align-items: flex-start; gap: 12px; padding: 12px 0; border-bottom: 1px solid var(--border); }
+.qb-row:last-child { border-bottom: none; }
+.qb-idx   { font-size: 11px; color: var(--fg3); min-width: 20px; padding-top: 1px; }
+.qb-body  { flex: 1; min-width: 0; }
+.qb-stem  { font-size: 13px; font-weight: 500; margin-bottom: 4px; line-height: 1.4; }
+.qb-tags  { display: flex; gap: 6px; flex-wrap: wrap; }
+.qb-actions { display: flex; gap: 6px; align-items: center; }
+
+/* ─── Leaderboard ─── */
+.lb-row { display: flex; align-items: center; gap: 10px; padding: 8px 10px; border-radius: 8px; margin-bottom: 4px; }
+.lb-row.me { background: rgba(16,185,129,.08); border: 1px solid rgba(16,185,129,.2); }
+.lb-rank  { font-size: 13px; font-weight: 700; min-width: 24px; color: var(--fg2); }
+.lb-rank.gold   { color: #F59E0B; }
+.lb-rank.silver { color: #94A3B8; }
+.lb-rank.bronze { color: #CD7F32; }
+.lb-av { width: 30px; height: 30px; border-radius: 50%; display: grid; place-items: center; font-size: 12px; font-weight: 700; color: #fff; flex-shrink: 0; }
+.lb-name  { flex: 1; font-size: 13px; font-weight: 500; }
+.lb-pts   { font-size: 13px; font-weight: 700; color: var(--accent); }
+.lb-bar   { width: 60px; height: 6px; border-radius: 3px; background: var(--border); overflow: hidden; }
+
+/* ─── Practice ─── */
+.practice-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.prac-card { border-radius: 9px; padding: 14px; text-align: center; }
+.prac-val { font-family: 'Plus Jakarta Sans',sans-serif; font-size: 28px; font-weight: 700; }
+.prac-lbl { font-size: 11px; margin-top: 2px; }
+
+/* ─── Parent child card ─── */
+.child-header { display: flex; align-items: center; gap: 14px; padding: 16px; background: linear-gradient(135deg,#10B981,#059669); border-radius: 12px; color: #fff; margin-bottom: 16px; }
+.child-av { width: 52px; height: 52px; border-radius: 50%; background: rgba(255,255,255,.25); display: grid; place-items: center; font-size: 22px; flex-shrink: 0; }
+.child-name  { font-family: 'Plus Jakarta Sans',sans-serif; font-size: 18px; font-weight: 700; }
+.child-class { font-size: 12px; opacity: .85; }
+
+/* ─── View sections ─── */
+.view { display: none; }
+.view.active { display: block; }
+
+/* ─── Responsive ─── */
+@media (max-width: 768px) {
+  .sidebar { width: 64px; }
+  .sidebar-logo .logo-text, .sidebar-logo .logo-sub,
+  .role-label, .role-btn span, .nav-item span,
+  .nav-badge, .school-name, .school-plan { display: none; }
+  .stat-row { grid-template-columns: 1fr 1fr; }
+  .two-col  { grid-template-columns: 1fr; }
+  .topbar { padding: 0 16px; }
+  .content{ padding: 16px; }
+}
+@media (max-width: 480px) {
+  .stat-row { grid-template-columns: 1fr; }
+  .search-bar, .avatar-pill { display: none; }
+}
+</style>
+
+<!-- Sidebar -->
+<aside class="sidebar">
+  <div class="sidebar-logo">
+    <div class="logo-mark">E</div>
+    <div>
+      <div class="logo-text">EduPal AI</div>
+      <div class="logo-sub">School Edition</div>
+    </div>
+  </div>
+
+  <div class="role-switcher">
+    <div class="role-label">Switch View</div>
+    <button class="role-btn active" onclick="switchRole('admin', this)" id="rb-admin">
+      <div class="role-dot" style="background:rgba(99,102,241,.2);color:#6366F1">👑</div>
+      <span>School Admin</span>
+    </button>
+    <button class="role-btn" onclick="switchRole('teacher', this)" id="rb-teacher">
+      <div class="role-dot" style="background:rgba(16,185,129,.2);color:#10B981">📖</div>
+      <span>Teacher</span>
+    </button>
+    <button class="role-btn" onclick="switchRole('student', this)" id="rb-student">
+      <div class="role-dot" style="background:rgba(14,165,233,.2);color:#0EA5E9">🎒</div>
+      <span>Student</span>
+    </button>
+    <button class="role-btn" onclick="switchRole('parent', this)" id="rb-parent">
+      <div class="role-dot" style="background:rgba(245,158,11,.2);color:#F59E0B">👨‍👩‍👦</div>
+      <span>Parent</span>
+    </button>
+  </div>
+
+  <!-- Admin nav -->
+  <div class="nav-section" id="nav-admin">
+    <div class="nav-section-label">Admin</div>
+    <div class="nav-item active"><span class="nav-icon">🏠</span><span>Overview</span></div>
+    <div class="nav-item"><span class="nav-icon">🏫</span><span>Classes & Arms</span></div>
+    <div class="nav-item"><span class="nav-icon">👩‍🏫</span><span>Teachers</span></div>
+    <div class="nav-item"><span class="nav-icon">🎓</span><span>Students</span></div>
+    <div class="nav-item"><span class="nav-icon">📊</span><span>Reports</span></div>
+    <div class="nav-item"><span class="nav-icon">🗳️</span><span>Nominations</span><span class="nav-badge amber">3</span></div>
+    <div class="nav-item"><span class="nav-icon">💳</span><span>Subscription</span></div>
+    <div class="nav-item"><span class="nav-icon">⚙️</span><span>Settings</span></div>
+  </div>
+
+  <!-- Teacher nav -->
+  <div class="nav-section" id="nav-teacher" hidden>
+    <div class="nav-section-label">Teacher</div>
+    <div class="nav-item active"><span class="nav-icon">🏠</span><span>Dashboard</span></div>
+    <div class="nav-item"><span class="nav-icon">📚</span><span>My Classes</span></div>
+    <div class="nav-item"><span class="nav-icon">📝</span><span>Assignments</span></div>
+    <div class="nav-item"><span class="nav-icon">🧠</span><span>Question Bank</span><span class="nav-badge">12</span></div>
+    <div class="nav-item"><span class="nav-icon">📈</span><span>Class Results</span></div>
+    <div class="nav-item"><span class="nav-icon">🗒️</span><span>Notes & Materials</span></div>
+  </div>
+
+  <!-- Student nav -->
+  <div class="nav-section" id="nav-student" hidden>
+    <div class="nav-section-label">Student</div>
+    <div class="nav-item active"><span class="nav-icon">🏠</span><span>Home</span></div>
+    <div class="nav-item"><span class="nav-icon">🎯</span><span>Practice</span></div>
+    <div class="nav-item"><span class="nav-icon">📋</span><span>Assignments</span><span class="nav-badge amber">2</span></div>
+    <div class="nav-item"><span class="nav-icon">📖</span><span>Past Questions</span></div>
+    <div class="nav-item"><span class="nav-icon">🏆</span><span>Leaderboard</span></div>
+    <div class="nav-item"><span class="nav-icon">📊</span><span>My Progress</span></div>
+  </div>
+
+  <!-- Parent nav -->
+  <div class="nav-section" id="nav-parent" hidden>
+    <div class="nav-section-label">Parent</div>
+    <div class="nav-item active"><span class="nav-icon">🏠</span><span>Summary</span></div>
+    <div class="nav-item"><span class="nav-icon">📊</span><span>Scores & Reports</span></div>
+    <div class="nav-item"><span class="nav-icon">📋</span><span>Assignments</span></div>
+    <div class="nav-item"><span class="nav-icon">💬</span><span>Messages</span></div>
+  </div>
+
+  <div class="sidebar-footer">
+    <div class="school-info">
+      <div class="school-avatar">GS</div>
+      <div>
+        <div class="school-name">Government Secondary</div>
+        <div class="school-plan">Pro Plan · 2nd Term</div>
+      </div>
+    </div>
+  </div>
+</aside>
+
+<!-- Main -->
+<main class="main" id="main-area">
+  <!-- ══════ ADMIN VIEW ══════ -->
+  <div class="view active" id="view-admin">
+    <div class="topbar">
+      <div class="page-title">School Overview</div>
+      <div class="topbar-spacer"></div>
+      <div class="search-bar">🔍 Search students, classes…</div>
+      <div class="avatar-pill">
+        <div class="avatar-circle">SA</div>
+        <span class="avatar-name">Mrs Adeyemi</span>
+      </div>
+    </div>
+    <div class="content">
+      <!-- Stats -->
+      <div class="stat-row">
+        <div class="stat-card">
+          <div class="stat-label">🎓 Total Students</div>
+          <div class="stat-value">1,248</div>
+          <div class="stat-meta stat-up">↑ +34 this term</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-label">👩‍🏫 Teachers</div>
+          <div class="stat-value">62</div>
+          <div class="stat-meta">8 classes active today</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-label">🏫 Classes</div>
+          <div class="stat-value">24</div>
+          <div class="stat-meta">JSS1–SS3 · 3 arms each</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-label">📈 Active Rate (7d)</div>
+          <div class="stat-value">74%</div>
+          <div class="stat-meta stat-up">↑ 6% vs last week</div>
+        </div>
+      </div>
+
+      <!-- Charts row -->
+      <div class="two-col">
+        <!-- Performance chart -->
+        <div class="card">
+          <div class="card-header">
+            <div class="card-title">Class Performance — This Term</div>
+            <span class="card-action">Full report →</span>
+          </div>
+          <div class="bar-chart" style="padding-bottom:4px">
+            <div class="bar-wrap">
+              <div class="bar-fill" style="height:72%;background:#10B981"></div>
+              <div class="bar-lbl">JSS1A</div>
+            </div>
+            <div class="bar-wrap">
+              <div class="bar-fill" style="height:61%;background:#6366F1"></div>
+              <div class="bar-lbl">JSS2A</div>
+            </div>
+            <div class="bar-wrap">
+              <div class="bar-fill" style="height:83%;background:#10B981"></div>
+              <div class="bar-lbl">JSS3A</div>
+            </div>
+            <div class="bar-wrap">
+              <div class="bar-fill" style="height:55%;background:#F43F5E"></div>
+              <div class="bar-lbl">SS1A</div>
+            </div>
+            <div class="bar-wrap">
+              <div class="bar-fill" style="height:68%;background:#6366F1"></div>
+              <div class="bar-lbl">SS2A</div>
+            </div>
+            <div class="bar-wrap">
+              <div class="bar-fill" style="height:79%;background:#10B981"></div>
+              <div class="bar-lbl">SS3A</div>
+            </div>
+            <div class="bar-wrap">
+              <div class="bar-fill" style="height:65%;background:#6366F1"></div>
+              <div class="bar-lbl">SS3B</div>
+            </div>
+          </div>
+          <div style="margin-top:10px;display:flex;gap:12px">
+            <div class="legend-item"><div class="legend-dot" style="background:#10B981"></div> ≥70%</div>
+            <div class="legend-item"><div class="legend-dot" style="background:#6366F1"></div> 50-69%</div>
+            <div class="legend-item"><div class="legend-dot" style="background:#F43F5E"></div> &lt;50%</div>
+          </div>
+        </div>
+
+        <!-- Subject engagement -->
+        <div class="card">
+          <div class="card-header">
+            <div class="card-title">Subject Engagement</div>
+            <span class="card-action">Details →</span>
+          </div>
+          <div class="prog-row">
+            <div class="prog-meta"><span>Mathematics</span><span style="font-weight:600">89%</span></div>
+            <div class="prog-bar"><div class="prog-fill" style="width:89%;background:#10B981"></div></div>
+          </div>
+          <div class="prog-row">
+            <div class="prog-meta"><span>English Language</span><span style="font-weight:600">81%</span></div>
+            <div class="prog-bar"><div class="prog-fill" style="width:81%;background:#6366F1"></div></div>
+          </div>
+          <div class="prog-row">
+            <div class="prog-meta"><span>Biology</span><span style="font-weight:600">74%</span></div>
+            <div class="prog-bar"><div class="prog-fill" style="width:74%;background:#0EA5E9"></div></div>
+          </div>
+          <div class="prog-row">
+            <div class="prog-meta"><span>Physics</span><span style="font-weight:600">67%</span></div>
+            <div class="prog-bar"><div class="prog-fill" style="width:67%;background:#F59E0B"></div></div>
+          </div>
+          <div class="prog-row">
+            <div class="prog-meta"><span>Chemistry</span><span style="font-weight:600">59%</span></div>
+            <div class="prog-bar"><div class="prog-fill" style="width:59%;background:#F43F5E"></div></div>
+          </div>
+          <div class="prog-row">
+            <div class="prog-meta"><span>Government</span><span style="font-weight:600">71%</span></div>
+            <div class="prog-bar"><div class="prog-fill" style="width:71%;background:#8B5CF6"></div></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Teacher activity + nominations -->
+      <div class="two-col">
+        <div class="card">
+          <div class="card-header">
+            <div class="card-title">Teacher Activity</div>
+            <span class="card-action">Manage →</span>
+          </div>
+          <table>
+            <thead>
+              <tr><th>Teacher</th><th>Subject</th><th>Questions</th><th>Status</th></tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td><div style="font-weight:600">Mr Balogun</div><div style="font-size:11px;color:var(--fg3)">SS3A · SS3B</div></td>
+                <td>Mathematics</td>
+                <td><span style="font-weight:600;color:var(--accent)">34</span></td>
+                <td><span class="badge badge-green">Active</span></td>
+              </tr>
+              <tr>
+                <td><div style="font-weight:600">Mrs Okonkwo</div><div style="font-size:11px;color:var(--fg3)">JSS1–3</div></td>
+                <td>English</td>
+                <td><span style="font-weight:600;color:var(--accent)">22</span></td>
+                <td><span class="badge badge-green">Active</span></td>
+              </tr>
+              <tr>
+                <td><div style="font-weight:600">Mr Eze</div><div style="font-size:11px;color:var(--fg3)">SS1A · SS2A</div></td>
+                <td>Physics</td>
+                <td><span style="font-weight:600;color:var(--fg2)">7</span></td>
+                <td><span class="badge badge-amber">Low</span></td>
+              </tr>
+              <tr>
+                <td><div style="font-weight:600">Ms Fasanya</div><div style="font-size:11px;color:var(--fg3)">SS2A · SS3A</div></td>
+                <td>Chemistry</td>
+                <td><span style="font-weight:600;color:var(--accent)">18</span></td>
+                <td><span class="badge badge-indigo">Pending</span></td>
+              </tr>
+              <tr>
+                <td><div style="font-weight:600">Mr Abdullahi</div><div style="font-size:11px;color:var(--fg3)">JSS2A–C</div></td>
+                <td>Government</td>
+                <td><span style="font-weight:600;color:var(--fg2)">3</span></td>
+                <td><span class="badge badge-rose">Inactive</span></td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <!-- Nominations queue + subscription -->
+        <div style="display:flex;flex-direction:column;gap:14px">
+          <div class="card">
+            <div class="card-header">
+              <div class="card-title">⭐ Pending Nominations</div>
+              <span class="card-action">Review all →</span>
+            </div>
+            <div style="display:flex;flex-direction:column;gap:8px">
+              <div style="display:flex;align-items:center;gap:10px;padding:10px;background:rgba(245,158,11,.06);border:1px solid rgba(245,158,11,.2);border-radius:8px">
+                <div style="flex:1">
+                  <div style="font-size:13px;font-weight:600">NERDC Electricity Concepts</div>
+                  <div style="font-size:11px;color:var(--fg3)">Mr Balogun · Physics · SS2 · 8 questions</div>
+                </div>
+                <div style="display:flex;gap:6px">
+                  <button class="btn btn-primary btn-sm" onclick="this.textContent='Approved ✓';this.disabled=true">Approve</button>
+                  <button class="btn btn-outline btn-sm">Reject</button>
+                </div>
+              </div>
+              <div style="display:flex;align-items:center;gap:10px;padding:10px;background:rgba(245,158,11,.06);border:1px solid rgba(245,158,11,.2);border-radius:8px">
+                <div style="flex:1">
+                  <div style="font-size:13px;font-weight:600">Algebra Problem Set</div>
+                  <div style="font-size:11px;color:var(--fg3)">Mrs Okonkwo · Mathematics · SS3 · 12 questions</div>
+                </div>
+                <div style="display:flex;gap:6px">
+                  <button class="btn btn-primary btn-sm" onclick="this.textContent='Approved ✓';this.disabled=true">Approve</button>
+                  <button class="btn btn-outline btn-sm">Reject</button>
+                </div>
+              </div>
+              <div style="display:flex;align-items:center;gap:10px;padding:10px;background:rgba(245,158,11,.06);border:1px solid rgba(245,158,11,.2);border-radius:8px">
+                <div style="flex:1">
+                  <div style="font-size:13px;font-weight:600">Cell Biology Quiz</div>
+                  <div style="font-size:11px;color:var(--fg3)">Ms Fasanya · Biology · SS1 · 5 questions</div>
+                </div>
+                <div style="display:flex;gap:6px">
+                  <button class="btn btn-primary btn-sm" onclick="this.textContent='Approved ✓';this.disabled=true">Approve</button>
+                  <button class="btn btn-outline btn-sm">Reject</button>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="sub-card">
+            <div class="sub-plan">Pro School Plan</div>
+            <div class="sub-pill">Active</div>
+            <div class="sub-meta">2nd Term · Expires 31 March 2027</div>
+            <div class="sub-row">
+              <div class="sub-stat"><span class="sub-stat-val">1,248</span><span class="sub-stat-lbl">Students</span></div>
+              <div class="sub-stat"><span class="sub-stat-val">1,500</span><span class="sub-stat-lbl">Seat limit</span></div>
+              <div class="sub-stat"><span class="sub-stat-val">₦180k</span><span class="sub-stat-lbl">Per term</span></div>
+            </div>
+            <button class="sub-btn">Renew / Upgrade →</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══════ TEACHER VIEW ══════ -->
+  <div class="view" id="view-teacher">
+    <div class="topbar">
+      <div class="page-title">Teacher Dashboard</div>
+      <div class="topbar-spacer"></div>
+      <div class="search-bar">🔍 Search questions…</div>
+      <div class="avatar-pill">
+        <div class="avatar-circle" style="background:linear-gradient(135deg,#6366F1,#8B5CF6)">MB</div>
+        <span class="avatar-name">Mr Balogun</span>
+      </div>
+    </div>
+    <div class="content">
+      <div class="stat-row">
+        <div class="stat-card">
+          <div class="stat-label">📚 My Classes</div>
+          <div class="stat-value">4</div>
+          <div class="stat-meta">SS2A · SS2B · SS3A · SS3B</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-label">🎓 My Students</div>
+          <div class="stat-value">168</div>
+          <div class="stat-meta stat-up">↑ 82% active this week</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-label">📝 Questions Added</div>
+          <div class="stat-value">34</div>
+          <div class="stat-meta">12 pending nomination</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-label">📋 Assignments</div>
+          <div class="stat-value">7</div>
+          <div class="stat-meta">2 due this week</div>
+        </div>
+      </div>
+
+      <div class="two-col">
+        <!-- Question bank -->
+        <div class="card" style="grid-column:1/-1">
+          <div class="card-header">
+            <div class="card-title">🧠 My Question Bank</div>
+            <div style="display:flex;gap:8px">
+              <button class="btn btn-outline btn-sm">Filter</button>
+              <button class="btn btn-primary btn-sm">+ Add Question</button>
+            </div>
+          </div>
+          <div style="display:flex;gap:8px;margin-bottom:14px;flex-wrap:wrap">
+            <span class="tag active" style="background:rgba(16,185,129,.12);border-color:rgba(16,185,129,.3);color:#059669">All (34)</span>
+            <span class="tag">Published (22)</span>
+            <span class="tag">Draft (8)</span>
+            <span class="tag">Nominated (4)</span>
+          </div>
+
+          <div class="qb-row">
+            <div class="qb-idx">1.</div>
+            <div class="qb-body">
+              <div class="qb-stem">A body of mass 5 kg is acted upon by a force of 20 N. Calculate the acceleration produced.</div>
+              <div class="qb-tags"><span class="tag">Physics</span><span class="tag">SS2</span><span class="tag">Mechanics</span><span class="badge badge-green">Published</span></div>
+            </div>
+            <div class="qb-actions">
+              <button class="btn btn-indigo btn-sm" onclick="this.textContent='Nominated ✓';this.disabled=true">⭐ Nominate to National Bank</button>
+              <button class="btn btn-outline btn-sm">Edit</button>
+            </div>
+          </div>
+
+          <div class="qb-row">
+            <div class="qb-idx">2.</div>
+            <div class="qb-body">
+              <div class="qb-stem">Which of these is an example of Newton's Third Law of Motion?</div>
+              <div class="qb-tags"><span class="tag">Physics</span><span class="tag">SS2</span><span class="tag">Mechanics</span><span class="badge badge-indigo">Nominated</span></div>
+            </div>
+            <div class="qb-actions">
+              <button class="btn btn-outline btn-sm" disabled style="opacity:.5">Awaiting admin…</button>
+              <button class="btn btn-outline btn-sm">Edit</button>
+            </div>
+          </div>
+
+          <div class="qb-row">
+            <div class="qb-idx">3.</div>
+            <div class="qb-body">
+              <div class="qb-stem">State the relationship between wavelength, frequency and speed of a wave.</div>
+              <div class="qb-tags"><span class="tag">Physics</span><span class="tag">SS3</span><span class="tag">Waves</span><span class="badge badge-amber">Draft</span></div>
+            </div>
+            <div class="qb-actions">
+              <button class="btn btn-primary btn-sm">⭐ Nominate to National Bank</button>
+              <button class="btn btn-outline btn-sm">Edit</button>
+            </div>
+          </div>
+
+          <div class="qb-row">
+            <div class="qb-idx">4.</div>
+            <div class="qb-body">
+              <div class="qb-stem">Explain why a person in a stationary boat feels pushed backwards when they jump forward.</div>
+              <div class="qb-tags"><span class="tag">Physics</span><span class="tag">SS2</span><span class="tag">Mechanics</span><span class="badge badge-green">Published</span></div>
+            </div>
+            <div class="qb-actions">
+              <button class="btn btn-primary btn-sm">⭐ Nominate to National Bank</button>
+              <button class="btn btn-outline btn-sm">Edit</button>
+            </div>
+          </div>
+
+          <div style="margin-top:12px;text-align:center">
+            <span class="card-action" style="font-size:13px">View all 34 questions →</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Assignments -->
+      <div class="card">
+        <div class="card-header">
+          <div class="card-title">📋 Assignments</div>
+          <button class="btn btn-primary btn-sm">+ Create</button>
+        </div>
+        <div class="assign-card">
+          <div class="assign-icon" style="background:rgba(16,185,129,.12)">📐</div>
+          <div>
+            <div class="assign-title">SS3A — Vectors & Scalars Quiz</div>
+            <div class="assign-meta">
+              <span>📚 10 questions</span>
+              <span>👥 42 students</span>
+              <span>✅ 36 submitted</span>
+            </div>
+          </div>
+          <div class="assign-due">Due tomorrow</div>
+        </div>
+        <div class="assign-card">
+          <div class="assign-icon" style="background:rgba(99,102,241,.12)">⚡</div>
+          <div>
+            <div class="assign-title">SS2B — Electricity Concepts</div>
+            <div class="assign-meta">
+              <span>📚 15 questions</span>
+              <span>👥 40 students</span>
+              <span>✅ 40 submitted</span>
+            </div>
+          </div>
+          <div class="assign-due" style="color:var(--accent)">Closed · Avg 68%</div>
+        </div>
+        <div class="assign-card">
+          <div class="assign-icon" style="background:rgba(14,165,233,.12)">🔬</div>
+          <div>
+            <div class="assign-title">SS3B — Optics Practice</div>
+            <div class="assign-meta">
+              <span>📚 8 questions</span>
+              <span>👥 38 students</span>
+              <span>✅ 12 submitted</span>
+            </div>
+          </div>
+          <div class="assign-due">Due in 4 days</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══════ STUDENT VIEW ══════ -->
+  <div class="view" id="view-student">
+    <div class="topbar">
+      <div class="page-title">My Dashboard</div>
+      <div class="topbar-spacer"></div>
+      <div class="avatar-pill">
+        <div class="avatar-circle" style="background:linear-gradient(135deg,#0EA5E9,#6366F1)">AF</div>
+        <span class="avatar-name">Amaka Fasanya</span>
+      </div>
+    </div>
+    <div class="content">
+      <!-- Practice stats -->
+      <div class="card">
+        <div class="card-header">
+          <div class="card-title">🎯 Your Practice This Week</div>
+          <span class="card-action">Full history →</span>
+        </div>
+        <div class="practice-grid">
+          <div class="prac-card" style="background:rgba(16,185,129,.08);border:1px solid rgba(16,185,129,.2)">
+            <div class="prac-val" style="color:#10B981">248</div>
+            <div class="prac-lbl" style="color:#059669">Questions Answered</div>
+          </div>
+          <div class="prac-card" style="background:rgba(99,102,241,.08);border:1px solid rgba(99,102,241,.2)">
+            <div class="prac-val" style="color:#6366F1">74%</div>
+            <div class="prac-lbl" style="color:#6366F1">Accuracy Rate</div>
+          </div>
+          <div class="prac-card" style="background:rgba(245,158,11,.08);border:1px solid rgba(245,158,11,.2)">
+            <div class="prac-val" style="color:#D97706">🔥 9</div>
+            <div class="prac-lbl" style="color:#D97706">Day Streak</div>
+          </div>
+          <div class="prac-card" style="background:rgba(14,165,233,.08);border:1px solid rgba(14,165,233,.2)">
+            <div class="prac-val" style="color:#0EA5E9">1,820</div>
+            <div class="prac-lbl" style="color:#0284C7">Total XP Points</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="two-col">
+        <!-- Assignments due -->
+        <div class="card">
+          <div class="card-header">
+            <div class="card-title">📋 Assignments Due</div>
+            <span class="card-action">All →</span>
+          </div>
+          <div class="assign-card">
+            <div class="assign-icon" style="background:rgba(16,185,129,.12)">📐</div>
+            <div style="flex:1">
+              <div class="assign-title">Vectors & Scalars Quiz</div>
+              <div class="assign-meta"><span>Physics · Mr Balogun</span><span>10 questions</span></div>
+            </div>
+            <div style="display:flex;flex-direction:column;align-items:flex-end;gap:4px">
+              <div class="assign-due">Due tomorrow</div>
+              <button class="btn btn-primary btn-sm">Start →</button>
+            </div>
+          </div>
+          <div class="assign-card">
+            <div class="assign-icon" style="background:rgba(14,165,233,.12)">📖</div>
+            <div style="flex:1">
+              <div class="assign-title">SS3 Literature Comprehension</div>
+              <div class="assign-meta"><span>English · Mrs Okonkwo</span><span>5 questions</span></div>
+            </div>
+            <div style="display:flex;flex-direction:column;align-items:flex-end;gap:4px">
+              <div class="assign-due">Due in 3 days</div>
+              <button class="btn btn-primary btn-sm">Start →</button>
+            </div>
+          </div>
+          <div style="margin-top:10px">
+            <div class="prog-row">
+              <div class="prog-meta"><span style="font-size:12px;color:var(--fg2)">Overall Assignment Completion</span><span style="font-weight:600">78%</span></div>
+              <div class="prog-bar"><div class="prog-fill" style="width:78%;background:#10B981"></div></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Leaderboard -->
+        <div class="card">
+          <div class="card-header">
+            <div class="card-title">🏆 Class Leaderboard — SS3A</div>
+            <span class="card-action">Full board →</span>
+          </div>
+          <div class="lb-row">
+            <div class="lb-rank gold">🥇</div>
+            <div class="lb-av" style="background:#F59E0B">TC</div>
+            <div class="lb-name">Tunde Coker</div>
+            <div class="lb-bar"><div style="width:100%;height:100%;background:#F59E0B;border-radius:3px"></div></div>
+            <div class="lb-pts">2,410</div>
+          </div>
+          <div class="lb-row">
+            <div class="lb-rank silver">🥈</div>
+            <div class="lb-av" style="background:#94A3B8">BI</div>
+            <div class="lb-name">Blessing Ikpe</div>
+            <div class="lb-bar"><div style="width:88%;height:100%;background:#94A3B8;border-radius:3px"></div></div>
+            <div class="lb-pts">2,120</div>
+          </div>
+          <div class="lb-row">
+            <div class="lb-rank bronze">🥉</div>
+            <div class="lb-av" style="background:#CD7F32">KO</div>
+            <div class="lb-name">Kola Obi</div>
+            <div class="lb-bar"><div style="width:78%;height:100%;background:#CD7F32;border-radius:3px"></div></div>
+            <div class="lb-pts">1,980</div>
+          </div>
+          <div class="lb-row me">
+            <div class="lb-rank" style="color:var(--accent)">4</div>
+            <div class="lb-av" style="background:#10B981">AF</div>
+            <div class="lb-name" style="font-weight:600">You (Amaka)</div>
+            <div class="lb-bar"><div style="width:75%;height:100%;background:#10B981;border-radius:3px"></div></div>
+            <div class="lb-pts">1,820</div>
+          </div>
+          <div class="lb-row">
+            <div class="lb-rank">5</div>
+            <div class="lb-av" style="background:#6366F1">SA</div>
+            <div class="lb-name">Simi Adeola</div>
+            <div class="lb-bar"><div style="width:68%;height:100%;background:#6366F1;border-radius:3px"></div></div>
+            <div class="lb-pts">1,640</div>
+          </div>
+          <div style="text-align:center;margin-top:10px;font-size:12px;color:var(--fg3)">+37 more students in your class</div>
+        </div>
+      </div>
+
+      <!-- Subject performance -->
+      <div class="card">
+        <div class="card-header">
+          <div class="card-title">📊 Subject Performance</div>
+          <span class="card-action">Practice weak areas →</span>
+        </div>
+        <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:12px">
+          <div>
+            <div class="prog-row"><div class="prog-meta"><span>Physics</span><span style="font-weight:600">82%</span></div><div class="prog-bar"><div class="prog-fill" style="width:82%;background:#10B981"></div></div></div>
+            <div class="prog-row"><div class="prog-meta"><span>Mathematics</span><span style="font-weight:600">76%</span></div><div class="prog-bar"><div class="prog-fill" style="width:76%;background:#6366F1"></div></div></div>
+          </div>
+          <div>
+            <div class="prog-row"><div class="prog-meta"><span>Chemistry</span><span style="font-weight:600">61%</span></div><div class="prog-bar"><div class="prog-fill" style="width:61%;background:#F59E0B"></div></div></div>
+            <div class="prog-row"><div class="prog-meta"><span>Biology</span><span style="font-weight:600">88%</span></div><div class="prog-bar"><div class="prog-fill" style="width:88%;background:#10B981"></div></div></div>
+          </div>
+          <div>
+            <div class="prog-row"><div class="prog-meta"><span>English</span><span style="font-weight:600">70%</span></div><div class="prog-bar"><div class="prog-fill" style="width:70%;background:#0EA5E9"></div></div></div>
+            <div class="prog-row"><div class="prog-meta"><span>Economics</span><span style="font-weight:600">55%</span></div><div class="prog-bar"><div class="prog-fill" style="width:55%;background:#F43F5E"></div></div></div>
+          </div>
+        </div>
+        <div style="margin-top:12px;padding:10px;background:rgba(244,63,94,.06);border:1px solid rgba(244,63,94,.2);border-radius:8px;display:flex;align-items:center;gap:10px">
+          <span style="font-size:18px">💡</span>
+          <span style="font-size:13px;color:var(--fg2)">Your <strong>Chemistry</strong> and <strong>Economics</strong> scores are below average. EduPal AI recommends 20 min of targeted practice today.</span>
+          <button class="btn btn-primary btn-sm" style="flex-shrink:0">Practice Now</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══════ PARENT VIEW ══════ -->
+  <div class="view" id="view-parent">
+    <div class="topbar">
+      <div class="page-title">Parent Dashboard</div>
+      <div class="topbar-spacer"></div>
+      <div class="avatar-pill">
+        <div class="avatar-circle" style="background:linear-gradient(135deg,#F59E0B,#EF4444)">MF</div>
+        <span class="avatar-name">Mr Fasanya</span>
+      </div>
+    </div>
+    <div class="content">
+      <div class="child-header">
+        <div class="child-av">👧</div>
+        <div>
+          <div class="child-name">Amaka Fasanya</div>
+          <div class="child-class">SS3A · Government Secondary School · Student ID: GSS-3411</div>
+        </div>
+        <div style="margin-left:auto;text-align:right">
+          <div style="font-size:22px;font-weight:700">4th</div>
+          <div style="font-size:11px;opacity:.8">Class Rank</div>
+        </div>
+      </div>
+
+      <div class="stat-row">
+        <div class="stat-card">
+          <div class="stat-label">📚 Study Hours (7d)</div>
+          <div class="stat-value">14.2h</div>
+          <div class="stat-meta stat-up">↑ 2.3h vs last week</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-label">📝 Questions Done</div>
+          <div class="stat-value">248</div>
+          <div class="stat-meta">74% accuracy</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-label">📋 Assignments</div>
+          <div class="stat-value">2</div>
+          <div class="stat-meta" style="color:var(--amber)">Pending this week</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-label">🔥 Streak</div>
+          <div class="stat-value">9 days</div>
+          <div class="stat-meta stat-up">Personal best!</div>
+        </div>
+      </div>
+
+      <div class="two-col">
+        <!-- Subject scores -->
+        <div class="card">
+          <div class="card-header">
+            <div class="card-title">📊 Subject Performance</div>
+            <span class="card-action">Full report →</span>
+          </div>
+          <table>
+            <thead><tr><th>Subject</th><th>Average Score</th><th>Trend</th><th>Status</th></tr></thead>
+            <tbody>
+              <tr><td>Physics</td><td><strong>82%</strong></td><td style="color:#10B981">↑ +4%</td><td><span class="badge badge-green">Good</span></td></tr>
+              <tr><td>Biology</td><td><strong>88%</strong></td><td style="color:#10B981">↑ +7%</td><td><span class="badge badge-green">Excellent</span></td></tr>
+              <tr><td>Mathematics</td><td><strong>76%</strong></td><td style="color:#10B981">↑ +2%</td><td><span class="badge badge-green">Good</span></td></tr>
+              <tr><td>English</td><td><strong>70%</strong></td><td style="color:#94A3B8">→ 0%</td><td><span class="badge badge-indigo">Average</span></td></tr>
+              <tr><td>Chemistry</td><td><strong>61%</strong></td><td style="color:#F43F5E">↓ -3%</td><td><span class="badge badge-amber">Needs work</span></td></tr>
+              <tr><td>Economics</td><td><strong>55%</strong></td><td style="color:#F43F5E">↓ -6%</td><td><span class="badge badge-rose">Attention</span></td></tr>
+            </tbody>
+          </table>
+        </div>
+
+        <!-- Activity timeline & pending -->
+        <div style="display:flex;flex-direction:column;gap:14px">
+          <div class="card">
+            <div class="card-header">
+              <div class="card-title">📋 Pending Assignments</div>
+            </div>
+            <div class="assign-card">
+              <div class="assign-icon" style="background:rgba(16,185,129,.12)">📐</div>
+              <div>
+                <div class="assign-title">Vectors & Scalars Quiz</div>
+                <div class="assign-meta"><span>Physics</span><span>Not started</span></div>
+              </div>
+              <div class="assign-due">Tomorrow</div>
+            </div>
+            <div class="assign-card">
+              <div class="assign-icon" style="background:rgba(14,165,233,.12)">📖</div>
+              <div>
+                <div class="assign-title">Literature Comprehension</div>
+                <div class="assign-meta"><span>English</span><span>Not started</span></div>
+              </div>
+              <div class="assign-due">3 days</div>
+            </div>
+          </div>
+
+          <div class="card">
+            <div class="card-header">
+              <div class="card-title">📅 Recent Activity</div>
+            </div>
+            <div style="display:flex;flex-direction:column;gap:10px">
+              <div style="display:flex;align-items:center;gap:10px;font-size:13px">
+                <div style="width:8px;height:8px;border-radius:50%;background:#10B981;flex-shrink:0"></div>
+                <span>Completed Biology practice — <strong>92%</strong></span>
+                <span style="margin-left:auto;color:var(--fg3);font-size:11px">Today, 4:12 PM</span>
+              </div>
+              <div style="display:flex;align-items:center;gap:10px;font-size:13px">
+                <div style="width:8px;height:8px;border-radius:50%;background:#6366F1;flex-shrink:0"></div>
+                <span>Started Physics revision — 30 questions</span>
+                <span style="margin-left:auto;color:var(--fg3);font-size:11px">Today, 2:30 PM</span>
+              </div>
+              <div style="display:flex;align-items:center;gap:10px;font-size:13px">
+                <div style="width:8px;height:8px;border-radius:50%;background:#F43F5E;flex-shrink:0"></div>
+                <span>Missed Chemistry deadline — score 0</span>
+                <span style="margin-left:auto;color:var(--fg3);font-size:11px">Yesterday</span>
+              </div>
+              <div style="display:flex;align-items:center;gap:10px;font-size:13px">
+                <div style="width:8px;height:8px;border-radius:50%;background:#10B981;flex-shrink:0"></div>
+                <span>🔥 Reached 9-day study streak!</span>
+                <span style="margin-left:auto;color:var(--fg3);font-size:11px">2 days ago</span>
+              </div>
+              <div style="display:flex;align-items:center;gap:10px;font-size:13px">
+                <div style="width:8px;height:8px;border-radius:50%;background:#F59E0B;flex-shrink:0"></div>
+                <span>Submitted Electricity Quiz — <strong>75%</strong></span>
+                <span style="margin-left:auto;color:var(--fg3);font-size:11px">3 days ago</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div style="padding:14px 16px;background:var(--surface2);border:1px solid var(--border);border-radius:10px;display:flex;align-items:center;gap:12px">
+        <span style="font-size:20px">🔒</span>
+        <span style="font-size:13px;color:var(--fg2)">Parent view is <strong>read-only</strong>. You can monitor Amaka's performance and receive weekly reports by SMS or email. Contact the school to adjust notification preferences.</span>
+      </div>
+    </div>
+  </div>
+</main>
+
+<script>
+function switchRole(role, btn) {
+  // Update role buttons
+  document.querySelectorAll('.role-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+
+  // Hide all views and navs
+  document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
+  document.querySelectorAll('.nav-section[id^="nav-"]').forEach(n => n.hidden = true);
+
+  // Show target
+  document.getElementById('view-' + role).classList.add('active');
+  document.getElementById('nav-' + role).hidden = false;
+
+  // Reset scroll
+  document.querySelector('.main').scrollTop = 0;
+}
+</script>
+
+</body></html>
