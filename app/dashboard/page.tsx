@@ -2,14 +2,12 @@
 import { Suspense, useEffect, useState } from "react";
 import { useSearchParams } from "next/navigation";
 
-type Profile = { name: string | null; level: string; exam: string; examDate: string | null; examStart: string | null; examEnd: string | null; datesConfirmed: number | null; department: string | null; subjects: string; language: string; creditsLeft: number; plan: string; planSource?: string; paidUntil: string | null; streak: number; freezeAvailable: number };
-
 const card: React.CSSProperties = { background: "#fff", border: "1px solid #E2E8F0", borderRadius: 16, padding: 16, margin: "0 0 12px" };
 
-function DashInner() {
+function DashboardInner() {
   const params = useSearchParams();
   const userId = params.get("userId") ?? "";
-  const [profile, setProfile] = useState<Profile | null>(null);
+  const [profile, setProfile] = useState<{ name: string | null; level: string; exam: string; examDate: string | null; examStart: string | null; examEnd: string | null; datesConfirmed: number | null; department: string | null; subjects: string; language: string; creditsLeft: number; plan: string; planSource?: string; paidUntil: string | null; streak: number; freezeAvailable: number } | null>(null);
   const [qotd, setQotd] = useState<null | { subject: string; topic: string }>(null);
   const [reminder, setReminder] = useState<string | null>(null);
   const [schedDismissed, setSchedDismissed] = useState(() => typeof window !== "undefined" && localStorage.getItem(`edupal_sched_dismissed_${userId}`) === "1");
@@ -20,6 +18,7 @@ function DashInner() {
   const [schoolNotes, setSchoolNotes] = useState<Array<{ id: string; subject: string; topic: string; body: string; teacherName: string }>>([]);
   const [schoolBroadcasts, setSchoolBroadcasts] = useState<Array<{ id: string; body: string; className: string | null }>>([]);
   const [schoolAssignments, setSchoolAssignments] = useState<Array<{ id: string; subject: string; topic: string; instructions: string; dueAt: string | null; teacherName: string }>>([]);
+  const [schoolStats, setSchoolStats] = useState<{ totalStudents: number; activeWeek: number; avgStreak: number } | null>(null);
   const limited = params.get("limited") ?? "";
 
   function chipStyle(days: number | null): React.CSSProperties {
@@ -63,16 +62,20 @@ function DashInner() {
     });
     // School content: membership → notes, broadcasts, assignments for the class.
     fetch(`/api/student/lesson-notes?userId=${userId}`)
-      .then((r) => r.json())
+      .then((r) => (r.ok ? r.json() : null))
       .then((d) => { setSchoolNotes(d.notes ?? []); if (d.className) setSchoolMember((p) => p ? { ...p, className: d.className } : null); });
     fetch(`/api/student/broadcasts?userId=${userId}`)
-      .then((r) => r.json())
+      .then((r) => (r.ok ? r.json() : null))
       .then((d) => { setSchoolBroadcasts(d.broadcasts ?? []); if (d.className) setSchoolMember((p) => p ? { ...p, className: d.className } : null); });
     fetch(`/api/student/assignments?userId=${userId}`)
-      .then((r) => r.json())
+      .then((r) => (r.ok ? r.json() : null))
       .then((d) => { setSchoolAssignments(d.assignments ?? []); if (d.className) setSchoolMember((p) => p ? { ...p, className: d.className } : null); });
     // Fetch membership directly to get schoolId (needed if other endpoints return empty).
     fetch(`/api/school/member?userId=${userId}`).then((r) => r.ok ? r.json() : null).then((d) => { if (d?.schoolId) setSchoolMember({ schoolId: d.schoolId, className: d.className ?? "" }); }).catch(() => {});
+    // Fetch school stats
+    fetch(`/api/school/overview?userId=${userId}`)
+      .then((r) => (r.ok ? r.json() : null))
+      .then((d) => { if (d?.summary) setSchoolStats(d.summary); }).catch(() => {});
   }
 
   useEffect(refresh, [userId]);
@@ -164,7 +167,7 @@ function DashInner() {
                 {schoolNotes.map((n) => (
                   <div key={n.id} style={{ borderBottom: "1px solid #F1F5F9", paddingBottom: 8, fontSize: 13 }}>
                     <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", marginBottom: 4 }}>
-                      <strong>{n.topic}</strong> <span style={{ fontSize: 11, color: "#5F6E7F" }}>{n.subject} · by {n.teacherName}</span>
+                      <strong>{n.topic}</strong> <span style={{ fontSize: 11, color: "#5F6E7F", marginLeft: 6 }}>{n.subject} · by {n.teacherName}</span>
                     </div>
                     <p style={{ margin: 0, color: "#333A45" }}>{n.body.slice(0, 200)}{n.body.length > 200 ? "…" : ""}</p>
                   </div>
