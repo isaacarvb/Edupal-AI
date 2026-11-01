@@ -6,7 +6,7 @@ type U = { id: string; name: string; email: string; role: string; plan: string; 
 
 // All three preview users should be flagged with the purple "preview" badge
 // and always be viewable from the admin portal.
-const PREVIEW_EMAILS = ["preview@edupal.local", "preview-teacher@edupal.local", "preview-staff@edupal.local"];
+const PREVIEW_EMAILS = ["preview@edupal.local", "preview-teacher@edupal.local", "preview-school@edupal.local"];
 const isPreview = (email: string) => PREVIEW_EMAILS.includes(email.toLowerCase());
 
 export default function AdminUsers() {
