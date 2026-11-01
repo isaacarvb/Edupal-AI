@@ -4,6 +4,11 @@ import { AdminButton } from "@/components/admin-ui";
 
 type U = { id: string; name: string; email: string; role: string; plan: string; credits: number; exam: string; subjects: string; lastActive: string | null; attempts: number; createdAt: string };
 
+// All three preview users should be flagged with the purple "preview" badge
+// and always be viewable from the admin portal.
+const PREVIEW_EMAILS = ["preview@edupal.local", "preview-teacher@edupal.local", "preview-staff@edupal.local"];
+const isPreview = (email: string) => PREVIEW_EMAILS.includes(email.toLowerCase());
+
 export default function AdminUsers() {
   const [users, setUsers] = useState<U[]>([]);
   const [q, setQ] = useState("");
@@ -67,7 +72,15 @@ export default function AdminUsers() {
   function viewAs(u: U) {
     localStorage.setItem("edupal_admin_return", "/admin/users");
     localStorage.setItem("edupal_user", u.id);
-    window.location.href = `/dashboard?userId=${u.id}&adminView=1`;
+    if (isPreview(u.email)) {
+      localStorage.setItem("edupal_role", u.role);
+      const href = u.role === "SCHOOL_TEACHER" ? `/teacher/dashboard?userId=${u.id}&adminView=1`
+        : u.role === "SCHOOL_ADMIN" ? `/school/dashboard?userId=${u.id}&adminView=1`
+        : `/dashboard?userId=${u.id}&adminView=1`;
+      window.location.href = href;
+    } else {
+      window.location.href = `/dashboard?userId=${u.id}&adminView=1`;
+    }
   }
 
   return (
@@ -108,7 +121,7 @@ export default function AdminUsers() {
         <div key={u.id} className="arow" style={{ background: "#fff", border: "1px solid #E2E8F0", borderRadius: 12, padding: 12, margin: "8px 0", fontSize: 14, display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
           <div style={{ flex: "1 1 220px" }}>
             <strong>{u.name || "(no name)"}</strong> <span style={{ color: "#5F6E7F" }}>{u.email}</span>
-            {u.email === "preview@edupal.local" && <span style={{ fontSize: 11, fontWeight: 800, background: "#7C3AED", color: "#fff", borderRadius: 999, padding: "2px 8px", marginLeft: 6 }}>👁 preview</span>}
+            {isPreview(u.email) && <span style={{ fontSize: 11, fontWeight: 800, background: "#7C3AED", color: "#fff", borderRadius: 999, padding: "2px 8px", marginLeft: 6 }}>👁 preview</span>}
             <div style={{ fontSize: 12, color: "#5F6E7F" }}>{u.plan} • {u.credits} credits • {u.attempts} attempts • last {u.lastActive ? u.lastActive.slice(0, 10) : "never"} • {u.exam ?? ""}</div>
           </div>
           <AdminButton size="sm" variant="dark" onClick={() => viewAs(u)}>View as user</AdminButton>
