@@ -71,12 +71,13 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
 
   async function switchToRole(role: "student" | "teacher" | "school") {
     setUvBusy(true);
+    setErr("");
     try {
       const adminId = localStorage.getItem("edupal_admin") ?? "";
       const res = await fetch(`/api/admin/switch-user-view?adminId=${encodeURIComponent(adminId)}`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ role }),
+        body: JSON.stringify({ role, adminId }),
       });
       const d = await res.json();
       if (!res.ok) {
@@ -86,6 +87,8 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
       localStorage.setItem("edupal_user", d.userId);
       if (d.role) localStorage.setItem("edupal_role", d.role);
       window.location.href = d.redirectUrl;
+    } catch (e) {
+      setErr(e instanceof Error ? e.message : "Network error switching role.");
     } finally {
       setUvBusy(false);
       setShowUserView(false);
