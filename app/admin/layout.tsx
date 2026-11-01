@@ -29,8 +29,11 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   const [password, setPassword] = useState("");
   const [err, setErr] = useState("");
   const [busy, setBusy] = useState(false);
-  const [previewBusy, setPreviewBusy] = useState(false);
   const [adminEmail, setAdminEmail] = useState<string | null>(null);
+
+  // User view role selector modal
+  const [showUserView, setShowUserView] = useState(false);
+  const [uvBusy, setUvBusy] = useState(false);
 
   useEffect(() => {
     const id = localStorage.getItem("edupal_admin");
@@ -66,21 +69,26 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
     router.push("/admin");
   }
 
-  // One-click replica of the student portal: no login, always fresh data,
-  // ADMIN VIEW banner on top with a return trip back here.
-  async function userView() {
-    if (previewBusy) return;
-    setPreviewBusy(true);
+  async function switchToRole(role: "student" | "teacher" | "school") {
+    setUvBusy(true);
     try {
       const adminId = localStorage.getItem("edupal_admin") ?? "";
-      const res = await fetch(`/api/admin/preview?adminId=${adminId}`);
+      const res = await fetch("/api/admin/switch-user-view", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ adminId, role }),
+      });
       const d = await res.json();
-      if (!res.ok) return;
-      localStorage.setItem("edupal_admin_return", "/admin");
+      if (!res.ok) {
+        setErr(d.error || "Failed to switch role.");
+        return;
+      }
       localStorage.setItem("edupal_user", d.userId);
-      window.location.href = `/dashboard?userId=${d.userId}&adminView=1`;
+      if (d.role) localStorage.setItem("edupal_role", d.role);
+      window.location.href = d.redirectUrl;
     } finally {
-      setPreviewBusy(false);
+      setUvBusy(false);
+      setShowUserView(false);
     }
   }
 
@@ -117,8 +125,8 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
               </a>
             );
           })}
-          <button onClick={userView} disabled={previewBusy} className="admin-link" style={{ background: "transparent", border: 0, color: "#A7F3D0", fontSize: 13, padding: "10px 12px", borderRadius: 10, textAlign: "left", cursor: "pointer", width: "100%" }}>
-            {previewBusy ? "⏳ Opening…" : "👁 User view"}
+          <button onClick={() => setShowUserView(true)} disabled={uvBusy} className="admin-link" style={{ background: "transparent", border: 0, color: "#A7F3D0", fontSize: 13, padding: "10px 12px", borderRadius: 10, textAlign: "left", cursor: uvBusy ? "not-allowed" : "pointer", width: "100%" }}>
+            {uvBusy ? "⏳ Opening…" : "👁 User view"}
           </button>
         </nav>
         <div style={{ padding: 10, borderTop: "1px solid #333A45" }}>
@@ -126,6 +134,28 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
         </div>
       </aside>
       <div style={{ flex: 1, minWidth: 0 }}>{children}</div>
+
+      {showUserView && (
+        <div style={{ position: "fixed", inset: 0, zIndex: 9999, background: "rgba(0,0,0,0.5)", display: "flex", alignItems: "center", justifyContent: "center" }}>
+          <div style={{ background: "#fff", borderRadius: 16, padding: 24, minWidth: 320, boxShadow: "0 20px 60px rgba(0,0,0,0.3)" }}>
+            <h2 style={{ margin: "0 0 16px", fontSize: 18, color: "#1E242E" }}>Open as which user?</h2>
+            <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+              <button onClick={() => switchToRole("student")} disabled={uvBusy} style={{ width: "100%", padding: 12, borderRadius: 10, border: 0, background: uvBusy ? "#CBD5E1" : "#0F766E", color: "#fff", fontWeight: 700, fontSize: 15, cursor: uvBusy ? "not-allowed" : "pointer" }}>
+                👤 Student
+              </button>
+              <button onClick={() => switchToRole("teacher")} disabled={uvBusy} style={{ width: "100%", padding: 12, borderRadius: 10, border: 0, background: uvBusy ? "#CBD5E1" : "#0F766E", color: "#fff", fontWeight: 700, fontSize: 15, cursor: uvBusy ? "not-allowed" : "pointer" }}>
+                👩‍🏫 Teacher
+              </button>
+              <button onClick={() => switchToRole("school")} disabled={uvBusy} style={{ width: "100%", padding: 12, borderRadius: 10, border: 0, background: uvBusy ? "#CBD5E1" : "#0F766E", color: "#fff", fontWeight: 700, fontSize: 15, cursor: uvBusy ? "not-allowed" : "pointer" }}>
+                🏫 School Admin
+              </button>
+            </div>
+            <button onClick={() => setShowUserView(false)} style={{ width: "100%", padding: 10, borderRadius: 10, border: "1px solid #E2E8F0", background: "transparent", color: "#5F6E7F", fontWeight: 700, fontSize: 14, cursor: "pointer", marginTop: 8 }}>
+              Cancel
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

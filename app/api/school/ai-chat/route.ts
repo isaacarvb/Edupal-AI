@@ -32,7 +32,7 @@ export async function POST(req: Request) {
       "SELECT subject, topic, body FROM lesson_notes WHERE school_id = ? AND status = 'approved' ORDER BY created_at DESC LIMIT 5"
     ).all(school.id) as Array<{ subject: string; topic: string; body: string }>;
     if (notes.length > 0) {
-      context = "School-approved lesson notes:\n" + notes.map((n) => `${n.subject} - ${topic}: ${n.body}`).join("\n\n");
+      context = "School-approved lesson notes:\n" + notes.map((n) => `${n.subject} - ${n.topic}: ${n.body}`).join("\n\n");
     }
   }
 

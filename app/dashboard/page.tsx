@@ -240,7 +240,7 @@ function DashboardInner() {
 export default function Dashboard() {
   return (
     <Suspense fallback={<main style={{ padding: 20 }}>Loading…</main>}>
-      <DashInner />
+      <DashboardInner />
     </Suspense>
   );
 }

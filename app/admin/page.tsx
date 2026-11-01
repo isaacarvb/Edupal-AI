@@ -3,11 +3,8 @@ import { useEffect, useState } from "react";
 
 type O = { total: number; free: number; paid: number; newToday: number; attemptsToday: number; attemptsTotal: number; dau: number; wau: number; admins: number; questions: number; flagged: number; drafts: number; maintenance: boolean };
 
-type Rev = { totalKobo: number; paidCount: number } | null;
-
 export default function AdminDashboard() {
   const [o, setO] = useState<O | null>(null);
-  const [rev, setRev] = useState<Rev>(null);
   const [err, setErr] = useState("");
   useEffect(() => {
     const adminId = localStorage.getItem("edupal_admin");
@@ -16,9 +13,6 @@ export default function AdminDashboard() {
       const d = await r.json();
       if (!r.ok) setErr(d.error || "Failed to load.");
       else setO(d);
-    });
-    fetch(`/api/admin/revenue?adminId=${adminId}`).then(async (r) => {
-      if (r.ok) setRev(await r.json());
     });
   }, []);
   if (err) return <main style={{ padding: 32 }}>{err}</main>;
@@ -45,8 +39,7 @@ export default function AdminDashboard() {
         {card("Questions", o.questions, "/admin/questions")}
         {card("Flagged", o.flagged, "/admin/flags")}
         {card("AI drafts", o.drafts, "/admin/drafts")}
-        {card("Revenue", rev ? `₦${(rev.totalKobo / 100).toLocaleString("en-NG")}` : "…", "/admin/payments")}
-        {card("Payments", rev?.paidCount ?? "…", "/admin/payments")}
+        {card("Payments", "—", "/admin/payments")}
         {card("Admins", o.admins, "/admin/admins")}
         {card("Logs", "📜", "/admin/logs")}
       </div>

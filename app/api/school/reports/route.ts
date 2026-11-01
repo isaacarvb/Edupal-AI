@@ -2,7 +2,6 @@ import { NextResponse } from "next/server";
 import { getDb } from "@/lib/db";
 import { requireSchoolAdmin } from "@/lib/schools";
 
-// GET ?userId= — Detailed school reports for admin portal
 export async function GET(req: Request) {
   const { searchParams } = new URL(req.url);
   const userId = searchParams.get("userId");
@@ -10,12 +9,13 @@ export async function GET(req: Request) {
   try {
     const { school } = await requireSchoolAdmin(db, userId);
     const sid = school.id;
+    const weekAgo = new Date(Date.now() - 7 * 86400000).toISOString().slice(0, 10);
 
     const summary = (await db
       .prepare(
         `SELECT
-          (SELECT COUNT(*) FROM school_members WHERE school_id = ?) AS totalStudents,
-          (SELECT COUNT(DISTINCT a.user_id) FROM attempts a JOIN school_members sm ON sm.user_id = a.user_id
+           (SELECT COUNT(*) FROM school_members WHERE school_id = ?) AS totalStudents,
+           (SELECT COUNT(DISTINCT a.user_id) FROM attempts a JOIN school_members sm ON sm.user_id = a.user_id
              WHERE sm.school_id = ? AND SUBSTRING(a.created_at,1,10) >= ?) AS activeWeek,
            (SELECT COUNT(*) FROM attempts a JOIN school_members sm ON sm.user_id = a.user_id
              WHERE sm.school_id = ? AND SUBSTRING(a.created_at,1,10) >= ?) AS totalAnswers,
@@ -27,24 +27,22 @@ export async function GET(req: Request) {
     const classes = (await db
       .prepare(
         `SELECT COALESCE(NULLIF(sm.class_name, ''), 'Unassigned') AS className,
-                COUNT(DISTINCT sm.user_id) AS students,
+                COUNT(*) AS students,
                 COUNT(DISTINCT CASE WHEN SUBSTRING(a.created_at,1,10) >= ? THEN a.user_id END) AS activeWeek,
-                COALESCE(ROUND(AVG(tm.accuracy)), 0) AS avgAccuracy
+                COALESCE(ROUND(AVG(st.current)), 0) AS avgAccuracy
          FROM school_members sm
          LEFT JOIN streaks st ON st.user_id = sm.user_id
          LEFT JOIN attempts a ON a.user_id = sm.user_id AND SUBSTRING(a.created_at,1,10) >= ?
-         LEFT JOIN topic_mastery tm ON tm.user_id = sm.user_id
          WHERE sm.school_id = ?
-         GROUP BY COALESCE(NULLIF(sm.class_name, ''), 'Unassigned')
-         ORDER BY students DESC`
+         GROUP BY COALESCE(NULLIF(sm.class_name, ''), 'Unassigned')`
       )
-      .all(weekAgo, weekAgo, sid)) as Array<Record<string, unknown>>;
+      .all(sid, weekAgo, sid)) as Array<Record<string, unknown>>;
 
     const subjects = (await db
       .prepare(
         `SELECT tm.subject,
                 COUNT(DISTINCT sm.user_id) AS students,
-                COALESCE(ROUND(AVG(tm.accuracy)), 0) AS avgAccuracy,
+                ROUND(AVG(tm.accuracy)) AS avgAccuracy,
                 SUM(CASE WHEN tm.label = 'WEAK' THEN 1 ELSE 0 END) AS weakCount
          FROM topic_mastery tm
          JOIN school_members sm ON sm.user_id = tm.user_id
@@ -56,7 +54,7 @@ export async function GET(req: Request) {
 
     const teachers = (await db
       .prepare(
-        `SELECT st.name, tm.subject,
+        `SELECT u.name, tm.subject,
                  COALESCE(NULLIF(sm.class_name, ''), 'Unassigned') AS className,
                  COUNT(DISTINCT sm.user_id) AS students,
                  COUNT(DISTINCT a.id) AS answers
@@ -64,7 +62,7 @@ export async function GET(req: Request) {
          LEFT JOIN school_members sm ON sm.school_id = st.school_id AND sm.class_name = (
            SELECT class_name FROM school_members sm2 WHERE sm2.user_id = st.user_id LIMIT 1
          )
-         LEFT JOIN attempts a ON a.user_id = sm.user_id AND a.user_id != st.user_id
+         LEFT JOIN attempts a ON a.user_id = sm.user_id
          WHERE st.school_id = ?
          GROUP BY st.id, st.name, tm.subject, sm.class_name
          ORDER BY answers DESC`
