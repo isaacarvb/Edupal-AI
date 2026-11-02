@@ -7,16 +7,12 @@ const PREVIEW_SCHOOL_EMAIL = "preview-school@edupal.local";
 const PREVIEW_TEACHER_EMAIL = "preview-teacher@edupal.local";
 const PREVIEW_STUDENT_EMAIL = "preview@edupal.local";
 
-async function ensurePreviewSchool(db: any): Promise<string> {
-  const existing = (await db.prepare("SELECT id FROM schools WHERE code = 'PREVIEW' LIMIT 1").get()) as { id: string } | undefined;
-  if (existing) return existing.id;
-  const schoolId = uid();
-  const adminId = uid();
-  const now = new Date().toISOString();
-  await db.prepare("INSERT INTO users (id, name, email, password_hash, role, level) VALUES (?, ?, ?, ?, 'SCHOOL_ADMIN', 'SECONDARY')").run(adminId, "Preview School Admin", PREVIEW_SCHOOL_EMAIL, await hashPassword("preview-school-" + adminId));
-  await db.prepare("INSERT INTO wallets (user_id, credits_left, reset_at, plan) VALUES (?, 10, ?, 'FREE')").run(adminId, now, "FREE");
-  await db.prepare("INSERT INTO schools (id, name, code, admin_user_id, active, expires_at, max_seats) VALUES (?, ?, ?, ?, 1, NULL, 1000)").run(schoolId, "Preview School", "PREVIEW", adminId);
-  return schoolId;
+// Find the most recently created school (the one the admin just created in /admin/schools)
+async function getMostRecentSchool(db: any): Promise<{ id: string; name: string } | null> {
+  const row = (await db.prepare(
+    "SELECT id, name FROM schools ORDER BY created_at DESC LIMIT 1"
+  ).get()) as { id: string; name: string } | undefined;
+  return row ?? null;
 }
 
 async function ensurePreviewTeacher(db: any, schoolId: string): Promise<{ id: string; name: string; email: string }> {
@@ -75,20 +71,27 @@ export async function POST(req: Request) {
       }
       return NextResponse.json({ userId: row.id, role: "STUDENT", redirectUrl: `/dashboard?userId=${row.id}&adminView=1` });
     }
+
+    // Teacher and School Admin both need a school. Use the most recently created school.
+    const school = await getMostRecentSchool(db);
+    if (!school) {
+      return NextResponse.json({ error: "No school found. Create a school first in the Schools section." }, { status: 400 });
+    }
+
     if (role === "teacher") {
-      const schoolId = await ensurePreviewSchool(db);
-      const teacher = await ensurePreviewTeacher(db, schoolId);
+      const teacher = await ensurePreviewTeacher(db, school.id);
       return NextResponse.json({ userId: teacher.id, role: "SCHOOL_TEACHER", redirectUrl: `/teacher/dashboard?userId=${teacher.id}&adminView=1` });
     }
+
     if (role === "school") {
-      const schoolId = await ensurePreviewSchool(db);
-      const staff = await ensurePreviewSchoolAdmin(db, schoolId);
-      const school = (await db.prepare("SELECT admin_user_id FROM schools WHERE id = ?").get(schoolId)) as { admin_user_id: string | null } | undefined;
-      if (school && !school.admin_user_id) {
-        await db.prepare("UPDATE schools SET admin_user_id = ? WHERE id = ?").run(staff.id, schoolId);
+      const staff = await ensurePreviewSchoolAdmin(db, school.id);
+      const s = (await db.prepare("SELECT admin_user_id FROM schools WHERE id = ?").get(school.id)) as { admin_user_id: string | null } | undefined;
+      if (s && !s.admin_user_id) {
+        await db.prepare("UPDATE schools SET admin_user_id = ? WHERE id = ?").run(staff.id, school.id);
       }
       return NextResponse.json({ userId: staff.id, role: "SCHOOL_ADMIN", redirectUrl: `/school/dashboard?userId=${staff.id}&adminView=1` });
     }
+
     return NextResponse.json({ error: "invalid role" }, { status: 400 });
   } catch (e) {
     return NextResponse.json({ error: e instanceof Error ? e.message : "failed" }, { status: 500 });
