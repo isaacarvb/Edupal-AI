@@ -3,10 +3,8 @@ import { getDb } from "@/lib/db";
 import {
   requireSchoolTeacher,
   getTeacherById,
-  getSchoolById,
-  getSchoolTeachers
+  getSchoolById
 } from "@/lib/schools";
-import { countMembers } from "@/lib/schools";
 
 // GET ?userId= — teacher's classes with roster + activity stats.
 // Teacher sees only their own classes.
