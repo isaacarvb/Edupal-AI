@@ -146,9 +146,6 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
               <button onClick={() => switchToRole("student")} disabled={uvBusy} style={{ width: "100%", padding: 12, borderRadius: 10, border: 0, background: uvBusy ? "#CBD5E1" : "#0F766E", color: "#fff", fontWeight: 700, fontSize: 15, cursor: uvBusy ? "not-allowed" : "pointer" }}>
                 👤 Student
               </button>
-              <button onClick={() => switchToRole("teacher")} disabled={uvBusy} style={{ width: "100%", padding: 12, borderRadius: 10, border: 0, background: uvBusy ? "#CBD5E1" : "#0F766E", color: "#fff", fontWeight: 700, fontSize: 15, cursor: uvBusy ? "not-allowed" : "pointer" }}>
-                👩‍🏫 Teacher
-              </button>
               <button onClick={() => switchToRole("school")} disabled={uvBusy} style={{ width: "100%", padding: 12, borderRadius: 10, border: 0, background: uvBusy ? "#CBD5E1" : "#0F766E", color: "#fff", fontWeight: 700, fontSize: 15, cursor: uvBusy ? "not-allowed" : "pointer" }}>
                 🏫 School Admin
               </button>
