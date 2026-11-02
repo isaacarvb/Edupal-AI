@@ -331,6 +331,8 @@ CREATE TABLE IF NOT EXISTS assignments (
   subject TEXT NOT NULL,
   topic TEXT NOT NULL,
   instructions TEXT NOT NULL DEFAULT '',
+  start_date TEXT,
+  end_date TEXT,
   due_at TEXT,
   attachment_url TEXT,
   attachment_name TEXT,

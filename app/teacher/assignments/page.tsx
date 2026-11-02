@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 const card: React.CSSProperties = { background: "#fff", border: "1px solid #E2E8F0", borderRadius: 16, padding: 16, margin: "0 0 12px" };
 const input: React.CSSProperties = { height: 44, borderRadius: 10, border: "1px solid #CBD5E1", padding: "0 12px", fontSize: 14, width: "100%", boxSizing: "border-box" };
 
-type Assignment = { id: string; subject: string; topic: string; instructions: string; dueAt: string | null; className: string; createdAt: string; attachmentUrl: string | null; attachmentName: string | null };
+type Assignment = { id: string; subject: string; topic: string; instructions: string; startDate: string | null; endDate: string | null; className: string; createdAt: string; attachmentUrl: string | null; attachmentName: string | null };
 
 export default function TeacherAssignments() {
   const [userId, setUserId] = useState<string | null>(null);
@@ -15,7 +15,8 @@ export default function TeacherAssignments() {
   const [topic, setTopic] = useState("");
   const [instructions, setInstructions] = useState("");
   const [className, setClassName] = useState("");
-  const [dueAt, setDueAt] = useState("");
+  const [startDate, setStartDate] = useState("");
+  const [endDate, setEndDate] = useState("");
   const [attachment, setAttachment] = useState<File | null>(null);
   const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState("");
@@ -32,7 +33,7 @@ export default function TeacherAssignments() {
       .then((d) => {
         if (d?.assignments) setAssignments(d.assignments.map((a: any) => ({
           id: a.id, subject: a.subject, topic: a.topic, instructions: a.instructions,
-          dueAt: a.dueAt, className: a.className, createdAt: a.createdAt,
+          startDate: a.startDate, endDate: a.endDate, className: a.className, createdAt: a.createdAt,
           attachmentUrl: a.attachmentUrl, attachmentName: a.attachmentName
         })));
       });
@@ -49,9 +50,17 @@ export default function TeacherAssignments() {
     );
   }
 
+  const isAllowedFile = (file: File | null) => {
+    if (!file) return false;
+    const allowed = ["application/vnd.openxmlformats-officedocument.wordprocessingml.document", "application/pdf", "application/vnd.openxmlformats-officedocument.presentationml.presentation", "application/msword", "application/vnd.ms-powerpoint"];
+    return allowed.includes(file.type) || file.name.match(/\.(docx|pdf|ppt|pptx|doc)$/i);
+  };
+
   async function createAssignment() {
     if (!userId || busy) return;
     if (!className || !subject || !topic) return setMsg("Class, subject and topic required.");
+    if (!startDate || !endDate) return setMsg("Start date and end date are required.");
+    if (endDate < startDate) return setMsg("End date cannot be earlier than start date.");
     setBusy(true);
     setMsg("");
     try {
@@ -61,19 +70,20 @@ export default function TeacherAssignments() {
       form.append("subject", subject);
       form.append("topic", topic);
       form.append("instructions", instructions);
-      if (dueAt) form.append("dueAt", dueAt);
+      form.append("startDate", startDate);
+      form.append("endDate", endDate);
       if (attachment) form.append("attachment", attachment);
 
       const res = await fetch("/api/school/assignments", { method: "POST", body: form });
       const d = await res.json();
       if (!res.ok) return setMsg(d.error || "Failed to create assignment.");
       setMsg("Assignment set for your class.");
-      setSubject(""); setTopic(""); setInstructions(""); setDueAt(""); setAttachment(null);
+      setSubject(""); setTopic(""); setInstructions(""); setStartDate(""); setEndDate(""); setAttachment(null);
       fetch(`/api/school/assignments?userId=${userId}&teacherId=${userId}`)
         .then((r) => (r.ok ? r.json() : null))
         .then((d) => d?.assignments && setAssignments(d.assignments.map((a: any) => ({
           id: a.id, subject: a.subject, topic: a.topic, instructions: a.instructions,
-          dueAt: a.dueAt, className: a.className, createdAt: a.createdAt,
+          startDate: a.startDate, endDate: a.endDate, className: a.className, createdAt: a.createdAt,
           attachmentUrl: a.attachmentUrl, attachmentName: a.attachmentName
         }))));
     } finally {
@@ -110,17 +120,29 @@ export default function TeacherAssignments() {
           <input value={topic} onChange={(e) => setTopic(e.target.value)} placeholder="Topic (e.g. Quadratic Equations)"
             style={input} />
         </div>
-        <input value={dueAt} onChange={(e) => setDueAt(e.target.value)} placeholder="Due date (optional)" type="date"
-          style={input} />
+        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10, marginBottom: 10 }}>
+          <input type="date" value={startDate} onChange={(e) => setStartDate(e.target.value)} placeholder="Start date"
+            style={input} />
+          <input type="date" value={endDate} onChange={(e) => setEndDate(e.target.value)} placeholder="End date"
+            style={input} />
+        </div>
         <textarea value={instructions} onChange={(e) => setInstructions(e.target.value)} rows={3} placeholder="What should students do?…"
           style={{ ...input, height: 80, padding: 10, resize: "vertical" }} />
         <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 10 }}>
           <input type="file" onChange={(e) => {
             const f = e.target.files?.[0];
+            if (f && !isAllowedFile(f)) {
+              setMsg("Only DOCX, PDF, or PPT files are allowed.");
+              return;
+            }
+            setMsg("");
             if (f) setAttachment(f);
           }} style={{ ...input, padding: "0 10px", height: 44 }} />
           {attachment && (
-            <span style={{ fontSize: 12, color: "#5F6E7F" }}>📎 {attachment.name}</span>
+            <span style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 12, color: "#5F6E7F" }}>
+              📎 {attachment.name}
+              <button onClick={() => setAttachment(null)} style={{ background: "transparent", border: 0, color: "#DC2626", cursor: "pointer", padding: 0, fontSize: 12 }}>×</button>
+            </span>
           )}
         </div>
         <div style={{ marginTop: 10 }}>
@@ -128,7 +150,7 @@ export default function TeacherAssignments() {
             style={{ height: 44, borderRadius: 10, border: 0, background: "#0F766E", color: "#fff", fontWeight: 800, padding: "0 20px", cursor: "pointer" }}>
             {busy ? "Setting…" : "Set Assignment"}
           </button>
-          {msg && <p style={{ fontSize: 13, color: msg.startsWith("Fill") ? "#DC2626" : "#166534", marginTop: 8 }}>{msg}</p>}
+          {msg && <p style={{ fontSize: 13, color: msg.startsWith("Fill") || msg.startsWith("Only") || msg.startsWith("End") ? "#DC2626" : "#166534", marginTop: 8 }}>{msg}</p>}
         </div>
       </div>
 
@@ -144,14 +166,24 @@ export default function TeacherAssignments() {
                 <strong style={{ fontSize: 14 }}>{a.topic}</strong>
                 <span style={{ fontSize: 11, color: "#5F6E7F", marginLeft: 6 }}>{a.subject}</span>
               </div>
-              {a.dueAt && (
+              {a.endDate && (
                 <span style={{ fontSize: 10, fontWeight: 800, padding: "4px 8px", borderRadius: 999, background: "#F1F5F9", color: "#333A45" }}>
-                  Due {new Date(a.dueAt).toLocaleDateString("en-NG", { day: "numeric", month: "short" })}
+                  Ends {new Date(a.endDate).toLocaleDateString("en-NG", { day: "numeric", month: "short" })}
                 </span>
               )}
             </div>
             <div style={{ color: "#5F6E7F", fontSize: 11, marginBottom: 4 }}>
               {a.className}
+              {a.startDate && (
+                <span style={{ fontSize: 10, fontWeight: 800, padding: "4px 8px", borderRadius: 999, background: "#F1F5F9", color: "#333A45" }}>
+                  Starts {new Date(a.startDate).toLocaleDateString("en-NG", { day: "numeric", month: "short" })}
+                </span>
+              )}
+              {a.endDate && (
+                <span style={{ fontSize: 10, fontWeight: 800, padding: "4px 8px", borderRadius: 999, background: "#F1F5F9", color: "#333A45", marginLeft: 6 }}>
+                  Ends {new Date(a.endDate).toLocaleDateString("en-NG", { day: "numeric", month: "short" })}
+                </span>
+              )}
               {a.attachmentName && (
                 <span style={{ marginLeft: 8, fontSize: 11, color: "#0F766E", cursor: "pointer" }} title={a.attachmentName}>
                   📎 {a.attachmentName}

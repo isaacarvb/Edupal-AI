@@ -65,7 +65,7 @@ export default function TeacherLessonNotes() {
       const res = await fetch("/api/school/lesson-notes", { method: "POST", body: form });
       const d = await res.json();
       if (!res.ok) return setMsg(d.error || "Failed to create note.");
-      setMsg("Note sent to VP Academics for review.");
+      setMsg("Note sent for approval.");
       setSubject(""); setTopic(""); setBody(""); setAttachment(null);
       fetch(`/api/school/lesson-notes?userId=${userId}&teacherId=${userId}`)
         .then((r) => (r.ok ? r.json() : null))
@@ -78,6 +78,12 @@ export default function TeacherLessonNotes() {
       setBusy(false);
     }
   }
+
+  const isAllowedFile = (file: File | null) => {
+    if (!file) return false;
+    const allowed = ["application/vnd.openxmlformats-officedocument.wordprocessingml.document", "application/pdf", "application/vnd.openxmlformats-officedocument.presentationml.presentation", "application/msword", "application/vnd.ms-powerpoint"];
+    return allowed.includes(file.type) || file.name.match(/\.(docx|pdf|ppt|pptx|doc)$/i);
+  };
 
   const statusColor = (s: string) => s === "approved" ? "#16A34A" : s === "rejected" ? "#DC2626" : "#F59E0B";
   const statusLabel = (s: string) => s === "approved" ? "Approved" : s === "rejected" ? "Rejected" : "Pending VP Review";
@@ -110,16 +116,24 @@ export default function TeacherLessonNotes() {
         <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 10 }}>
           <input type="file" onChange={(e) => {
             const f = e.target.files?.[0];
+            if (f && !isAllowedFile(f)) {
+              setMsg("Only DOCX, PDF, or PPT files are allowed.");
+              return;
+            }
+            setMsg("");
             if (f) setAttachment(f);
           }} style={{ ...input, padding: "0 10px", height: 44 }} />
           {attachment && (
-            <span style={{ fontSize: 12, color: "#5F6E7F" }}>📎 {attachment.name}</span>
+            <span style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 12, color: "#5F6E7F" }}>
+              📎 {attachment.name}
+              <button onClick={() => setAttachment(null)} style={{ background: "transparent", border: 0, color: "#DC2626", cursor: "pointer", padding: 0, fontSize: 12 }}>×</button>
+            </span>
           )}
         </div>
         <div style={{ marginTop: 10 }}>
           <button onClick={createNote} disabled={busy}
             style={{ height: 44, borderRadius: 10, border: 0, background: "#0F766E", color: "#fff", fontWeight: 800, padding: "0 20px", cursor: "pointer" }}>
-            {busy ? "Sending for review…" : "Send to VP for review"}
+            {busy ? "Sending for approval…" : "Send for approval"}
           </button>
           {msg && <p style={{ fontSize: 13, color: msg.startsWith("Fill") ? "#DC2626" : "#166534", marginTop: 8 }}>{msg}</p>}
         </div>

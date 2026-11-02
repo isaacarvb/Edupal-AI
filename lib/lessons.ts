@@ -27,7 +27,8 @@ export type Assignment = {
   subject: string;
   topic: string;
   instructions: string;
-  dueAt: string | null;
+  startDate: string | null;
+  endDate: string | null;
   attachmentUrl: string | null;
   attachmentName: string | null;
   createdAt: string;
@@ -129,8 +130,8 @@ export async function getAssignments(db: Db, schoolId: string, opts?: {
 }): Promise<Assignment[]> {
   let sql = `SELECT a.id, a.school_id AS "schoolId", a.teacher_id AS "teacherId",
     st.name AS "teacherName", a.class_name AS "className", a.subject, a.topic,
-    a.instructions, a.due_at AS "dueAt", a.attachment_url AS "attachmentUrl",
-    a.attachment_name AS "attachmentName", a.created_at AS "createdAt"
+    a.instructions, a.start_date AS "startDate", a.end_date AS "endDate",
+    a.attachment_url AS "attachmentUrl", a.attachment_name AS "attachmentName", a.created_at AS "createdAt"
    FROM assignments a JOIN school_teachers st ON st.id = a.teacher_id
    WHERE a.school_id = ?`;
   const params: unknown[] = [schoolId];
@@ -142,7 +143,8 @@ export async function getAssignments(db: Db, schoolId: string, opts?: {
     id: String(r.id), schoolId: String(r.schoolId), teacherId: String(r.teacherId),
     teacherName: String(r.teacherName ?? ""), className: String(r.className ?? ""),
     subject: String(r.subject ?? ""), topic: String(r.topic ?? ""),
-    instructions: String(r.instructions ?? ""), dueAt: r.dueAt ? String(r.dueAt) : null,
+    instructions: String(r.instructions ?? ""), startDate: r.start_date ? String(r.start_date) : null,
+    endDate: r.end_date ? String(r.end_date) : null,
     attachmentUrl: r.attachment_url ? String(r.attachment_url) : null,
     attachmentName: r.attachment_name ? String(r.attachment_name) : null,
     createdAt: String(r.createdAt ?? "")
@@ -151,21 +153,22 @@ export async function getAssignments(db: Db, schoolId: string, opts?: {
 
 export async function createAssignment(db: Db, opts: {
   schoolId: string; teacherId: string; teacherName: string; className: string;
-  subject: string; topic: string; instructions: string; dueAt: string | null;
+  subject: string; topic: string; instructions: string; startDate: string | null;
+  endDate: string | null;
   attachmentUrl?: string | null; attachmentName?: string | null;
 }): Promise<Assignment> {
   const id = uid();
   const now = new Date().toISOString();
   await db
     .prepare(
-      `INSERT INTO assignments (id, school_id, teacher_id, class_name, subject, topic, instructions, due_at, attachment_url, attachment_name)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
+      `INSERT INTO assignments (id, school_id, teacher_id, class_name, subject, topic, instructions, start_date, end_date, attachment_url, attachment_name)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
     )
-    .run(id, opts.schoolId, opts.teacherId, opts.className, opts.subject, opts.topic, opts.instructions, opts.dueAt ?? null, opts.attachmentUrl ?? null, opts.attachmentName ?? null);
+    .run(id, opts.schoolId, opts.teacherId, opts.className, opts.subject, opts.topic, opts.instructions, opts.startDate ?? null, opts.endDate ?? null, opts.attachmentUrl ?? null, opts.attachmentName ?? null);
   return {
     id, schoolId: opts.schoolId, teacherId: opts.teacherId, teacherName: opts.teacherName,
     className: opts.className, subject: opts.subject, topic: opts.topic,
-    instructions: opts.instructions, dueAt: opts.dueAt,
+    instructions: opts.instructions, startDate: opts.startDate, endDate: opts.endDate,
     attachmentUrl: opts.attachmentUrl ?? null, attachmentName: opts.attachmentName ?? null,
     createdAt: now
   };

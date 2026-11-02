@@ -98,7 +98,7 @@ export default function TeacherShell({ children }: { children: React.ReactNode }
     { href: `/teacher/lesson-notes${q}`, match: "/teacher/lesson-notes", label: "Lesson Notes", emoji: "📝" },
     { href: `/teacher/assignments${q}`, match: "/teacher/assignments", label: "Assignments", emoji: "✅" },
     { href: `/teacher/questions${q}`, match: "/teacher/questions", label: "Question Bank", emoji: "📋" },
-    { href: `/settings${q}`, match: "/settings", label: "Settings", emoji: "⚙️" }
+    { href: `/teacher/approved-notes${q}`, match: "/teacher/approved-notes", label: "Approved Notes", emoji: "📄" }
   ];
 
   const sidebar = (

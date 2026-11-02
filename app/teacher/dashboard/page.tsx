@@ -80,7 +80,7 @@ export default function TeacherDashboard() {
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 12, marginBottom: 12 }}>
           <div>
             <h1 style={{ fontSize: 22, margin: "0 0 4px" }}>Welcome, {firstName}</h1>
-            <p style={{ fontSize: 13, color: "#A7F3D0", margin: 0 }}>{data.teacher.email} · {data.school.name}</p>
+            <p style={{ fontSize: 13, color: "#A7F3D0", margin: 0 }}>{data.school.name}</p>
           </div>
           <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
             <span style={{ background: "#0F766E", color: "#fff", borderRadius: 999, padding: "4px 12px", fontSize: 12, fontWeight: 800 }}>{data.school.code}</span>

@@ -15,7 +15,7 @@ export async function GET(req: Request) {
     if (!member) return NextResponse.json({ assignments: [] });
     const now = new Date().toISOString();
     const all = await getAssignments(db, member.schoolId, { className: member.className });
-    const active = all.filter((a) => !a.dueAt || a.dueAt >= now);
+    const active = all.filter((a) => !a.endDate || a.endDate >= now);
     return NextResponse.json({ assignments: active, className: member.className });
   } catch (e) {
     return NextResponse.json({ error: e instanceof Error ? e.message : "failed" }, { status: 500 });

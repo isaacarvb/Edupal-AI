@@ -52,7 +52,8 @@ export async function POST(req: Request) {
     const subject = String(form.get("subject") ?? "").trim();
     const topic = String(form.get("topic") ?? "").trim();
     const instructions = String(form.get("instructions") ?? "").trim();
-    const dueAt = form.get("dueAt") ? String(form.get("dueAt")) : null;
+    const startDate = form.get("startDate") ? String(form.get("startDate")) : null;
+    const endDate = form.get("endDate") ? String(form.get("endDate")) : null;
 
     const { teacher, school } = await requireSchoolTeacher(db, userId);
     if (!className || !subject || !topic) {
@@ -77,7 +78,7 @@ export async function POST(req: Request) {
 
     const assignment = await createAssignment(db, {
       schoolId: school.id, teacherId: teacher.id, teacherName: teacher.name,
-      className, subject, topic, instructions, dueAt, attachmentUrl, attachmentName
+      className, subject, topic, instructions, startDate, endDate, attachmentUrl, attachmentName
     });
     await logAudit(db, teacher.id, "assignment:create", `${assignment.subject} / ${assignment.topic} (${className})`);
     return NextResponse.json({ ok: true, assignment });
