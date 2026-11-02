@@ -24,11 +24,14 @@ export async function GET(req: Request) {
         .prepare(
           `SELECT u.id AS "userId", u.name, u.email,
                   s.current AS streak,
-                  (SELECT COUNT(*) FROM attempts a WHERE a.user_id = u.id AND SUBSTRING(a.created_at,1,10) >= ?) AS "answersWeek"
+                  (SELECT COUNT(*) FROM attempts a WHERE a.user_id = u.id AND SUBSTRING(a.created_at,1,10) >= ?) AS "answersWeek",
+                  COALESCE(ROUND(AVG(tm.accuracy)), 0) AS accuracy
            FROM school_members sm
            JOIN users u ON u.id = sm.user_id
            LEFT JOIN streaks s ON s.user_id = u.id
+           LEFT JOIN topic_mastery tm ON tm.user_id = u.id
            WHERE sm.school_id = ? AND sm.class_name = ?
+           GROUP BY u.id, u.name, u.email, s.current
            ORDER BY u.name`
         )
         .all(weekAgo, school.id, className)) as Array<Record<string, unknown>>;
@@ -49,7 +52,8 @@ export async function GET(req: Request) {
           name: String(m.name ?? ""),
           email: String(m.email ?? ""),
           streak: Number(m.streak ?? 0),
-          answersWeek: Number(m.answersWeek ?? 0)
+          answersWeek: Number(m.answersWeek ?? 0),
+          accuracy: Number(m.accuracy ?? 0)
         })),
         studentCount: members.length,
         weakTopics: weakTopics.map((w) => ({

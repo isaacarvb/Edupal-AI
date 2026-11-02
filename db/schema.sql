@@ -312,6 +312,8 @@ CREATE TABLE IF NOT EXISTS lesson_notes (
   subject TEXT NOT NULL,
   topic TEXT NOT NULL,
   body TEXT NOT NULL DEFAULT '',
+  attachment_url TEXT,
+  attachment_name TEXT,
   status TEXT NOT NULL DEFAULT 'pending',
   reviewed_by TEXT,
   reviewed_at TEXT,
@@ -330,6 +332,8 @@ CREATE TABLE IF NOT EXISTS assignments (
   topic TEXT NOT NULL,
   instructions TEXT NOT NULL DEFAULT '',
   due_at TEXT,
+  attachment_url TEXT,
+  attachment_name TEXT,
   created_at TEXT NOT NULL DEFAULT (datetime('now'))
 );
 CREATE INDEX IF NOT EXISTS idx_assignments_school_class ON assignments(school_id, class_name);

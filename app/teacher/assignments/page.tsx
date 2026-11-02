@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 const card: React.CSSProperties = { background: "#fff", border: "1px solid #E2E8F0", borderRadius: 16, padding: 16, margin: "0 0 12px" };
 const input: React.CSSProperties = { height: 44, borderRadius: 10, border: "1px solid #CBD5E1", padding: "0 12px", fontSize: 14, width: "100%", boxSizing: "border-box" };
 
-type Assignment = { id: string; subject: string; topic: string; instructions: string; dueAt: string | null; className: string; createdAt: string };
+type Assignment = { id: string; subject: string; topic: string; instructions: string; dueAt: string | null; className: string; createdAt: string; attachmentUrl: string | null; attachmentName: string | null };
 
 export default function TeacherAssignments() {
   const [userId, setUserId] = useState<string | null>(null);
@@ -16,6 +16,7 @@ export default function TeacherAssignments() {
   const [instructions, setInstructions] = useState("");
   const [className, setClassName] = useState("");
   const [dueAt, setDueAt] = useState("");
+  const [attachment, setAttachment] = useState<File | null>(null);
   const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState("");
 
@@ -31,7 +32,8 @@ export default function TeacherAssignments() {
       .then((d) => {
         if (d?.assignments) setAssignments(d.assignments.map((a: any) => ({
           id: a.id, subject: a.subject, topic: a.topic, instructions: a.instructions,
-          dueAt: a.dueAt, className: a.className, createdAt: a.createdAt
+          dueAt: a.dueAt, className: a.className, createdAt: a.createdAt,
+          attachmentUrl: a.attachmentUrl, attachmentName: a.attachmentName
         })));
       });
   }, []);
@@ -53,19 +55,26 @@ export default function TeacherAssignments() {
     setBusy(true);
     setMsg("");
     try {
-      const res = await fetch("/api/school/assignments", {
-        method: "POST", headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ userId, className, subject, topic, instructions, dueAt: dueAt || null })
-      });
+      const form = new FormData();
+      form.append("userId", userId);
+      form.append("className", className);
+      form.append("subject", subject);
+      form.append("topic", topic);
+      form.append("instructions", instructions);
+      if (dueAt) form.append("dueAt", dueAt);
+      if (attachment) form.append("attachment", attachment);
+
+      const res = await fetch("/api/school/assignments", { method: "POST", body: form });
       const d = await res.json();
       if (!res.ok) return setMsg(d.error || "Failed to create assignment.");
       setMsg("Assignment set for your class.");
-      setSubject(""); setTopic(""); setInstructions(""); setDueAt("");
+      setSubject(""); setTopic(""); setInstructions(""); setDueAt(""); setAttachment(null);
       fetch(`/api/school/assignments?userId=${userId}&teacherId=${userId}`)
         .then((r) => (r.ok ? r.json() : null))
         .then((d) => d?.assignments && setAssignments(d.assignments.map((a: any) => ({
           id: a.id, subject: a.subject, topic: a.topic, instructions: a.instructions,
-          dueAt: a.dueAt, className: a.className, createdAt: a.createdAt
+          dueAt: a.dueAt, className: a.className, createdAt: a.createdAt,
+          attachmentUrl: a.attachmentUrl, attachmentName: a.attachmentName
         }))));
     } finally {
       setBusy(false);
@@ -105,6 +114,15 @@ export default function TeacherAssignments() {
           style={input} />
         <textarea value={instructions} onChange={(e) => setInstructions(e.target.value)} rows={3} placeholder="What should students do?…"
           style={{ ...input, height: 80, padding: 10, resize: "vertical" }} />
+        <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 10 }}>
+          <input type="file" onChange={(e) => {
+            const f = e.target.files?.[0];
+            if (f) setAttachment(f);
+          }} style={{ ...input, padding: "0 10px", height: 44 }} />
+          {attachment && (
+            <span style={{ fontSize: 12, color: "#5F6E7F" }}>📎 {attachment.name}</span>
+          )}
+        </div>
         <div style={{ marginTop: 10 }}>
           <button onClick={createAssignment} disabled={busy}
             style={{ height: 44, borderRadius: 10, border: 0, background: "#0F766E", color: "#fff", fontWeight: 800, padding: "0 20px", cursor: "pointer" }}>
@@ -134,6 +152,11 @@ export default function TeacherAssignments() {
             </div>
             <div style={{ color: "#5F6E7F", fontSize: 11, marginBottom: 4 }}>
               {a.className}
+              {a.attachmentName && (
+                <span style={{ marginLeft: 8, fontSize: 11, color: "#0F766E", cursor: "pointer" }} title={a.attachmentName}>
+                  📎 {a.attachmentName}
+                </span>
+              )}
             </div>
             <p style={{ margin: 0, color: "#333A45" }}>{a.instructions.slice(0, 300)}{a.instructions.length > 300 ? "…" : ""}</p>
           </div>

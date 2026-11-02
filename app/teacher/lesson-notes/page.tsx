@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 const card: React.CSSProperties = { background: "#fff", border: "1px solid #E2E8F0", borderRadius: 16, padding: 16, margin: "0 0 12px" };
 const input: React.CSSProperties = { height: 44, borderRadius: 10, border: "1px solid #CBD5E1", padding: "0 12px", fontSize: 14, width: "100%", boxSizing: "border-box" };
 
-type Note = { id: string; subject: string; topic: string; body: string; status: string; className: string; createdAt: string };
+type Note = { id: string; subject: string; topic: string; body: string; status: string; className: string; createdAt: string; attachmentUrl: string | null; attachmentName: string | null };
 
 export default function TeacherLessonNotes() {
   const [userId, setUserId] = useState<string | null>(null);
@@ -15,6 +15,7 @@ export default function TeacherLessonNotes() {
   const [topic, setTopic] = useState("");
   const [body, setBody] = useState("");
   const [className, setClassName] = useState("");
+  const [attachment, setAttachment] = useState<File | null>(null);
   const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState("");
 
@@ -30,7 +31,8 @@ export default function TeacherLessonNotes() {
       .then((d) => {
         if (d?.notes) setNotes(d.notes.map((n: any) => ({
           id: n.id, subject: n.subject, topic: n.topic, body: n.body,
-          status: n.status, className: n.className, createdAt: n.createdAt
+          status: n.status, className: n.className, createdAt: n.createdAt,
+          attachmentUrl: n.attachmentUrl, attachmentName: n.attachmentName
         })));
       });
   }, []);
@@ -52,19 +54,25 @@ export default function TeacherLessonNotes() {
     setBusy(true);
     setMsg("");
     try {
-      const res = await fetch("/api/school/lesson-notes", {
-        method: "POST", headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ userId, className, subject, topic, body })
-      });
+      const form = new FormData();
+      form.append("userId", userId);
+      form.append("className", className);
+      form.append("subject", subject);
+      form.append("topic", topic);
+      form.append("body", body);
+      if (attachment) form.append("attachment", attachment);
+
+      const res = await fetch("/api/school/lesson-notes", { method: "POST", body: form });
       const d = await res.json();
       if (!res.ok) return setMsg(d.error || "Failed to create note.");
       setMsg("Note sent to VP Academics for review.");
-      setSubject(""); setTopic(""); setBody("");
+      setSubject(""); setTopic(""); setBody(""); setAttachment(null);
       fetch(`/api/school/lesson-notes?userId=${userId}&teacherId=${userId}`)
         .then((r) => (r.ok ? r.json() : null))
         .then((d) => d?.notes && setNotes(d.notes.map((n: any) => ({
           id: n.id, subject: n.subject, topic: n.topic, body: n.body,
-          status: n.status, className: n.className, createdAt: n.createdAt
+          status: n.status, className: n.className, createdAt: n.createdAt,
+          attachmentUrl: n.attachmentUrl, attachmentName: n.attachmentName
         }))));
     } finally {
       setBusy(false);
@@ -99,6 +107,15 @@ export default function TeacherLessonNotes() {
         </div>
         <textarea value={body} onChange={(e) => setBody(e.target.value)} rows={5} placeholder="What should students learn or practise?…"
           style={{ ...input, height: 120, padding: 10, resize: "vertical" }} />
+        <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 10 }}>
+          <input type="file" onChange={(e) => {
+            const f = e.target.files?.[0];
+            if (f) setAttachment(f);
+          }} style={{ ...input, padding: "0 10px", height: 44 }} />
+          {attachment && (
+            <span style={{ fontSize: 12, color: "#5F6E7F" }}>📎 {attachment.name}</span>
+          )}
+        </div>
         <div style={{ marginTop: 10 }}>
           <button onClick={createNote} disabled={busy}
             style={{ height: 44, borderRadius: 10, border: 0, background: "#0F766E", color: "#fff", fontWeight: 800, padding: "0 20px", cursor: "pointer" }}>
@@ -126,6 +143,11 @@ export default function TeacherLessonNotes() {
             </div>
             <div style={{ color: "#5F6E7F", fontSize: 11, marginBottom: 4 }}>
               {n.className} · {new Date(n.createdAt).toLocaleDateString("en-NG", { day: "numeric", month: "short" })}
+              {n.attachmentName && (
+                <span style={{ marginLeft: 8, fontSize: 11, color: "#0F766E", cursor: "pointer" }} title={n.attachmentName}>
+                  📎 {n.attachmentName}
+                </span>
+              )}
             </div>
             <p style={{ margin: 0, color: "#333A45" }}>{n.body.slice(0, 300)}{n.body.length > 300 ? "…" : ""}</p>
           </div>

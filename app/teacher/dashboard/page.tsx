@@ -3,7 +3,7 @@ import { useEffect, useState } from "react";
 
 const card: React.CSSProperties = { background: "#fff", border: "1px solid #E2E8F0", borderRadius: 16, padding: 16, margin: "0 0 12px" };
 
-type ClassData = { className: string; students: { userId: string; name: string; streak: number; answersWeek: number }[]; weakTopics: { subject: string; topic: string; students: number; accuracy: number }[] };
+type ClassData = { className: string; students: { userId: string; name: string; streak: number; answersWeek: number; accuracy: number }[]; weakTopics: { subject: string; topic: string; students: number; accuracy: number }[] };
 
 export default function TeacherDashboard() {
   const [userId, setUserId] = useState<string | null>(null);
@@ -24,6 +24,8 @@ export default function TeacherDashboard() {
 
   const totalStudents = data.classes.reduce((s, c) => s + c.students.length, 0);
   const totalActive = data.classes.reduce((s, c) => s + c.students.filter((st) => st.answersWeek > 0).length, 0);
+  const allAccuracies = data.classes.flatMap(c => c.students.map(s => s.accuracy)).filter(a => a > 0);
+  const avgAccuracy = allAccuracies.length > 0 ? Math.round(allAccuracies.reduce((s, a) => s + a, 0) / allAccuracies.length) : 0;
 
   return (
     <main style={{ maxWidth: 1100, margin: "0 auto", padding: 20, color: "#333A45" }}>
@@ -39,7 +41,7 @@ export default function TeacherDashboard() {
           </div>
         </div>
         <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(140px, 1fr))", gap: 10, marginTop: 14 }}>
-        <div style={{ ...card, background: "#333A45", color: "#fff" }}>
+          <div style={{ ...card, background: "#333A45", color: "#fff" }}>
             <div style={{ fontSize: 11, color: "#94A3B8" }}>Students</div>
             <div style={{ fontSize: 22, fontWeight: 800 }}>{totalStudents}</div>
           </div>
@@ -51,54 +53,63 @@ export default function TeacherDashboard() {
             <div style={{ fontSize: 11, color: "#94A3B8" }}>Classes</div>
             <div style={{ fontSize: 22, fontWeight: 800 }}>{data.classes.length}</div>
           </div>
+          <div style={{ ...card, background: "#333A45", color: "#fff" }}>
+            <div style={{ fontSize: 11, color: "#94A3B8" }}>Avg Accuracy</div>
+            <div style={{ fontSize: 22, fontWeight: 800 }}>{avgAccuracy}%</div>
+          </div>
         </div>
       </div>
 
-      {data.classes.map((c) => (
-        <div key={c.className} style={card}>
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 10 }}>
-            <div>
-              <h2 style={{ color: "#1E242E", fontSize: 16, margin: 0 }}>{c.className}</h2>
-              <p style={{ fontSize: 12, color: "#5F6E7F", margin: "2px 0 0" }}>{c.students.length} student{c.students.length === 1 ? "" : "s"}</p>
+      {data.classes.map((c) => {
+        const classAvg = c.students.length > 0 ? Math.round(c.students.reduce((s, st) => s + st.accuracy, 0) / c.students.length) : 0;
+        return (
+          <div key={c.className} style={card}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 10 }}>
+              <div>
+                <h2 style={{ color: "#1E242E", fontSize: 16, margin: 0 }}>{c.className}</h2>
+                <p style={{ fontSize: 12, color: "#5F6E7F", margin: "2px 0 0" }}>{c.students.length} student{c.students.length === 1 ? "" : "s"} · Avg {classAvg}%</p>
+              </div>
+              <div style={{ display: "flex", gap: 8 }}>
+                <a href={`/teacher/lesson-notes?class=${encodeURIComponent(c.className)}`}
+                  style={{ fontSize: 13, color: "#0F766E", fontWeight: 700, textDecoration: "none" }}>Write Note →</a>
+                <a href={`/teacher/assignments?class=${encodeURIComponent(c.className)}`}
+                  style={{ fontSize: 13, color: "#0F766E", fontWeight: 700, textDecoration: "none", marginLeft: 12 }}>Set Assignment →</a>
+                <a href={`/teacher/questions?class=${encodeURIComponent(c.className)}`}
+                  style={{ fontSize: 13, color: "#0F766E", fontWeight: 700, textDecoration: "none", marginLeft: 12 }}>Question Bank →</a>
+              </div>
             </div>
-            <div style={{ display: "flex", gap: 8 }}>
-              <a href={`/teacher/lesson-notes?class=${encodeURIComponent(c.className)}`}
-                style={{ fontSize: 13, color: "#0F766E", fontWeight: 700, textDecoration: "none" }}>Write Note →</a>
-              <a href={`/teacher/assignments?class=${encodeURIComponent(c.className)}`}
-                style={{ fontSize: 13, color: "#0F766E", fontWeight: 700, textDecoration: "none", marginLeft: 12 }}>Set Assignment →</a>
-              <a href={`/teacher/questions?class=${encodeURIComponent(c.className)}`}
-                style={{ fontSize: 13, color: "#0F766E", fontWeight: 700, textDecoration: "none", marginLeft: 12 }}>Question Bank →</a>
+            <div style={{ overflowX: "auto" }}>
+              <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12 }}>
+                <thead>
+                  <tr style={{ textAlign: "left", color: "#5F6E7F", fontSize: 11, borderBottom: "2px solid #F1F5F9" }}>
+                    <th style={{ padding: "8px 10px", textAlign: "left" }}>Student</th>
+                    <th style={{ padding: "8px 10px" }}>Accuracy</th>
+                    <th style={{ padding: "8px 10px" }}>Streak</th>
+                    <th style={{ padding: "8px 10px" }}>Answers This Week</th>
+                    <th style={{ padding: "8px 10px" }}>Weak Topics</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {c.students.map((s) => {
+                    const weak = c.weakTopics.filter((w) => w.students > 0).slice(0, 2);
+                    return (
+                      <tr key={s.userId} style={{ borderBottom: "1px solid #F1F5F9" }}>
+                        <td style={{ padding: "8px 10px", fontWeight: 700 }}>{s.name}</td>
+                        <td style={{ padding: "8px 10px" }}>{s.accuracy}%</td>
+                        <td style={{ padding: "8px 10px" }}>{s.streak} days</td>
+                        <td style={{ padding: "8px 10px" }}>{s.answersWeek}</td>
+                        <td style={{ padding: "8px 10px", fontSize: 11, color: "#5F6E7F" }}>
+                          {weak.length > 0 ? weak.map((w) => `${w.topic} (${w.accuracy}%)`).join(" · ") : "—"}
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
             </div>
           </div>
-          <div style={{ overflowX: "auto" }}>
-            <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12 }}>
-              <thead>
-                <tr style={{ textAlign: "left", color: "#5F6E7F", fontSize: 11, borderBottom: "2px solid #F1F5F9" }}>
-                  <th style={{ padding: "8px 10px", textAlign: "left" }}>Student</th>
-                  <th style={{ padding: "8px 10px" }}>Streak</th>
-                  <th style={{ padding: "8px 10px" }}>Answers This Week</th>
-                  <th style={{ padding: "8px 10px" }}>Weak Topics</th>
-                </tr>
-              </thead>
-              <tbody>
-                {c.students.map((s) => {
-                  const weak = c.weakTopics.filter((w) => w.students > 0).slice(0, 2);
-                  return (
-                    <tr key={s.userId} style={{ borderBottom: "1px solid #F1F5F9" }}>
-                      <td style={{ padding: "8px 10px", fontWeight: 700 }}>{s.name}</td>
-                      <td style={{ padding: "8px 10px" }}>{s.streak} days</td>
-                      <td style={{ padding: "8px 10px" }}>{s.answersWeek}</td>
-                      <td style={{ padding: "8px 10px", fontSize: 11, color: "#5F6E7F" }}>
-                        {weak.length > 0 ? weak.map((w) => `${w.topic} (${w.accuracy}%)`).join(" · ") : "—"}
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          </div>
-        </div>
-      ))}
+        );
+      })}
     </main>
   );
 }

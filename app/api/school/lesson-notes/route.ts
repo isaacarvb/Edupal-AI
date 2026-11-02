@@ -3,11 +3,13 @@ import { getDb } from "@/lib/db";
 import { logAudit } from "@/lib/admin";
 import { requireSchoolAdmin, requireSchoolTeacher } from "@/lib/schools";
 import { getLessonNotes, createLessonNote, reviewLessonNote } from "@/lib/lessons";
+import { writeFile } from "node:fs/promises";
+import { join } from "node:path";
 
 // GET ?userId=&status=&classId=&teacherId= — list notes.
 //   School admin sees all notes in their school.
 //   Teacher sees only their own notes.
-// POST {userId, className, subject, topic, body} — teacher creates a pending note.
+// POST multipart/form-data {userId, className, subject, topic, body, attachment} — teacher creates a pending note.
 // PATCH {noteId, status ("approved"|"rejected"), userId} — school admin approves/rejects.
 export async function GET(req: Request) {
   const { searchParams } = new URL(req.url);
@@ -45,23 +47,39 @@ export async function GET(req: Request) {
 }
 
 export async function POST(req: Request) {
-  const b = await req.json();
   const db = await getDb();
   try {
-    const { teacher, school } = await requireSchoolTeacher(db, String(b?.userId ?? ""));
-    const className = String(b?.className ?? "").trim();
-    const subject = String(b?.subject ?? "").trim();
-    const topic = String(b?.topic ?? "").trim();
-    const body = String(b?.body ?? "").trim();
+    const form = await req.formData();
+    const userId = String(form.get("userId") ?? "");
+    const className = String(form.get("className") ?? "").trim();
+    const subject = String(form.get("subject") ?? "").trim();
+    const topic = String(form.get("topic") ?? "").trim();
+    const body = String(form.get("body") ?? "").trim();
+
+    const { teacher, school } = await requireSchoolTeacher(db, userId);
     if (!className || !subject || !topic || !body) {
       return NextResponse.json({ error: "class, subject, topic and body required" }, { status: 400 });
     }
     if (!teacher.classes.includes(className)) {
       return NextResponse.json({ error: "you do not teach this class" }, { status: 403 });
     }
+
+    let attachmentUrl: string | null = null;
+    let attachmentName: string | null = null;
+    const file = form.get("attachment");
+    if (file && file instanceof File) {
+      const bytes = await file.arrayBuffer();
+      const buffer = Buffer.from(bytes);
+      const safeName = `${Date.now()}-${file.name.replace(/[^a-zA-Z0-9.-]/g, "_")}`;
+      const dir = join(process.cwd(), "storage", "picx");
+      await writeFile(join(dir, safeName), buffer);
+      attachmentUrl = `/api/media/picx/${safeName}`;
+      attachmentName = file.name;
+    }
+
     const note = await createLessonNote(db, {
       schoolId: school.id, teacherId: teacher.id, teacherName: teacher.name,
-      className, subject, topic, body
+      className, subject, topic, body, attachmentUrl, attachmentName
     });
     await logAudit(db, teacher.id, "lesson-note:create", `${note.subject} / ${note.topic} (${className})`);
     return NextResponse.json({ ok: true, note });

@@ -3,11 +3,13 @@ import { getDb } from "@/lib/db";
 import { logAudit } from "@/lib/admin";
 import { requireSchoolAdmin, requireSchoolTeacher } from "@/lib/schools";
 import { getAssignments, createAssignment, deleteAssignment } from "@/lib/lessons";
+import { writeFile } from "node:fs/promises";
+import { join } from "node:path";
 
 // GET ?userId=&classId=&teacherId= — list assignments.
 //   School admin sees all assignments in their school.
 //   Teacher sees only their own assignments.
-// POST {userId, className, subject, topic, instructions, dueAt} — teacher creates.
+// POST multipart/form-data {userId, className, subject, topic, instructions, dueAt, attachment} — teacher creates.
 // DELETE ?assignmentId=&userId= — school admin deletes any assignment in their school.
 export async function GET(req: Request) {
   const { searchParams } = new URL(req.url);
@@ -42,24 +44,40 @@ export async function GET(req: Request) {
 }
 
 export async function POST(req: Request) {
-  const b = await req.json();
   const db = await getDb();
   try {
-    const { teacher, school } = await requireSchoolTeacher(db, String(b?.userId ?? ""));
-    const className = String(b?.className ?? "").trim();
-    const subject = String(b?.subject ?? "").trim();
-    const topic = String(b?.topic ?? "").trim();
-    const instructions = String(b?.instructions ?? "").trim();
-    const dueAt = b?.dueAt ? String(b.dueAt) : null;
+    const form = await req.formData();
+    const userId = String(form.get("userId") ?? "");
+    const className = String(form.get("className") ?? "").trim();
+    const subject = String(form.get("subject") ?? "").trim();
+    const topic = String(form.get("topic") ?? "").trim();
+    const instructions = String(form.get("instructions") ?? "").trim();
+    const dueAt = form.get("dueAt") ? String(form.get("dueAt")) : null;
+
+    const { teacher, school } = await requireSchoolTeacher(db, userId);
     if (!className || !subject || !topic) {
       return NextResponse.json({ error: "class, subject and topic required" }, { status: 400 });
     }
     if (!teacher.classes.includes(className)) {
       return NextResponse.json({ error: "you do not teach this class" }, { status: 403 });
     }
+
+    let attachmentUrl: string | null = null;
+    let attachmentName: string | null = null;
+    const file = form.get("attachment");
+    if (file && file instanceof File) {
+      const bytes = await file.arrayBuffer();
+      const buffer = Buffer.from(bytes);
+      const safeName = `${Date.now()}-${file.name.replace(/[^a-zA-Z0-9.-]/g, "_")}`;
+      const dir = join(process.cwd(), "storage", "picx");
+      await writeFile(join(dir, safeName), buffer);
+      attachmentUrl = `/api/media/picx/${safeName}`;
+      attachmentName = file.name;
+    }
+
     const assignment = await createAssignment(db, {
       schoolId: school.id, teacherId: teacher.id, teacherName: teacher.name,
-      className, subject, topic, instructions, dueAt
+      className, subject, topic, instructions, dueAt, attachmentUrl, attachmentName
     });
     await logAudit(db, teacher.id, "assignment:create", `${assignment.subject} / ${assignment.topic} (${className})`);
     return NextResponse.json({ ok: true, assignment });
