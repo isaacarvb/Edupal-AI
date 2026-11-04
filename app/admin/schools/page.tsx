@@ -224,16 +224,7 @@ export default function AdminSchools() {
             {s.status === "ACTIVE" ? (
               <AdminButton size="sm" variant="dangerOutline" busy={busy} onClick={() => deactivate(s)}>Deactivate</AdminButton>
             ) : (
-              <span style={{ display: "flex", gap: 6, alignItems: "center" }}>
-                <select value={expForm[s.id] ?? "4"} onChange={(e) => setExpForm({ ...expForm, [s.id]: e.target.value })}
-                  style={{ height: 34, borderRadius: 8, border: "1px solid #CBD5E1", fontSize: 13 }}>
-                  <option value="4">4 months (₦1,000,000)</option>
-                  <option value="8">8 months (₦1,900,000)</option>
-                  <option value="12">12 months (₦2,800,000)</option>
-                  <option value="none">No end date (free)</option>
-                </select>
-                <AdminButton size="sm" busy={busy} onClick={() => activate(s)}>Activate</AdminButton>
-              </span>
+              <AdminButton size="sm" busy={busy} onClick={() => activate(s)}>Activate</AdminButton>
             )}
             <AdminButton size="sm" onClick={() => openTeacherMgmt(s.id)}>
               {managingSchoolId === s.id ? "Hide teachers" : "Manage teachers"}

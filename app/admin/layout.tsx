@@ -6,6 +6,7 @@ import { AdminButton } from "@/components/admin-ui";
 const LINKS = [
   { href: "/admin", label: "Admin Dashboard", emoji: "📊" },
   { href: "/admin/users", label: "Users", emoji: "👥" },
+  { href: "/admin/school-access", label: "School Access", emoji: "🏫" },
   { href: "/admin/payments", label: "Payments", emoji: "💰" },
   { href: "/admin/plans", label: "Plans & Promos", emoji: "🏷️" },
   { href: "/admin/engagement", label: "Engagement", emoji: "📈" },
