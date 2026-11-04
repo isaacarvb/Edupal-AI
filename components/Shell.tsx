@@ -143,6 +143,16 @@ export default function Shell({ children }: { children: React.ReactNode }) {
     return <>{children}</>;
   }
 
+  // Public routes get a clean top bar only — no sidebar shell.
+  if (PUBLIC_ROUTES.includes(path)) {
+    return (
+      <>
+        <TopBar />
+        {children}
+      </>
+    );
+  }
+
   // Route to the correct environment based on role.
   if (env === "school") {
     return <SchoolShell>{children}</SchoolShell>;
@@ -249,16 +259,6 @@ export default function Shell({ children }: { children: React.ReactNode }) {
       </div>
     </aside>
   );
-
-  // Public routes get the clean top bar; app routes get the sidebar shell.
-  if (PUBLIC_ROUTES.includes(path)) {
-    return (
-      <>
-        <TopBar />
-        {children}
-      </>
-    );
-  }
 
   return (
     <div style={{ display: "flex", minHeight: "100vh" }}>
