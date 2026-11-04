@@ -25,7 +25,7 @@ export default function AdminSchools() {
   const [groups, setGroups] = useState<Group[]>([]);
   const [msg, setMsg] = useState("");
   const [busy, setBusy] = useState(false);
-  const [form, setForm] = useState({ name: "", groupName: "", adminName: "", adminEmail: "", adminPassword: "", maxSeats: "1500", adminEmails: "" });
+  const [form, setForm] = useState({ name: "", groupName: "", adminName: "", adminEmail: "", adminPassword: "", adminEmails: "" });
   const [expForm, setExpForm] = useState<Record<string, string>>({});
   const aid = () => localStorage.getItem("edupal_admin") ?? "";
 
@@ -54,14 +54,14 @@ export default function AdminSchools() {
     try {
       const res = await fetch("/api/admin/schools", {
         method: "POST", headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ adminId: aid(), name: form.name, groupName: form.groupName, adminName: form.adminName, adminEmail: form.adminEmail, adminPassword: form.adminPassword, maxSeats: Number(form.maxSeats), admin_emails: form.adminEmails })
+        body: JSON.stringify({ adminId: aid(), name: form.name, groupName: form.groupName, adminName: form.adminName, adminEmail: form.adminEmail, adminPassword: form.adminPassword, admin_emails: form.adminEmails })
       });
       const d = await res.json();
       setMsg(res.ok
         ? `Created ${form.name} — staff login: ${d.staffEmail}. Hand them the password you set; they sign in at /login.`
         : d.error || "Failed.");
       if (res.ok) {
-        setForm({ name: "", groupName: "", adminName: "", adminEmail: "", adminPassword: "", maxSeats: "1500", adminEmails: "" });
+        setForm({ name: "", groupName: "", adminName: "", adminEmail: "", adminPassword: "", adminEmails: "" });
         load();
       }
     } finally {
@@ -74,14 +74,13 @@ export default function AdminSchools() {
     if (busy) return;
     setBusy(true);
     try {
-      const months = expForm[s.id] || "12";
-      const expiresAt = months === "none" ? null : new Date(Date.now() + Number(months) * 30 * 86400000).toISOString();
+      // Activate school - set active=true, no end date (admin controls duration via School Access)
       const res = await fetch("/api/admin/schools", {
         method: "PATCH", headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ adminId: aid(), schoolId: s.id, active: true, expiresAt })
+        body: JSON.stringify({ adminId: aid(), schoolId: s.id, active: true, expiresAt: null })
       });
       const d = await res.json();
-      setMsg(res.ok ? `Activated ${s.name}${expiresAt ? ` until ${fmtDate(expiresAt)}` : " with no end date"}.` : d.error || "Failed.");
+      setMsg(res.ok ? `Activated ${s.name}.` : d.error || "Failed.");
       load();
     } finally {
       setBusy(false);
@@ -201,8 +200,6 @@ export default function AdminSchools() {
           {f("adminName", "Staff full name")}
           {f("adminEmail", "Staff email", "email")}
           {f("adminPassword", "Staff password", "password")}
-          <input value={form.maxSeats} onChange={(e) => setForm({ ...form, maxSeats: e.target.value })} placeholder="Seats" type="number"
-            style={{ width: 90, height: 42, borderRadius: 8, border: "1px solid #CBD5E1", padding: "0 10px" }} />
           <AdminButton onClick={create} busy={busy}>Create</AdminButton>
         </div>
       </div>
