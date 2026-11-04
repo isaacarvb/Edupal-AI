@@ -3,7 +3,7 @@ import { useEffect, useState } from "react";
 
 const card: React.CSSProperties = { background: "#fff", border: "1px solid #E2E8F0", borderRadius: 16, padding: 16, margin: "0 0 12px" };
 
-type TeacherRow = { id: string; name: string; email: string; classes: string[]; active: number };
+type TeacherRow = { id: string; name: string; email: string; classes: string[]; subject: string; department: string | null; active: number };
 
 export default function SchoolTeachers() {
   const [userId, setUserId] = useState<string | null>(null);
@@ -12,6 +12,8 @@ export default function SchoolTeachers() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [classes, setClasses] = useState("");
+  const [subject, setSubject] = useState("");
+  const [department, setDepartment] = useState("");
   const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState("");
 
@@ -34,12 +36,12 @@ export default function SchoolTeachers() {
       const classList = classes.split(",").map((c) => c.trim()).filter(Boolean);
       const res = await fetch("/api/school/teachers", {
         method: "POST", headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ userId, name, email, password, classes: classList })
+        body: JSON.stringify({ userId, name, email, password, classes: classList, subject, department: department || null })
       });
       const d = await res.json();
       if (!res.ok) return setMsg(d.error || "Failed.");
       setMsg(`Created ${d.teacher.name} — temp password: ${d.temporaryPassword}`);
-      setName(""); setEmail(""); setPassword(""); setClasses("");
+      setName(""); setEmail(""); setPassword(""); setClasses(""); setSubject(""); setDepartment("");
       fetch(`/api/school/teachers?userId=${userId}`)
         .then((r) => (r.ok ? r.json() : null))
         .then((d) => d?.teachers && setTeachers(d.teachers));
@@ -74,6 +76,10 @@ export default function SchoolTeachers() {
             style={{ height: 44, borderRadius: 10, border: "1px solid #CBD5E1", padding: "0 12px" }} />
           <input value={classes} onChange={(e) => setClasses(e.target.value)} placeholder="Classes (SS2, SS3)"
             style={{ height: 44, borderRadius: 10, border: "1px solid #CBD5E1", padding: "0 12px" }} />
+          <input value={subject} onChange={(e) => setSubject(e.target.value)} placeholder="Subject (optional)"
+            style={{ height: 44, borderRadius: 10, border: "1px solid #CBD5E1", padding: "0 12px" }} />
+          <input value={department} onChange={(e) => setDepartment(e.target.value)} placeholder="Department (optional)"
+            style={{ height: 44, borderRadius: 10, border: "1px solid #CBD5E1", padding: "0 12px" }} />
           <button onClick={createTeacher} disabled={busy}
             style={{ height: 44, borderRadius: 10, border: 0, background: "#0F766E", color: "#fff", fontWeight: 800, padding: "0 20px", cursor: "pointer" }}>
             {busy ? "Creating…" : "Add Teacher"}
@@ -91,7 +97,7 @@ export default function SchoolTeachers() {
           <div key={t.id} style={{ borderBottom: "1px solid #F1F5F9", padding: "12px 0", fontSize: 13, display: "flex", justifyContent: "space-between", alignItems: "center" }}>
             <div>
               <strong>{t.name}</strong> <span style={{ color: "#5F6E7F", fontSize: 11, marginLeft: 6 }}>{t.email}</span>
-              <div style={{ fontSize: 11, color: "#5F6E7F", marginTop: 2 }}>{t.classes.join(", ") || "— no classes"}</div>
+              <div style={{ fontSize: 11, color: "#5F6E7F", marginTop: 2 }}>{t.classes.join(", ") || "— no classes"}{t.subject ? ` · ${t.subject}` : ""}{t.department ? ` · ${t.department}` : ""}</div>
             </div>
             <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
               <span style={{ fontSize: 10, fontWeight: 800, padding: "4px 8px", borderRadius: 999,

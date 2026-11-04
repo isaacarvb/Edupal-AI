@@ -11,7 +11,7 @@ type School = {
 type Group = { id: string; name: string };
 type Teacher = {
   id: string; schoolId: string; name: string; email: string; classes: string[];
-  active: number; createdAt: string;
+  subject: string; department: string | null; active: number; createdAt: string;
 };
 
 function fmtDate(iso: string | null): string {
@@ -32,7 +32,7 @@ export default function AdminSchools() {
   // Teacher management state (per school)
   const [managingSchoolId, setManagingSchoolId] = useState<string | null>(null);
   const [teachers, setTeachers] = useState<Teacher[]>([]);
-  const [teacherForm, setTeacherForm] = useState({ name: "", email: "", password: "", classes: "" });
+  const [teacherForm, setTeacherForm] = useState({ name: "", email: "", password: "", classes: "", subject: "", department: "" });
   const [teacherBusy, setTeacherBusy] = useState(false);
   const [teacherMsg, setTeacherMsg] = useState("");
 
@@ -120,7 +120,7 @@ export default function AdminSchools() {
 
   function openTeacherMgmt(schoolId: string) {
     setTeacherMsg("");
-    setTeacherForm({ name: "", email: "", password: "", classes: "" });
+    setTeacherForm({ name: "", email: "", password: "", classes: "", subject: "", department: "" });
     if (managingSchoolId === schoolId) {
       setManagingSchoolId(null);
       setTeachers([]);
@@ -141,12 +141,12 @@ export default function AdminSchools() {
       }
       const res = await fetch("/api/school/teachers", {
         method: "POST", headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ userId: aid(), schoolId, name: teacherForm.name, email: teacherForm.email, password: teacherForm.password, classes })
+        body: JSON.stringify({ userId: aid(), schoolId, name: teacherForm.name, email: teacherForm.email, password: teacherForm.password, classes, subject: teacherForm.subject, department: teacherForm.department || null })
       });
       const d = await res.json();
       if (!res.ok) return setTeacherMsg(d.error || "Failed to create teacher.");
       setTeacherMsg(`Created ${d.teacher.name} — temp password: ${d.temporaryPassword}. Hand it to them; they sign in at /login.`);
-      setTeacherForm({ name: "", email: "", password: "", classes: "" });
+      setTeacherForm({ name: "", email: "", password: "", classes: "", subject: "", department: "" });
       loadTeachers(schoolId);
     } finally {
       setTeacherBusy(false);
@@ -248,6 +248,10 @@ export default function AdminSchools() {
                   style={{ height: 40, borderRadius: 8, border: "1px solid #CBD5E1", padding: "0 10px" }} />
                 <input value={teacherForm.classes} onChange={(e) => setTeacherForm({ ...teacherForm, classes: e.target.value })} placeholder="Classes (SS2, SS3)"
                   style={{ height: 40, borderRadius: 8, border: "1px solid #CBD5E1", padding: "0 10px" }} />
+                <input value={teacherForm.subject} onChange={(e) => setTeacherForm({ ...teacherForm, subject: e.target.value })} placeholder="Subject (optional)"
+                  style={{ height: 40, borderRadius: 8, border: "1px solid #CBD5E1", padding: "0 10px" }} />
+                <input value={teacherForm.department} onChange={(e) => setTeacherForm({ ...teacherForm, department: e.target.value })} placeholder="Department (optional)"
+                  style={{ height: 40, borderRadius: 8, border: "1px solid #CBD5E1", padding: "0 10px" }} />
                 <AdminButton onClick={() => createTeacher(s.id)} busy={teacherBusy}>
                   {teacherBusy ? "Creating…" : "Add teacher"}
                 </AdminButton>
@@ -260,7 +264,7 @@ export default function AdminSchools() {
                   <div key={t.id} style={{ background: "#fff", border: "1px solid #E2E8F0", borderRadius: 8, padding: 8, margin: "6px 0", fontSize: 13, display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
                     <div style={{ flex: 1, minWidth: 140 }}>
                       <strong>{t.name}</strong> <span style={{ color: "#5F6E7F", fontSize: 11 }}>{t.email}</span>
-                      <div style={{ fontSize: 11, color: "#5F6E7F", marginTop: 2 }}>{t.classes.join(", ") || "— no classes assigned"}</div>
+                      <div style={{ fontSize: 11, color: "#5F6E7F", marginTop: 2 }}>{t.classes.join(", ") || "— no classes assigned"}{t.subject ? ` · ${t.subject}` : ""}{t.department ? ` · ${t.department}` : ""}</div>
                     </div>
                     <span style={{ fontSize: 10, fontWeight: 800, padding: "2px 8px", borderRadius: 999,
                       background: t.active === 1 ? "#16A34A" : "#DC2626", color: "#fff" }}>
