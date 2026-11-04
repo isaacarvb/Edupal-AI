@@ -5,16 +5,9 @@ const card: React.CSSProperties = { background: "#fff", border: "1px solid #E2E8
 
 type SchoolInfo = { id: string; name: string; code: string; active: number; expiresAt: string | null; maxSeats: number; ai_prompts: number };
 
-const PLANS = [
-  { months: 4, price: 1000000, label: "4 Months" },
-  { months: 8, price: 1900000, label: "8 Months" },
-  { months: 12, price: 2800000, label: "12 Months" },
-];
-
 export default function SubscriptionBilling() {
   const [userId, setUserId] = useState<string | null>(null);
   const [school, setSchool] = useState<SchoolInfo | null>(null);
-  const [selectedMonths, setSelectedMonths] = useState<number | null>(null);
   const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState("");
 
@@ -79,17 +72,15 @@ export default function SubscriptionBilling() {
             Active Subscription
           </button>
         ) : (
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))", gap: 10 }}>
-            {PLANS.map((p) => (
-              <div key={p.months} style={card}>
-                <div style={{ fontSize: 12, fontWeight: 800, letterSpacing: 1, color: "#5F6E7F", textTransform: "uppercase", marginBottom: 6 }}>{p.label}</div>
-                <div style={{ fontSize: 24, fontWeight: 800, color: "#1E242E", marginBottom: 4 }}>₦{p.price.toLocaleString()}</div>
-                <button onClick={() => subscribe(p.months)} disabled={busy}
-                  style={{ width: "100%", height: 40, borderRadius: 8, border: 0, background: "#0F766E", color: "#fff", fontWeight: 800, cursor: "pointer" }}>
-                  {busy ? "Subscribing…" : "Subscribe"}
-                </button>
-              </div>
-            ))}
+          <div style={{ background: "#F1F5F9", border: "1px solid #E2E8F0", borderRadius: 10, padding: 16, marginBottom: 12 }}>
+            <div style={{ fontSize: 13, color: "#5F6E7F", marginBottom: 8 }}>
+              <strong style={{ color: "#1E242E" }}>Test Mode — Admin-controlled access</strong>
+            </div>
+            <div style={{ fontSize: 13, color: "#5F6E7F" }}>
+              Your school is currently inactive. Ask your admin to activate your school via the
+              <strong>School Access</strong> page in the admin portal. They can grant free full access
+              or pilot access with a custom duration.
+            </div>
           </div>
         )}
       </div>
@@ -100,9 +91,9 @@ export default function SubscriptionBilling() {
           Your school subscription unlocks full access for all your students. Once subscribed, students can practise Unlimited until the expiry date.
         </p>
         <ul style={{ fontSize: 13, color: "#5F6E7F", lineHeight: "1.8", margin: 0 }}>
-          <li>Choose a plan (4, 8, or 12 months) and subscribe.</li>
+          <li>Admin activates your school via the School Access page (test/pilot access).</li>
           <li>Your school becomes active and all students get full access.</li>
-          <li>When the subscription lapses, students drop to free access until you renew.</li>
+          <li>When access lapses, students drop to free access until renewed.</li>
           <li>Contact EduPal AI to receive an invoice for your chosen plan.</li>
         </ul>
       </div>

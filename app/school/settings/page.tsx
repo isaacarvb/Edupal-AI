@@ -8,7 +8,6 @@ export default function SchoolSettings() {
   const [school, setSchool] = useState<{ id: string; name: string; code: string; maxSeats: number; adminUserId: string | null; ai_prompts: number } | null>(null);
   const [name, setName] = useState("");
   const [code, setCode] = useState("");
-  const [maxSeats, setMaxSeats] = useState("");
   const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState("");
 
@@ -23,7 +22,6 @@ export default function SchoolSettings() {
           setSchool(d.school);
           setName(d.school.name);
           setCode(d.school.code);
-          setMaxSeats(String(d.school.max_seats ?? 1000));
         }
       });
   }, []);
@@ -63,8 +61,9 @@ export default function SchoolSettings() {
           </div>
           <div style={card}>
             <div style={{ fontSize: 12, fontWeight: 800, letterSpacing: 1, color: "#5F6E7F", textTransform: "uppercase" }}>Max Seats</div>
-            <input value={maxSeats} onChange={(e) => setMaxSeats(e.target.value)} type="number"
-              style={{ width: "100%", height: 44, borderRadius: 10, border: "1px solid #CBD5E1", padding: "0 12px" }} />
+            <input value="1500" disabled
+              style={{ width: "100%", height: 44, borderRadius: 10, border: "1px solid #CBD5E1", padding: "0 12px", background: "#F1F5F9" }} />
+            <div style={{ fontSize: 11, color: "#5F6E7F", marginTop: 4 }}>Locked at 1,500 for all schools</div>
           </div>
         </div>
       </div>

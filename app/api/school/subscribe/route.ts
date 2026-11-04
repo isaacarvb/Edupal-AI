@@ -6,11 +6,11 @@ import { logAudit } from "@/lib/admin";
 export async function POST(req: Request) {
   try {
     const db = await getDb();
-    const { school } = await requireSchoolAdmin(db, (await req.json()).userId);
-    
     const b = await req.json();
     const userId = b?.userId;
     const months = Number(b?.months);
+
+    const { school } = await requireSchoolAdmin(db, userId);
 
     if (!userId || !months || ![4, 8, 12].includes(months)) {
       return NextResponse.json({ error: "Invalid subscription period. Choose 4, 8, or 12 months." }, { status: 400 });

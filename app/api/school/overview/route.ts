@@ -65,7 +65,7 @@ export async function GET(req: Request) {
       .prepare(
         `SELECT
           st.name,
-          tm.subject,
+          '' AS subject,
           COALESCE(NULLIF(sm.class_name, ''), 'Unassigned') AS className,
           COUNT(DISTINCT sm.user_id) AS students,
           COUNT(DISTINCT a.id) AS answers
@@ -75,7 +75,7 @@ export async function GET(req: Request) {
          )
          LEFT JOIN attempts a ON a.user_id = sm.user_id AND a.user_id != st.user_id
          WHERE st.school_id = ?
-         GROUP BY st.id, st.name, tm.subject, sm.class_name
+         GROUP BY st.id, st.name, sm.class_name
          ORDER BY answers DESC`
       )
       .all(sid)) as Array<Record<string, unknown>>;
