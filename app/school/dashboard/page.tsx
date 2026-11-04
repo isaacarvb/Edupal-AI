@@ -1,4 +1,5 @@
 "use client";
+
 import { useEffect, useState } from "react";
 
 const card: React.CSSProperties = { background: "#fff", border: "1px solid #E2E8F0", borderRadius: 16, padding: 16, margin: "0 0 12px" };
@@ -14,6 +15,7 @@ export default function SchoolDashboard() {
     subjects: { subject: string; students: number; avgAccuracy: number; weakCount: number }[];
     teachers: { name: string; subject: string; className: string; students: number; answers: number }[];
     topTopics: { subject: string; topic: string; accuracy: number; students: number }[];
+    schoolName: string;
   } | null>(null);
 
   useEffect(() => {
@@ -22,7 +24,14 @@ export default function SchoolDashboard() {
     if (!id) return;
     fetch(`/api/school/overview?userId=${id}`)
       .then((r) => (r.ok ? r.json() : null))
-      .then((d) => { if (d?.summary) setData(d.summary); });
+      .then((d) => {
+        if (d?.summary) {
+          setData({
+            ...d.summary,
+            schoolName: d.summary?.schoolName || "My School"
+          });
+        }
+      });
   }, []);
 
   if (!userId) return <div style={{ padding: 40, textAlign: "center", color: "#333A45" }}>Missing user.</div>;
@@ -30,8 +39,11 @@ export default function SchoolDashboard() {
 
   return (
     <main style={{ maxWidth: 1200, margin: "0 auto", padding: 20, color: "#333A45" }}>
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
-        <h1 style={{ fontSize: 24, margin: 0 }}>School Overview</h1>
+      <div style={{ textAlign: "center", marginBottom: 24 }}>
+        <h1 style={{ fontSize: 32, fontWeight: 800, color: "#1E242E", margin: "10px 0" }}>
+          {data.schoolName}
+        </h1>
+        <p style={{ fontSize: 14, color: "#5F6E7F", margin: "4px 0" }}>School Portal Dashboard</p>
       </div>
 
       <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))", gap: 12, marginBottom: 20 }}>
@@ -59,89 +71,79 @@ export default function SchoolDashboard() {
           <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
             <thead>
               <tr style={{ textAlign: "left", color: "#5F6E7F", fontSize: 11, borderBottom: "2px solid #F1F5F9" }}>
-                <th style={{ padding: "8px 10px", textAlign: "left" }}>Class</th>
-                <th style={{ padding: "8px 10px" }}>Students</th>
-                <th style={{ padding: "8px 10px" }}>Active Week</th>
-                <th style={{ padding: "8px 10px" }}>Avg Accuracy</th>
+                <th style={{ padding: "10px 12x", textAlign: "left" }}>Class</th>
+                <th style={{ padding: "10px 12x" }}>Students</th>
+                <th style={{ padding: "10px 12x" }}>Active This Week</th>
+                <th style={{ padding: "10px 12x" }}>Avg Accuracy</th>
               </tr>
             </thead>
             <tbody>
-              {data.classes.map((c) => (
-                <tr key={c.className} style={{ borderBottom: "1px solid #F1F5F9" }}>
-                  <td style={{ padding: "8px 10px", fontWeight: 700 }}>{c.className}</td>
-                  <td style={{ padding: "8px 10px" }}>{c.students}</td>
-                  <td style={{ padding: "8px 10px" }}>{c.activeWeek}</td>
-                  <td style={{ padding: "8px 10px" }}>{c.avgAccuracy}%</td>
+              {data.classes.length > 0 ? (
+                data.classes.map((c) => (
+                  <tr key={c.className} style={{ borderBottom: "1px solid #F1F5F9" }}>
+                    <td style={{ padding: "10px 12x", fontWeight: 700 }}>{c.className}</td>
+                    <td style={{ padding: "10px 12x" }}>{c.students}</td>
+                    <td style={{ padding: "10px 12x" }}>{c.activeWeek}</td>
+                    <td style={{ padding: "10px 12x" }}>{c.avgAccuracy}%</td>
+                  </tr>
+                ))
+              ) : (
+                <tr>
+                  <td colSpan={4} style={{ padding: "24px", textAlign: "center", color: "#94A3B8" }}>
+                    No class data available.
+                  </td>
                 </tr>
-              ))}
+              )}
             </tbody>
           </table>
         </div>
 
         <div style={card}>
-          <h2 style={{ fontSize: 16, margin: "0 0 12px", color: "#1E242E" }}>📚 Subject Performance</h2>
-          <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
-            <thead>
-              <tr style={{ textAlign: "left", color: "#5F6E7F", fontSize: 11, borderBottom: "2px solid #F1F5F9" }}>
-                <th style={{ padding: "8px 10px", textAlign: "left" }}>Subject</th>
-                <th style={{ padding: "8px 10px" }}>Students</th>
-                <th style={{ padding: "8px 10px" }}>Avg Accuracy</th>
-                <th style={{ padding: "8px 10px" }}>Weak Topics</th>
-              </tr>
-            </thead>
-            <tbody>
-              {data.subjects.map((s) => (
-                <tr key={s.subject} style={{ borderBottom: "1px solid #F1F5F9" }}>
-                  <td style={{ padding: "8px 10px", fontWeight: 700 }}>{s.subject}</td>
-                  <td style={{ padding: "8px 10px" }}>{s.students}</td>
-                  <td style={{ padding: "8px 10px" }}>{s.avgAccuracy}%</td>
-                  <td style={{ padding: "8px 10px" }}>{s.weakCount}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-
-        <div style={card}>
-          <h2 style={{ fontSize: 16, margin: "0 0 12px", color: "#1E242E" }}>👩‍🏫 Teacher Activity</h2>
-          <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
-            <thead>
-              <tr style={{ textAlign: "left", color: "#5F6E7F", fontSize: 11, borderBottom: "2px solid #F1F5F9" }}>
-                <th style={{ padding: "8px 10px", textAlign: "left" }}>Teacher</th>
-                <th style={{ padding: "8px 10px" }}>Subject</th>
-                <th style={{ padding: "8px 10px" }}>Class</th>
-                <th style={{ padding: "8px 10px" }}>Students</th>
-                <th style={{ padding: "8px 10px" }}>Questions</th>
-              </tr>
-            </thead>
-            <tbody>
-              {data.teachers.map((t) => (
-                <tr key={`${t.name}-${t.subject}`} style={{ borderBottom: "1px solid #F1F5F9" }}>
-                  <td style={{ padding: "8px 10px", fontWeight: 700 }}>{t.name}</td>
-                  <td style={{ padding: "8px 10px" }}>{t.subject}</td>
-                  <td style={{ padding: "8px 10px" }}>{t.className}</td>
-                  <td style={{ padding: "8px 10px" }}>{t.students}</td>
-                  <td style={{ padding: "8px 10px" }}>{t.answers}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-
-        <div style={card}>
-          <h2 style={{ fontSize: 16, margin: "0 0 12px", color: "#1E242E" }}>🎯 Top Topics</h2>
-          <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
-            {data.topTopics.map((t) => (
-              <div key={`${t.subject}-${t.topic}`} style={{ fontSize: 13, padding: "8px 12px", borderRadius: 8, border: "1px solid #F1F5F9", flex: 1, minWidth: 130 }}>
-                <div style={{ fontWeight: 700 }}>{t.topic}</div>
-                <div style={{ fontSize: 11, color: "#5F6E7F" }}>{t.subject}</div>
-                <div style={{ fontSize: 11, color: "#666", marginTop: 4 }}>{t.accuracy}% accuracy · {t.students} students</div>
-                <div style={{ height: 6, borderRadius: 3, background: "#F1F5F9", marginTop: 6 }}>
-                  <div style={{ height: "100%", borderRadius: 3, background: t.accuracy > 70 ? "#10B981" : t.accuracy > 50 ? "#F59E0B" : "#DC2626", width: `${t.accuracy}%` }}></div>
+          <h2 style={{ fontSize: 16, margin: "0 0 12px", color: "#1E242E" }}><strong>📚 Subject Coverage</strong></h2>
+          {data.subjects.length > 0 ? (
+            data.subjects.map((s) => (
+              <div key={s.subject} style={{ marginBottom: 12, padding: "8px 12px", background: "#F8FAFC", borderRadius: 8 }}>
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 4 }}>
+                  <span style={{ fontWeight: 600, color: "#1E242E" }}>{s.subject}</span>
+                  <span style={{ fontSize: 11, color: "#5F6E7F" }}>{s.students} students</span>
                 </div>
+                <div style={{ height: 8, background: "#E2E8F0", borderRadius: 4, overflow: "hidden" }}>
+                  <div style={{ width: `${s.avgAccuracy}%`, background: "#16A34A", height: "100%" }}></div>
+                </div>
+                <span style={{ fontSize: 11, color: "#5F6E7F" }}>{s.weakCount} weak topics</span>
               </div>
-            ))}
-          </div>
+            ))
+          ) : (
+            <p style={{ fontSize: 13, color: "#5F6E7F", margin: 0 }}>No subject data available.</p>
+          )}
+        </div>
+
+        <div style={card}>
+          <h2 style={{ fontSize: 16, margin: "0 0 12px", color: "#1E242E" }}><strong>👨‍🏫 Teachers</strong></h2>
+          {data.teachers.length > 0 ? (
+            data.teachers.map((t) => (
+              <div key={t.name} style={{ marginBottom: 8, padding: "6px 12px", background: "#F8FAFC", borderRadius: 6 }}>
+                <span style={{ fontWeight: 600, color: "#1E242E" }}>{t.name}</span>
+                <span style={{ fontSize: 11, color: "#5F6E7F" }}>{t.subject} • {t.className}</span>
+              </div>
+            ))
+          ) : (
+            <p style={{ fontSize: 13, color: "#5F6E7F", margin: 0 }}>No teachers assigned.</p>
+          )}
+        </div>
+
+        <div style={card}>
+          <h2 style={{ fontSize: 16, margin: "0 0 12px", color: "#1E242E" }}><strong>🎯 Top Topics</strong></h2>
+          {data.topTopics.length > 0 ? (
+            data.topTopics.map((t) => (
+              <div key={t.topic} style={{ marginBottom: 8, padding: "4px 12px", background: "#F8FAFC", borderRadius: 6 }}>
+                <span style={{ fontWeight: 600, color: "#1E242E" }}>{t.subject} · {t.topic}</span>
+                <span style={{ fontSize: 11, color: "#5F6E7F" }}>{t.accuracy}% accuracy · {t.students} students</span>
+              </div>
+            ))
+          ) : (
+            <p style={{ fontSize: 13, color: "#5F6E7F", margin: 0 }}>No topic data available.</p>
+          )}
         </div>
       </div>
     </main>

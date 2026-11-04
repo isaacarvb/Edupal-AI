@@ -122,7 +122,8 @@ export async function GET(req: Request) {
           topic: String(t.topic),
           accuracy: Number(t.accuracy),
           students: Number(t.students)
-        }))
+        })),
+        schoolName: school.name
       }
     });
   } catch (e) {
