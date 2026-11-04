@@ -104,9 +104,11 @@ async function sqliteMigrate(): Promise<void> {
   // CREATE TABLE IF NOT EXISTS handles new databases; ALTER COLUMN handles existing
   // databases where the table was created by an earlier partial migration.
   const stCols = cols("school_teachers");
-  if (!stCols.has("id")) h.exec("CREATE TABLE IF NOT EXISTS school_teachers (id TEXT PRIMARY KEY, school_id TEXT NOT NULL REFERENCES schools(id) ON DELETE CASCADE, name TEXT NOT NULL, email TEXT NOT NULL, password_hash TEXT NOT NULL, classes TEXT NOT NULL DEFAULT '', active INTEGER NOT NULL DEFAULT 1, created_at TEXT NOT NULL DEFAULT (datetime('now')))");
+  if (!stCols.has("id")) h.exec("CREATE TABLE IF NOT EXISTS school_teachers (id TEXT PRIMARY KEY, school_id TEXT NOT NULL REFERENCES schools(id) ON DELETE CASCADE, name TEXT NOT NULL, email TEXT NOT NULL, password_hash TEXT NOT NULL, classes TEXT NOT NULL DEFAULT '', subject TEXT, department TEXT, active INTEGER NOT NULL DEFAULT 1, created_at TEXT NOT NULL DEFAULT (datetime('now')))");
   if (!stCols.has("active")) h.exec("ALTER TABLE school_teachers ADD COLUMN active INTEGER NOT NULL DEFAULT 1");
   if (!stCols.has("classes")) h.exec("ALTER TABLE school_teachers ADD COLUMN classes TEXT NOT NULL DEFAULT ''");
+  if (!stCols.has("subject")) h.exec("ALTER TABLE school_teachers ADD COLUMN subject TEXT");
+  if (!stCols.has("department")) h.exec("ALTER TABLE school_teachers ADD COLUMN department TEXT");
 
   const lnCols = cols("lesson_notes");
   if (!lnCols.has("id")) h.exec("CREATE TABLE IF NOT EXISTS lesson_notes (id TEXT PRIMARY KEY, school_id TEXT NOT NULL REFERENCES schools(id) ON DELETE CASCADE, teacher_id TEXT NOT NULL REFERENCES school_teachers(id) ON DELETE CASCADE, teacher_name TEXT NOT NULL DEFAULT '', class_name TEXT NOT NULL DEFAULT '', subject TEXT NOT NULL, topic TEXT NOT NULL, body TEXT NOT NULL DEFAULT '', status TEXT NOT NULL DEFAULT 'pending', reviewed_by TEXT, reviewed_at TEXT, created_at TEXT NOT NULL DEFAULT (datetime('now')))");
@@ -244,6 +246,10 @@ async function pgMigrate(): Promise<void> {
         ((await db.prepare("SELECT 1 FROM information_schema.columns WHERE table_name = 'broadcasts' AND column_name = $1").get(col)) ? true : false);
       if (!(await hasBcCol("id"))) await db.prepare("CREATE TABLE IF NOT EXISTS broadcasts (id TEXT PRIMARY KEY, school_id TEXT NOT NULL REFERENCES schools(id) ON DELETE CASCADE, class_name TEXT DEFAULT NULL, body TEXT NOT NULL DEFAULT '', starts_at TEXT NOT NULL DEFAULT (TO_CHAR(NOW() AT TIME ZONE 'UTC', 'YYYY-MM-DD\"T\"HH24:MI:SS.MS\"Z\"')), ends_at TEXT, created_at TEXT NOT NULL DEFAULT (TO_CHAR(NOW() AT TIME ZONE 'UTC', 'YYYY-MM-DD\"T\"HH24:MI:SS.MS\"Z\"')))").run();
       if (!(await hasBcCol("school_id"))) await db.prepare("ALTER TABLE broadcasts ADD COLUMN school_id TEXT NOT NULL DEFAULT ''").run();
+      const hasScCol = async (col: string) =>
+        ((await db.prepare("SELECT 1 FROM information_schema.columns WHERE table_name = 'schools' AND column_name = $1").get(col)) ? true : false);
+      if (!(await hasScCol("max_seats"))) await db.prepare("ALTER TABLE schools ADD COLUMN max_seats INTEGER NOT NULL DEFAULT 1500").run();
+      if (!(await hasScCol("admin_emails"))) await db.prepare("ALTER TABLE schools ADD COLUMN admin_emails TEXT DEFAULT ''").run();
       await db.prepare("CREATE INDEX IF NOT EXISTS idx_school_teachers_school ON school_teachers(school_id)").run();
       await db.prepare("CREATE INDEX IF NOT EXISTS idx_lesson_notes_school_status ON lesson_notes(school_id, status)").run();
       await db.prepare("CREATE INDEX IF NOT EXISTS idx_assignments_school_class ON assignments(school_id, class_name)").run();

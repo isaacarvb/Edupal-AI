@@ -270,8 +270,9 @@ CREATE TABLE IF NOT EXISTS schools (
   admin_user_id TEXT REFERENCES users(id) ON DELETE SET NULL,
   active INTEGER NOT NULL DEFAULT 0,
   expires_at TEXT,
-  max_seats INTEGER NOT NULL DEFAULT 1000,
+  max_seats INTEGER NOT NULL DEFAULT 1500,
   ai_prompts INTEGER NOT NULL DEFAULT 0,
+  admin_emails TEXT DEFAULT '',
   created_at TEXT NOT NULL DEFAULT (datetime('now'))
 );
 -- A student belongs to at most ONE school (UNIQUE user_id); class grouping
@@ -296,6 +297,8 @@ CREATE TABLE IF NOT EXISTS school_teachers (
   email TEXT NOT NULL,
   password_hash TEXT NOT NULL,
   classes TEXT NOT NULL DEFAULT '',
+  subject TEXT,
+  department TEXT,
   active INTEGER NOT NULL DEFAULT 1,
   created_at TEXT NOT NULL DEFAULT (datetime('now'))
 );
