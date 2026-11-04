@@ -1,9 +1,10 @@
 "use client";
+
 import { useEffect, useState } from "react";
 
 const card: React.CSSProperties = { background: "#fff", border: "1px solid #E2E8F0", borderRadius: 16, padding: 16, margin: "0 0 12px" };
 
-type StudentRow = { userId: string; name: string; email: string; className: string; streak: number; answersWeek: number };
+type StudentRow = { userId: string; name: string; email: string; className: string; streak: number; answersWeek: number; uploadedFrom: string };
 
 export default function SchoolStudents() {
   const [userId, setUserId] = useState<string | null>(null);
@@ -25,7 +26,8 @@ export default function SchoolStudents() {
             email: r.email,
             className: r.className,
             streak: r.streak ?? 0,
-            answersWeek: r.answersWeek ?? 0
+            answersWeek: r.answersWeek ?? 0,
+            uploadedFrom: r.uploadedFrom ?? "Imported"
           })));
         }
       });
@@ -55,26 +57,26 @@ export default function SchoolStudents() {
         <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
           <thead>
             <tr style={{ textAlign: "left", color: "#5F6E7F", fontSize: 11, borderBottom: "2px solid #F1F5F9" }}>
-              <th style={{ padding: "10px 12px", textAlign: "left" }}>Student</th>
-              <th style={{ padding: "10px 12px" }}>Class</th>
-              <th style={{ padding: "10px 12px" }}>Email</th>
-              <th style={{ padding: "10px 12px" }}>Streak</th>
-              <th style={{ padding: "10px 12px" }}>Answers This Week</th>
-              <th style={{ padding: "10px 12px" }}>Status</th>
+              <th style={{ padding: "10px 12x", textAlign: "left" }}>Student</th>
+              <th style={{ padding: "10px 12x" }}>Class</th>
+              <th style={{ padding: "10px 12x" }}>Email</th>
+              <th style={{ padding: "10px 12x" }}>Streak</th>
+              <th style={{ padding: "10px 12x" }}>Answers This Week</th>
+              <th style={{ padding: "10px 12x" }}>Status</th>
             </tr>
           </thead>
           <tbody>
             {filtered.length > 0 ? (
               filtered.map((s) => (
                 <tr key={s.userId} style={{ borderBottom: "1px solid #F1F5F9" }}>
-                  <td style={{ padding: "10px 12px", fontWeight: 700 }}>{s.name}</td>
-                  <td style={{ padding: "10px 12px" }}>{s.className}</td>
-                  <td style={{ padding: "10px 12px", fontSize: 12, color: "#5F6E7F", fontFamily: "monospace" }}>{s.email}</td>
-                  <td style={{ padding: "10px 12px" }}>{s.streak} days</td>
-                  <td style={{ padding: "10px 12px" }}>{s.answersWeek}</td>
-                  <td style={{ padding: "10px 12px" }}>
+                  <td style={{ padding: "10px 12x", fontWeight: 700 }}>{s.name}</td>
+                  <td style={{ padding: "10px 12x" }}>{s.className}</td>
+                  <td style={{ padding: "10px 12x", fontSize: 12, color: "#5F6E7F", fontFamily: "monospace" }}>{s.email}</td>
+                  <td style={{ padding: "10px 12x" }}>{s.streak} days</td>
+                  <td style={{ padding: "10px 12x" }}>{s.answersWeek}</td>
+                  <td style={{ padding: "10px 12x" }}>
                     <span style={{ fontSize: 11, fontWeight: 800, padding: "4px 8px", borderRadius: 999,
-                      background: s.answersWeek > 0 ? "#DCFCE7" : "#FEE2E2", color: s.answersWeek > 0 ? "#166534" : "#991B1B" }}>
+                      background: s.answersWeek > 0 ? "#16A34A" : "#DC2626", color: s.answersWeek > 0 ? "#166534" : "#991B1B" }}>
                       {s.answersWeek > 0 ? "Active" : "Inactive"}
                     </span>
                   </td>

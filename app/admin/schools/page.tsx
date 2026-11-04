@@ -6,6 +6,7 @@ type School = {
   id: string; name: string; code: string; status: "ACTIVE" | "EXPIRED" | "INACTIVE";
   expiresAt: string | null; maxSeats: number; members: number | string;
   adminName: string | null; adminEmail: string | null; groupName: string | null;
+  adminEmails: string; // comma-separated up to 3 admin emails
 };
 type Group = { id: string; name: string };
 type Teacher = {
@@ -24,7 +25,7 @@ export default function AdminSchools() {
   const [groups, setGroups] = useState<Group[]>([]);
   const [msg, setMsg] = useState("");
   const [busy, setBusy] = useState(false);
-  const [form, setForm] = useState({ name: "", groupName: "", adminName: "", adminEmail: "", adminPassword: "", maxSeats: "1000" });
+  const [form, setForm] = useState({ name: "", groupName: "", adminName: "", adminEmail: "", adminPassword: "", maxSeats: "1500", adminEmails: "" });
   const [expForm, setExpForm] = useState<Record<string, string>>({});
   const aid = () => localStorage.getItem("edupal_admin") ?? "";
 
@@ -39,7 +40,7 @@ export default function AdminSchools() {
     fetch(`/api/admin/schools?adminId=${aid()}`).then(async (r) => {
       if (r.ok) {
         const d = await r.json();
-        setSchools(d.schools);
+        setSchools(d.schools.map((s: any) => ({ ...s, adminEmails: s.adminEmails ?? "", adminEmailsDisplay: s.admin_emails ?? "" })));
         setGroups(d.groups);
       }
     });
@@ -53,14 +54,14 @@ export default function AdminSchools() {
     try {
       const res = await fetch("/api/admin/schools", {
         method: "POST", headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ adminId: aid(), ...form, maxSeats: Number(form.maxSeats) })
+        body: JSON.stringify({ adminId: aid(), name: form.name, groupName: form.groupName, adminName: form.adminName, adminEmail: form.adminEmail, adminPassword: form.adminPassword, maxSeats: Number(form.maxSeats), admin_emails: form.adminEmails })
       });
       const d = await res.json();
       setMsg(res.ok
         ? `Created ${form.name} — staff login: ${d.staffEmail}. Hand them the password you set; they sign in at /login.`
         : d.error || "Failed.");
       if (res.ok) {
-        setForm({ name: "", groupName: "", adminName: "", adminEmail: "", adminPassword: "", maxSeats: "1000" });
+        setForm({ name: "", groupName: "", adminName: "", adminEmail: "", adminPassword: "", maxSeats: "1500", adminEmails: "" });
         load();
       }
     } finally {
