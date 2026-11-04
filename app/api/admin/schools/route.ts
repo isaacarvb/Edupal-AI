@@ -5,12 +5,6 @@ import { requireAdmin, adminIdFrom, isSuper, logAudit } from "@/lib/admin";
 import { getSchoolById, schoolCode, schoolIsActive, schoolStatus } from "@/lib/schools";
 
 // GET ?adminId= — all schools (members, group, status) + groups.
-// POST {adminId, name, groupName?, adminName, adminEmail, adminPassword, maxSeats}
-//   — create a school + its staff login (SUPER only).
-// PATCH {adminId, schoolId, active?, expiresAt?, maxSeats?}
-//   — activate/lapse a school (SUPER only). This is the manual subscription
-//     switch: active=1 + expires_at = 6 months / 1 year from payment day.
-
 export async function GET(req: Request) {
   try {
     await requireAdmin(adminIdFrom(req));
@@ -21,7 +15,7 @@ export async function GET(req: Request) {
   const schools = (await db
     .prepare(
       `SELECT s.id, s.name, s.code, s.active, s.expires_at AS "expiresAt", s.max_seats AS "maxSeats",
-              s.admin_user_id AS "adminUserId", s.created_at AS "createdAt",
+              s.admin_user_id AS "adminUserId", s.admin_emails AS "adminEmails", s.created_at AS "createdAt",
               g.name AS "groupName", u.email AS "adminEmail", u.name AS "adminName",
               (SELECT COUNT(*) FROM school_members sm WHERE sm.school_id = s.id) AS members
        FROM schools s
@@ -53,7 +47,7 @@ export async function POST(req: Request) {
   const adminName = String(b?.adminName ?? "").trim();
   const adminEmail = String(b?.adminEmail ?? "").trim().toLowerCase();
   const adminPassword = String(b?.adminPassword ?? "");
-  const maxSeats = Math.max(1, Math.min(100000, Number(b?.maxSeats) || 1000));
+  const maxSeats = 1500; // LOCKED: all schools have 1500 seats
   const groupName = String(b?.groupName ?? "").trim();
   if (!name) return NextResponse.json({ error: "school name required" }, { status: 400 });
   if (!adminName || !adminEmail.includes("@")) return NextResponse.json({ error: "staff name + valid email required" }, { status: 400 });
@@ -95,7 +89,7 @@ export async function POST(req: Request) {
     code = schoolCode();
   }
   await db
-    .prepare("INSERT INTO schools (id, group_id, name, code, admin_user_id, active, max_seats) VALUES (?, ?, ?, ?, ?, 0, ?)")
+    .prepare("INSERT INTO schools (id, group_id, name, code, admin_user_id, active, max_seats, admin_emails) VALUES (?, ?, ?, ?, ?, 0, ?, '')")
     .run(id, groupId, name, code, staffId, maxSeats);
   await logAudit(db, admin.id, "school:create", `${name} (${code})`);
   return NextResponse.json({ ok: true, schoolId: id, code, staffId, staffEmail: adminEmail });
@@ -116,17 +110,19 @@ export async function PATCH(req: Request) {
   const school = await getSchoolById(db, schoolId);
   if (!school) return NextResponse.json({ error: "school not found" }, { status: 404 });
 
+  // LOCK: max_seats is fixed at 1500 for all schools, cannot be changed
   const next = {
     active: b?.active === undefined ? school.active : b.active ? 1 : 0,
     expiresAt: b?.expiresAt === undefined ? school.expiresAt : b.expiresAt ? String(b.expiresAt) : null,
-    maxSeats: b?.maxSeats === undefined ? school.maxSeats : Math.max(1, Math.min(100000, Number(b.maxSeats) || school.maxSeats))
+    // maxSeats remains 1500 - locked, ignore any UI attempt to change it
+    maxSeats: 1500
   };
   if (next.expiresAt && !Number.isFinite(Date.parse(next.expiresAt))) {
     return NextResponse.json({ error: "expiresAt must be a valid date" }, { status: 400 });
   }
   await db
-    .prepare("UPDATE schools SET active = ?, expires_at = ?, max_seats = ? WHERE id = ?")
-    .run(next.active, next.expiresAt, next.maxSeats, schoolId);
+    .prepare("UPDATE schools SET active = ?, expires_at = ?, max_seats = ?, admin_emails = ? WHERE id = ?")
+    .run(next.active, next.expiresAt, next.maxSeats, b?.admin_emails ?? school.admin_emails, schoolId);
   await logAudit(db, admin.id, `school:${next.active ? "activate" : "deactivate"}`, `${school.name} until ${next.expiresAt ?? "—"} (${next.maxSeats} seats)`);
   return NextResponse.json({ ok: true, status: schoolIsActive({ active: next.active, expiresAt: next.expiresAt }) ? "ACTIVE" : "INACTIVE" });
 }
@@ -141,7 +137,7 @@ export async function DELETE(req: Request) {
   } catch {
     return NextResponse.json({ error: "forbidden: super admin only" }, { status: 403 });
   }
-  if (!schoolId) return NextResponse.json({ error: "schoolId required" }, { status: 400 });
+  if (!schoolId) return NextResponse.json({ error: "schoolId required" }, { status: 403 });
   const db = await getDb();
   const school = await getSchoolById(db, schoolId);
   if (!school) return NextResponse.json({ error: "school not found" }, { status: 404 });

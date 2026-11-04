@@ -17,7 +17,7 @@ export async function GET(req: Request) {
       ? ((await db.prepare("SELECT name FROM school_groups WHERE id = ?").get(school.groupId)) as { name: string } | undefined)
       : undefined;
     return NextResponse.json({
-      school: { ...school, status: schoolStatus(school), access: schoolIsActive(school) },
+      school: { ...school, status: schoolStatus(school), access: schoolIsActive(school), admin_emails: school.admin_emails ?? "" },
       groupName: group?.name ?? "",
       staff: { name: staffName, email: staffEmail },
       members,

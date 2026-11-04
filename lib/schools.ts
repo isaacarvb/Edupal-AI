@@ -19,11 +19,12 @@ export type SchoolRow = {
   active: number;
   expiresAt: string | null;
   maxSeats: number;
+  admin_emails: string;
   createdAt: string;
 };
 
 const COLS = `id, group_id AS "groupId", name, code, admin_user_id AS "adminUserId",
-  active, expires_at AS "expiresAt", max_seats AS "maxSeats", created_at AS "createdAt"`;
+  active, expires_at AS "expiresAt", admin_emails AS "adminEmails", max_seats AS "maxSeats", created_at AS "createdAt"`;
 
 // A school grants access while it is switched on AND its subscription has not
 // lapsed. No expiry date = never lapses (owner-issued lifetime deals).
@@ -131,11 +132,13 @@ export type SchoolTeacher = {
   name: string;
   email: string;
   classes: string[];
+  subject: string;
+  department: string | null;
   active: number;
   createdAt: string;
 };
 
-const TEACHER_COLS = `id, school_id AS "schoolId", name, email, classes, active, created_at AS "createdAt"`;
+const TEACHER_COLS = `id, school_id AS "schoolId", name, email, classes, subject, department, active, created_at AS "createdAt"`;
 
 export async function getSchoolTeachers(db: Db, schoolId: string): Promise<SchoolTeacher[]> {
   const rows = (await db
@@ -147,6 +150,8 @@ export async function getSchoolTeachers(db: Db, schoolId: string): Promise<Schoo
     name: String(r.name ?? ""),
     email: String(r.email ?? ""),
     classes: String(r.classes ?? "").split(",").filter(Boolean),
+    subject: r.subject ? String(r.subject) : "",
+    department: r.department ? String(r.department) : null,
     active: Number(r.active ?? 0),
     createdAt: String(r.createdAt ?? "")
   }));
@@ -163,6 +168,8 @@ export async function getTeacherById(db: Db, teacherId: string): Promise<SchoolT
     name: String(row.name ?? ""),
     email: String(row.email ?? ""),
     classes: String(row.classes ?? "").split(",").filter(Boolean),
+    subject: row.subject ? String(row.subject) : "",
+    department: row.department ? String(row.department) : null,
     active: Number(row.active ?? 0),
     createdAt: String(row.createdAt ?? "")
   };
@@ -179,6 +186,8 @@ export async function getTeacherByEmail(db: Db, email: string): Promise<SchoolTe
     name: String(row.name ?? ""),
     email: String(row.email ?? ""),
     classes: String(row.classes ?? "").split(",").filter(Boolean),
+    subject: row.subject ? String(row.subject) : "",
+    department: row.department ? String(row.department) : null,
     active: Number(row.active ?? 0),
     createdAt: String(row.createdAt ?? "")
   };
@@ -208,9 +217,11 @@ export async function createSchoolTeacher(db: Db, opts: {
   email: string;
   password: string;
   classes: string[];
+  subject: string;
+  department: string | null;
   creatorId: string;
 }): Promise<SchoolTeacher> {
-  const { schoolId, name, email, password, classes, creatorId } = opts;
+  const { schoolId, name, email, password, classes, subject, department, creatorId } = opts;
   const cleanEmail = String(email ?? "").trim().toLowerCase();
   if (!cleanEmail.includes("@")) throw new Error("valid email required");
   if (password.length < 6) throw new Error("password of 6+ characters required");
@@ -229,8 +240,8 @@ export async function createSchoolTeacher(db: Db, opts: {
   await db.prepare("INSERT INTO wallets (user_id, credits_left, reset_at, plan) VALUES (?, 10, ?, 'FREE')").run(id, now);
   await db.prepare("INSERT INTO streaks (user_id) VALUES (?)").run(id);
   await db
-    .prepare("INSERT INTO school_teachers (id, school_id, name, email, password_hash, classes, active) VALUES (?, ?, ?, ?, ?, ?, 1)")
-    .run(id, schoolId, name.trim(), cleanEmail, hashPassword(password), classes.join(","));
+    .prepare("INSERT INTO school_teachers (id, school_id, name, email, password_hash, classes, subject, department, active) VALUES (?, ?, ?, ?, ?, ?, ?, ?, 1)")
+    .run(id, schoolId, name.trim(), cleanEmail, hashPassword(password), classes.join(","), subject ?? "", department ?? "");
   return getTeacherById(db, id) as Promise<SchoolTeacher>;
 }
 

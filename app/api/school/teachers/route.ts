@@ -54,10 +54,12 @@ export async function POST(req: Request) {
     const password = String(b?.password ?? "");
     const rawClasses = b?.classes;
     const classes = Array.isArray(rawClasses) ? rawClasses.map((c) => String(c).trim()).filter(Boolean) : [];
+    const subject = String(b?.subject ?? "").trim();
+    const department = b?.department ? String(b?.department).trim() : null;
     if (!name || !email.includes("@") || !classes.length || password.length < 6) {
       return NextResponse.json({ error: "name, valid email, 6+ char password, and at least one class required" }, { status: 400 });
     }
-    const created = await createSchoolTeacher(db, { schoolId: school.id, name, email, password, classes, creatorId: adminId });
+    const created = await createSchoolTeacher(db, { schoolId: school.id, name, email, password, classes, subject, department, creatorId: adminId });
     await logAudit(db, adminId, "teacher:create", `${created.email} (${school.name})`);
     return NextResponse.json({ ok: true, teacher: created, temporaryPassword: password });
   } catch (e) {
