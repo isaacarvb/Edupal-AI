@@ -132,6 +132,30 @@ async function sqliteMigrate(): Promise<void> {
   h.exec("CREATE INDEX IF NOT EXISTS idx_assignments_school_class ON assignments(school_id, class_name)");
   h.exec("CREATE INDEX IF NOT EXISTS idx_broadcasts_school ON broadcasts(school_id, starts_at, ends_at)");
 
+  // ---- School Subscription migrations ----
+  // Add new columns to schools table
+  if (!cols("schools").has("email")) h.exec("ALTER TABLE schools ADD COLUMN email TEXT DEFAULT ''");
+  if (!cols("schools").has("password_hash")) h.exec("ALTER TABLE schools ADD COLUMN password_hash TEXT DEFAULT ''");
+  if (!cols("schools").has("address")) h.exec("ALTER TABLE schools ADD COLUMN address TEXT DEFAULT ''");
+  if (!cols("schools").has("location")) h.exec("ALTER TABLE schools ADD COLUMN location TEXT DEFAULT ''");
+  if (!cols("schools").has("seats_used")) h.exec("ALTER TABLE schools ADD COLUMN seats_used INTEGER NOT NULL DEFAULT 0");
+
+  // Create new tables for school subscription system
+  h.exec("CREATE TABLE IF NOT EXISTS school_students (id TEXT PRIMARY KEY, school_id TEXT NOT NULL REFERENCES schools(id) ON DELETE CASCADE, user_id TEXT REFERENCES users(id) ON DELETE SET NULL, name TEXT NOT NULL, class_name TEXT NOT NULL DEFAULT '', department TEXT, created_at TEXT NOT NULL DEFAULT (datetime('now')))");
+  h.exec("CREATE INDEX IF NOT EXISTS idx_school_students_school ON school_students(school_id)");
+  h.exec("CREATE INDEX IF NOT EXISTS idx_school_students_class ON school_students(class_name)");
+  h.exec("CREATE INDEX IF NOT EXISTS idx_school_students_user ON school_students(user_id)");
+
+  h.exec("CREATE TABLE IF NOT EXISTS school_subscriptions (id TEXT PRIMARY KEY, school_id TEXT NOT NULL REFERENCES schools(id) ON DELETE CASCADE, students_count INTEGER NOT NULL DEFAULT 0, term_months INTEGER NOT NULL DEFAULT 3, amount_paid INTEGER NOT NULL DEFAULT 0, discount_percent REAL NOT NULL DEFAULT 0, paystack_reference TEXT DEFAULT '', status TEXT NOT NULL DEFAULT 'pending', paid_at TEXT, expires_at TEXT, created_at TEXT NOT NULL DEFAULT (datetime('now')))");
+  h.exec("CREATE INDEX IF NOT EXISTS idx_school_subscriptions_school ON school_subscriptions(school_id)");
+
+  h.exec("CREATE TABLE IF NOT EXISTS school_sessions (id TEXT PRIMARY KEY, school_id TEXT NOT NULL REFERENCES schools(id) ON DELETE CASCADE, student_name TEXT NOT NULL, class_name TEXT NOT NULL DEFAULT '', session_start TEXT NOT NULL DEFAULT (datetime('now')), last_activity TEXT NOT NULL DEFAULT (datetime('now')))");
+  h.exec("CREATE INDEX IF NOT EXISTS idx_school_sessions_school ON school_sessions(school_id)");
+  h.exec("CREATE INDEX IF NOT EXISTS idx_school_sessions_last_activity ON school_sessions(last_activity)");
+
+  h.exec("CREATE TABLE IF NOT EXISTS school_notifications (id TEXT PRIMARY KEY, school_id TEXT NOT NULL REFERENCES schools(id) ON DELETE CASCADE, type TEXT NOT NULL DEFAULT '', sent_at TEXT NOT NULL DEFAULT (datetime('now')))");
+  h.exec("CREATE INDEX IF NOT EXISTS idx_school_notifications_school ON school_notifications(school_id)");
+
   // ---- Security migration: failed login tracking + two-factor auth ----
   const ucols = cols("users");
   if (!ucols.has("failed_login_attempts")) h.exec("ALTER TABLE users ADD COLUMN failed_login_attempts INTEGER NOT NULL DEFAULT 0");
@@ -250,10 +274,26 @@ async function pgMigrate(): Promise<void> {
         ((await db.prepare("SELECT 1 FROM information_schema.columns WHERE table_name = 'schools' AND column_name = $1").get(col)) ? true : false);
       if (!(await hasScCol("max_seats"))) await db.prepare("ALTER TABLE schools ADD COLUMN max_seats INTEGER NOT NULL DEFAULT 1500").run();
       if (!(await hasScCol("admin_emails"))) await db.prepare("ALTER TABLE schools ADD COLUMN admin_emails TEXT DEFAULT ''").run();
+      if (!(await hasScCol("email"))) await db.prepare("ALTER TABLE schools ADD COLUMN email TEXT DEFAULT ''").run();
+      if (!(await hasScCol("password_hash"))) await db.prepare("ALTER TABLE schools ADD COLUMN password_hash TEXT DEFAULT ''").run();
+      if (!(await hasScCol("address"))) await db.prepare("ALTER TABLE schools ADD COLUMN address TEXT DEFAULT ''").run();
+      if (!(await hasScCol("location"))) await db.prepare("ALTER TABLE schools ADD COLUMN location TEXT DEFAULT ''").run();
+      if (!(await hasScCol("seats_used"))) await db.prepare("ALTER TABLE schools ADD COLUMN seats_used INTEGER NOT NULL DEFAULT 0").run();
+      await db.prepare("CREATE TABLE IF NOT EXISTS school_students (id TEXT PRIMARY KEY, school_id TEXT NOT NULL REFERENCES schools(id) ON DELETE CASCADE, user_id TEXT REFERENCES users(id) ON DELETE SET NULL, name TEXT NOT NULL, class_name TEXT NOT NULL DEFAULT '', department TEXT, created_at TEXT NOT NULL DEFAULT (TO_CHAR(NOW() AT TIME ZONE 'UTC', 'YYYY-MM-DD\"T\"HH24:MI:SS.MS\"Z\"')))").run();
+      await db.prepare("CREATE TABLE IF NOT EXISTS school_subscriptions (id TEXT PRIMARY KEY, school_id TEXT NOT NULL REFERENCES schools(id) ON DELETE CASCADE, students_count INTEGER NOT NULL DEFAULT 0, term_months INTEGER NOT NULL DEFAULT 3, amount_paid INTEGER NOT NULL DEFAULT 0, discount_percent REAL NOT NULL DEFAULT 0, paystack_reference TEXT DEFAULT '', status TEXT NOT NULL DEFAULT 'pending', paid_at TEXT, expires_at TEXT, created_at TEXT NOT NULL DEFAULT (TO_CHAR(NOW() AT TIME ZONE 'UTC', 'YYYY-MM-DD\"T\"HH24:MI:SS.MS\"Z\"')))").run();
+      await db.prepare("CREATE TABLE IF NOT EXISTS school_sessions (id TEXT PRIMARY KEY, school_id TEXT NOT NULL REFERENCES schools(id) ON DELETE CASCADE, student_name TEXT NOT NULL, class_name TEXT NOT NULL DEFAULT '', session_start TEXT NOT NULL DEFAULT (TO_CHAR(NOW() AT TIME ZONE 'UTC', 'YYYY-MM-DD\"T\"HH24:MI:SS.MS\"Z\"')), last_activity TEXT NOT NULL DEFAULT (TO_CHAR(NOW() AT TIME ZONE 'UTC', 'YYYY-MM-DD\"T\"HH24:MI:SS.MS\"Z\"')))").run();
+      await db.prepare("CREATE TABLE IF NOT EXISTS school_notifications (id TEXT PRIMARY KEY, school_id TEXT NOT NULL REFERENCES schools(id) ON DELETE CASCADE, type TEXT NOT NULL DEFAULT '', sent_at TEXT NOT NULL DEFAULT (TO_CHAR(NOW() AT TIME ZONE 'UTC', 'YYYY-MM-DD\"T\"HH24:MI:SS.MS\"Z\"')))").run();
       await db.prepare("CREATE INDEX IF NOT EXISTS idx_school_teachers_school ON school_teachers(school_id)").run();
       await db.prepare("CREATE INDEX IF NOT EXISTS idx_lesson_notes_school_status ON lesson_notes(school_id, status)").run();
       await db.prepare("CREATE INDEX IF NOT EXISTS idx_assignments_school_class ON assignments(school_id, class_name)").run();
       await db.prepare("CREATE INDEX IF NOT EXISTS idx_broadcasts_school ON broadcasts(school_id, starts_at, ends_at)").run();
+      await db.prepare("CREATE INDEX IF NOT EXISTS idx_school_students_school ON school_students(school_id)").run();
+      await db.prepare("CREATE INDEX IF NOT EXISTS idx_school_students_class ON school_students(class_name)").run();
+      await db.prepare("CREATE INDEX IF NOT EXISTS idx_school_students_user ON school_students(user_id)").run();
+      await db.prepare("CREATE INDEX IF NOT EXISTS idx_school_subscriptions_school ON school_subscriptions(school_id)").run();
+      await db.prepare("CREATE INDEX IF NOT EXISTS idx_school_sessions_school ON school_sessions(school_id)").run();
+      await db.prepare("CREATE INDEX IF NOT EXISTS idx_school_sessions_last_activity ON school_sessions(last_activity)").run();
+      await db.prepare("CREATE INDEX IF NOT EXISTS idx_school_notifications_school ON school_notifications(school_id)").run();
       // ---- Security migration: failed login tracking + two-factor auth ----
       const hasUCol = async (col: string) =>
         ((await db.prepare("SELECT 1 FROM information_schema.columns WHERE table_name = 'users' AND column_name = $1").get(col)) ? true : false);

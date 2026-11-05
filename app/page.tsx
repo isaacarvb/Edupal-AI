@@ -34,7 +34,10 @@ export default function Landing() {
             Practice real-style questions, get instant step-by-step explanations,
             and fix your weak topics before exam day. In Simple English or Pidgin.
           </p>
-          <a href="/signup" className="btn-journey">START YOUR JOURNEY</a>
+          <div style={{ display: "flex", gap: 12, justifyContent: "center", flexWrap: "wrap" }}>
+            <a href="/school-register" className="btn-journey" style={{ background: "#0F766E" }}>START YOUR JOURNEY — School Administrator</a>
+            <a href="/signup" className="btn-journey" style={{ background: "#2F5D7C" }}>START YOUR JOURNEY — Individual Student</a>
+          </div>
           <p style={{ fontSize: 13, opacity: 0.8 }}>Free daily practice • No card needed to start</p>
         </div>
       </section>
@@ -115,7 +118,10 @@ export default function Landing() {
 
       {/* BOTTOM CTA */}
       <section style={{ textAlign: "center", padding: "16px 16px 48px" }}>
-        <a href="/signup" className="btn-journey">Start your journey</a>
+        <div style={{ display: "flex", gap: 12, justifyContent: "center", flexWrap: "wrap" }}>
+          <a href="/school-register" className="btn-journey" style={{ background: "#0F766E" }}>School Administrator</a>
+          <a href="/signup" className="btn-journey" style={{ background: "#2F5D7C" }}>Individual Student</a>
+        </div>
         <p style={{ fontSize: 13, color: "#5F6E7F" }}>Know what you're learning, where you're weak, and when your exam is.</p>
       </section>
 

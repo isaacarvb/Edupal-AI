@@ -5,147 +5,120 @@ import { useEffect, useState } from "react";
 const card: React.CSSProperties = { background: "#fff", border: "1px solid #E2E8F0", borderRadius: 16, padding: 16, margin: "0 0 12px" };
 
 export default function SchoolDashboard() {
-  const [userId, setUserId] = useState<string | null>(null);
-  const [data, setData] = useState<{
+  const [school, setSchool] = useState<{ id: string; name: string; code: string; email: string; active: number; expires_at: string | null; max_seats: number; seats_used: number } | null>(null);
+  const [stats, setStats] = useState<{
+    studentsActiveWeek: number;
     totalStudents: number;
-    activeWeek: number;
-    totalAnswers: number;
-    avgStreak: number;
-    classes: { className: string; students: number; activeWeek: number; avgAccuracy: number }[];
-    subjects: { subject: string; students: number; avgAccuracy: number; weakCount: number }[];
-    teachers: { name: string; subject: string; className: string; students: number; answers: number }[];
-    topTopics: { subject: string; topic: string; accuracy: number; students: number }[];
-    schoolName: string;
+    topClass: string;
+    flaggedCount: number;
   } | null>(null);
+  const [busy, setBusy] = useState(false);
 
   useEffect(() => {
-    const id = localStorage.getItem("edupal_user");
-    setUserId(id);
-    if (!id) return;
-    fetch(`/api/school/overview?userId=${id}`)
-      .then((r) => (r.ok ? r.json() : null))
-      .then((d) => {
-        if (d?.summary) {
-          setData({
-            ...d.summary,
-            schoolName: d.summary?.schoolName || "My School"
-          });
-        }
-      });
+    const s = localStorage.getItem("edupal_school");
+    if (s) {
+      try { setSchool(JSON.parse(s)); } catch { /* ignore */ }
+    }
+    fetchStats();
   }, []);
 
-  if (!userId) return <div style={{ padding: 40, textAlign: "center", color: "#333A45" }}>Missing user.</div>;
-  if (!data) return <div style={{ padding: 40, textAlign: "center", color: "#5F6E7F" }}>Loading school overview…</div>;
+  async function fetchStats() {
+    const s = localStorage.getItem("edupal_school");
+    if (!s) return;
+    try {
+      const d = JSON.parse(s);
+      setBusy(true);
+      const res = await fetch(`/api/school/dashboard-stats?schoolId=${d.id}`);
+      if (res.ok) {
+        const data = await res.json();
+        setStats(data.stats);
+      }
+    } catch { /* ignore */ } finally {
+      setBusy(false);
+    }
+  }
+
+  const isActive = school?.active === 1 && school?.expires_at && Date.parse(school.expires_at) > Date.now();
+  const daysLeft = school?.expires_at ? Math.max(0, Math.ceil((Date.parse(school.expires_at) - Date.now()) / 86400000)) : 0;
+
+  if (!school) {
+    return (
+      <main style={{ maxWidth: 480, margin: "60px auto", padding: 20, color: "#333A45", textAlign: "center" }}>
+        <p style={{ fontSize: 14, color: "#5F6E7F" }}>School session not found.</p>
+        <button onClick={() => { window.location.href = "/school-login"; }}
+          style={{ height: 40, borderRadius: 8, border: 0, background: "#0F766E", color: "#fff", fontWeight: 800, padding: "0 20px", cursor: "pointer" }}>
+          Sign In to School
+        </button>
+      </main>
+    );
+  }
 
   return (
-    <main style={{ maxWidth: 1200, margin: "0 auto", padding: 20, color: "#333A45" }}>
+    <main style={{ maxWidth: 1100, margin: "0 auto", padding: 20, color: "#333A45" }}>
+      {/* Header */}
       <div style={{ textAlign: "center", marginBottom: 24 }}>
-        <h1 style={{ fontSize: 32, fontWeight: 800, color: "#1E242E", margin: "10px 0" }}>
-          {data.schoolName}
-        </h1>
-        <p style={{ fontSize: 14, color: "#5F6E7F", margin: "4px 0" }}>School Portal Dashboard</p>
+        <h1 style={{ fontSize: 32, fontWeight: 800, color: "#1E242E", margin: "0 0 6px" }}>{school.name}</h1>
+        <div style={{ fontSize: 13, color: "#5F6E7F", fontFamily: "monospace" }}>{school.code}</div>
+        <div style={{ fontSize: 13, color: "#5F6E7F", marginTop: 4 }}>{stats?.totalStudents ?? 0} students · Seats: {stats?.studentsActiveWeek ?? 0} active this week</div>
       </div>
 
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))", gap: 12, marginBottom: 20 }}>
+      {/* Status Banner */}
+      <div style={{ background: isActive ? "#ECFDF5" : "#FEF2F2", border: `1px solid ${isActive ? "#A7F3D0" : "#FCA5A5"}`, borderRadius: 12, padding: 14, marginBottom: 20, display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 12 }}>
+        <div>
+          <div style={{ fontSize: 12, fontWeight: 800, textTransform: "uppercase", color: isActive ? "#166534" : "#DC2626", letterSpacing: 1, marginBottom: 4 }}>
+            {isActive ? "SCHOOL ACTIVE" : "SCHOOL INACTIVE"}
+          </div>
+          <div style={{ fontSize: 14, color: "#1E242E" }}>
+            Expires: {school.expires_at ? new Date(school.expires_at).toLocaleDateString("en-NG") : "No end date"}
+            {daysLeft > 0 && daysLeft <= 30 && ` · ${daysLeft} day(s) left`}
+          </div>
+        </div>
+        {!isActive && (
+          <button onClick={() => { window.location.href = "/school/subscription"; }}
+            style={{ height: 36, borderRadius: 8, border: 0, background: "#DC2626", color: "#fff", fontWeight: 800, padding: "0 16px", cursor: "pointer" }}>
+            Renew Subscription
+          </button>
+        )}
+        {isActive && daysLeft <= 30 && (
+          <button onClick={() => { window.location.href = "/school/subscription"; }}
+            style={{ height: 36, borderRadius: 8, border: "1px solid #0F766E", background: "#fff", color: "#0F766E", fontWeight: 800, padding: "0 16px", cursor: "pointer", marginLeft: 8 }}>
+            Renew Now
+          </button>
+        )}
+      </div>
+
+      {/* Summary Cards */}
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: 12, marginBottom: 24 }}>
         <div style={card}>
-          <div style={{ fontSize: 12, fontWeight: 800, color: "#5F6E7F", textTransform: "uppercase" }}>Total Students</div>
-          <div style={{ fontSize: 32, fontWeight: 800, color: "#1E242E" }}>{data.totalStudents}</div>
+          <div style={{ fontSize: 12, fontWeight: 800, color: "#5F6E7F", textTransform: "uppercase" }}>Seats Purchased</div>
+          <div style={{ fontSize: 32, fontWeight: 800, color: "#1E242E" }}>{school.max_seats}</div>
+        </div>
+        <div style={card}>
+          <div style={{ fontSize: 12, fontWeight: 800, color: "#5F6E7F", textTransform: "uppercase" }}>Seats Used</div>
+          <div style={{ fontSize: 32, fontWeight: 800, color: "#0F766E" }}>{school.seats_used}</div>
         </div>
         <div style={card}>
           <div style={{ fontSize: 12, fontWeight: 800, color: "#5F6E7F", textTransform: "uppercase" }}>Active This Week</div>
-          <div style={{ fontSize: 32, fontWeight: 800, color: "#0F766E" }}>{data.activeWeek}</div>
+          <div style={{ fontSize: 32, fontWeight: 800, color: "#16A34A" }}>{stats?.studentsActiveWeek ?? 0}</div>
         </div>
         <div style={card}>
-          <div style={{ fontSize: 12, fontWeight: 800, color: "#5F6E7F", textTransform: "uppercase" }}>Total Answers</div>
-          <div style={{ fontSize: 32, fontWeight: 800, color: "#0F766E" }}>{data.totalAnswers}</div>
-        </div>
-        <div style={card}>
-          <div style={{ fontSize: 12, fontWeight: 800, color: "#5F6E7F", textTransform: "uppercase" }}>Avg Streak</div>
-          <div style={{ fontSize: 32, fontWeight: 800, color: "#1E242E" }}>{data.avgStreak} days</div>
+          <div style={{ fontSize: 12, fontWeight: 800, color: "#5F6E7F", textTransform: "uppercase" }}>Flagged (14 days)</div>
+          <div style={{ fontSize: 32, fontWeight: 800, color: "#DC2626" }}>{stats?.flaggedCount ?? 0}</div>
         </div>
       </div>
 
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(340px, 1fr))", gap: 16, marginBottom: 24 }}>
-        <div style={card}>
-          <h2 style={{ fontSize: 16, margin: "0 0 12px", color: "#1E242E" }}>🏫 Class Performance</h2>
-          <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
-            <thead>
-              <tr style={{ textAlign: "left", color: "#5F6E7F", fontSize: 11, borderBottom: "2px solid #F1F5F9" }}>
-                <th style={{ padding: "10px 12x", textAlign: "left" }}>Class</th>
-                <th style={{ padding: "10px 12x" }}>Students</th>
-                <th style={{ padding: "10px 12x" }}>Active This Week</th>
-                <th style={{ padding: "10px 12x" }}>Avg Accuracy</th>
-              </tr>
-            </thead>
-            <tbody>
-              {data.classes.length > 0 ? (
-                data.classes.map((c) => (
-                  <tr key={c.className} style={{ borderBottom: "1px solid #F1F5F9" }}>
-                    <td style={{ padding: "10px 12x", fontWeight: 700 }}>{c.className}</td>
-                    <td style={{ padding: "10px 12x" }}>{c.students}</td>
-                    <td style={{ padding: "10px 12x" }}>{c.activeWeek}</td>
-                    <td style={{ padding: "10px 12x" }}>{c.avgAccuracy}%</td>
-                  </tr>
-                ))
-              ) : (
-                <tr>
-                  <td colSpan={4} style={{ padding: "24px", textAlign: "center", color: "#94A3B8" }}>
-                    No class data available.
-                  </td>
-                </tr>
-              )}
-            </tbody>
-          </table>
-        </div>
-
-        <div style={card}>
-          <h2 style={{ fontSize: 16, margin: "0 0 12px", color: "#1E242E" }}><strong>📚 Subject Coverage</strong></h2>
-          {data.subjects.length > 0 ? (
-            data.subjects.map((s) => (
-              <div key={s.subject} style={{ marginBottom: 12, padding: "8px 12px", background: "#F8FAFC", borderRadius: 8 }}>
-                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 4 }}>
-                  <span style={{ fontWeight: 600, color: "#1E242E" }}>{s.subject}</span>
-                  <span style={{ fontSize: 11, color: "#5F6E7F" }}>{s.students} students</span>
-                </div>
-                <div style={{ height: 8, background: "#E2E8F0", borderRadius: 4, overflow: "hidden" }}>
-                  <div style={{ width: `${s.avgAccuracy}%`, background: "#16A34A", height: "100%" }}></div>
-                </div>
-                <span style={{ fontSize: 11, color: "#5F6E7F" }}>{s.weakCount} weak topics</span>
-              </div>
-            ))
-          ) : (
-            <p style={{ fontSize: 13, color: "#5F6E7F", margin: 0 }}>No subject data available.</p>
-          )}
-        </div>
-
-        <div style={card}>
-          <h2 style={{ fontSize: 16, margin: "0 0 12px", color: "#1E242E" }}><strong>👨‍🏫 Teachers</strong></h2>
-          {data.teachers.length > 0 ? (
-            data.teachers.map((t) => (
-              <div key={t.name} style={{ marginBottom: 8, padding: "6px 12px", background: "#F8FAFC", borderRadius: 6 }}>
-                <span style={{ fontWeight: 600, color: "#1E242E" }}>{t.name}</span>
-                <span style={{ fontSize: 11, color: "#5F6E7F" }}>{t.subject} • {t.className}</span>
-              </div>
-            ))
-          ) : (
-            <p style={{ fontSize: 13, color: "#5F6E7F", margin: 0 }}>No teachers assigned.</p>
-          )}
-        </div>
-
-        <div style={card}>
-          <h2 style={{ fontSize: 16, margin: "0 0 12px", color: "#1E242E" }}><strong>🎯 Top Topics</strong></h2>
-          {data.topTopics.length > 0 ? (
-            data.topTopics.map((t) => (
-              <div key={t.topic} style={{ marginBottom: 8, padding: "4px 12px", background: "#F8FAFC", borderRadius: 6 }}>
-                <span style={{ fontWeight: 600, color: "#1E242E" }}>{t.subject} · {t.topic}</span>
-                <span style={{ fontSize: 11, color: "#5F6E7F" }}>{t.accuracy}% accuracy · {t.students} students</span>
-              </div>
-            ))
-          ) : (
-            <p style={{ fontSize: 13, color: "#5F6E7F", margin: 0 }}>No topic data available.</p>
-          )}
+      {/* Top Class */}
+      <div style={card}>
+        <div style={{ fontSize: 12, fontWeight: 800, color: "#5F6E7F", textTransform: "uppercase", marginBottom: 12 }}>Top Performing Class</div>
+        <div style={{ background: "#F8FAFC", borderRadius: 8, padding: 12 }}>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+            <span style={{ fontWeight: 700, color: "#1E242E" }}>{stats?.topClass ?? "—"}</span>
+            <span style={{ fontSize: 12, color: "#5F6E7F" }}>Highest average accuracy</span>
+          </div>
         </div>
       </div>
+
+      {busy && <p style={{ textAlign: "center", color: "#5F6E7F", marginTop: 20 }}>Loading…</p>}
     </main>
   );
 }

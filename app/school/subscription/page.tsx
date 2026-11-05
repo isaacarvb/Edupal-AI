@@ -1,104 +1,250 @@
 "use client";
+
 import { useEffect, useState } from "react";
 
-const card: React.CSSProperties = { background: "#fff", border: "1px solid #E2E8F0", borderRadius: 16, padding: 16, margin: "0 0 12px" };
+const TERMS = [
+  { months: 3, label: "1 Term (3 Months)", multiplier: 1 },
+  { months: 6, label: "2 Terms (6 Months)", multiplier: 2 },
+  { months: 9, label: "3 Terms (9 Months)", multiplier: 3 },
+  { months: 12, label: "4 Terms (12 Months)", multiplier: 4 },
+];
 
-type SchoolInfo = { id: string; name: string; code: string; active: number; expiresAt: string | null; maxSeats: number; ai_prompts: number };
+const DISCOUNT_TIERS: Array<{ min: number; percent: number }> = [
+  { min: 1000, percent: 25 },
+  { min: 900, percent: 22.5 },
+  { min: 800, percent: 20 },
+  { min: 700, percent: 17.5 },
+  { min: 600, percent: 15 },
+  { min: 500, percent: 12.5 },
+  { min: 400, percent: 10 },
+  { min: 300, percent: 7.5 },
+  { min: 200, percent: 5 },
+  { min: 100, percent: 2.5 },
+  { min: 0, percent: 0 },
+];
 
-export default function SubscriptionBilling() {
-  const [userId, setUserId] = useState<string | null>(null);
-  const [school, setSchool] = useState<SchoolInfo | null>(null);
+const getDiscount = (students: number): number => {
+  for (const t of DISCOUNT_TIERS) {
+    if (students >= t.min) return t.percent;
+  }
+  return 0;
+};
+
+const formatMoney = (n: number): string => {
+  return n.toLocaleString("en-NG", { style: "currency", currency: "NGN" });
+};
+
+export default function SchoolSubscription() {
+  const [school, setSchool] = useState<{ id: string; name: string; code: string; email: string; active: number; expires_at: string | null; max_seats: number; seats_used: number } | null>(null);
+  const [students, setStudents] = useState("");
+  const [term, setTerm] = useState<{ months: number; label: string; multiplier: number } | null>(TERMS[0]);
   const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState("");
+  const [paying, setPaying] = useState(false);
+
+  // Calculated values
+  const studentsNum = Number(students) || 0;
+  const termMultiplier = term?.multiplier ?? 1;
+  const basePrice = 2000 * studentsNum * termMultiplier;
+  const discountPercent = getDiscount(studentsNum);
+  const discountAmount = Math.round(basePrice * (discountPercent / 100));
+  const finalAmount = basePrice - discountAmount;
 
   useEffect(() => {
-    const id = localStorage.getItem("edupal_user");
-    setUserId(id);
-    if (!id) return;
-    fetch(`/api/school?userId=${id}`)
-      .then((r) => (r.ok ? r.json() : null))
-      .then((d) => {
-        if (d?.school) setSchool(d.school);
-      });
+    const s = localStorage.getItem("edupal_school");
+    if (s) {
+      try { setSchool(JSON.parse(s)); } catch { /* ignore */ }
+    }
   }, []);
 
-  async function subscribe(months: number) {
+  useEffect(() => {
+    if (!school) return;
+    // Fetch current subscription status
+    fetch(`/api/school/subscription-status?schoolId=${school.id}`)
+      .then((r) => (r.ok ? r.json() : null))
+      .then((d) => {
+        if (d?.subscription) setSchool((prev) => prev ? { ...prev, active: d.subscription.active ?? prev.active, expires_at: d.subscription.expires_at ?? prev.expires_at } : prev);
+      });
+  }, [school]);
+
+  const handleCalculate = () => {
+    if (!studentsNum || studentsNum < 1) {
+      setMsg("Enter valid number of students.");
+      return;
+    }
+    if (!term) {
+      setMsg("Select a subscription term.");
+      return;
+    }
+    setMsg(`₦${basePrice.toLocaleString()} base · Discount: -₦${discountAmount.toLocaleString()} (${discountPercent}%) · Total: ₦${finalAmount.toLocaleString()}`);
+  };
+
+  const handlePay = async () => {
+    if (!studentsNum || studentsNum < 1) return setMsg("Enter valid number of students.");
+    if (!term) return setMsg("Select a subscription term.");
+    if (!school) return setMsg("School session not found.");
     setMsg("");
-    if (busy || !userId || !school) return;
-    setBusy(true);
+    setPaying(true);
     try {
       const res = await fetch("/api/school/subscribe", {
-        method: "POST", headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ userId, months })
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          schoolId: school.id,
+          students: studentsNum,
+          termMonths: term.months,
+          amount: finalAmount,
+          discountPercent
+        })
       });
       const d = await res.json();
-      if (!res.ok) return setMsg(d.error || "Failed to subscribe.");
-      setMsg(`School subscribed for ${months} months until ${new Date(d.expiresAt).toLocaleDateString("en-NG", { day: "numeric", month: "short", year: "numeric" })}.`);
-      fetch(`/api/school?userId=${userId}`)
-        .then((r) => (r.ok ? r.json() : null))
-        .then((d) => d?.school && setSchool(d.school));
-    } finally {
-      setBusy(false);
+      if (!res.ok) return setMsg(d.error || "Payment failed.");
+      // Initialize Paystack payment inline
+      const paystack = (window as any).PaystackPop;
+      if (paystack) {
+        paystack({
+          key: process.env.NEXT_PUBLIC_PAYSTACK_PUBLIC_KEY || "pk_test_placeholder",
+          email: school.email,
+          amount: finalAmount * 100, // Paystack expects kobo
+          ref: d.reference,
+          currency: "NGN",
+          metadata: {
+            school_id: school.id,
+            school_name: school.name,
+            students: studentsNum,
+            term_months: term.months
+          },
+          onClose: () => {
+            setPaying(false);
+            setMsg("Payment cancelled. You can try again.");
+          },
+          callback: (response: any) => {
+            setPaying(false);
+            if (response.status === "success") {
+              setMsg("Payment successful! Your school is now active. Redirecting to dashboard…");
+              setSchool((prev) => prev ? { ...prev, active: 1 } : prev);
+              setTimeout(() => { window.location.href = "/school/dashboard"; }, 2000);
+            } else {
+              setMsg("Payment not completed. Please try again.");
+            }
+          }
+        });
+      } else {
+        setMsg("Paystack not configured. Contact support.");
+        setPaying(false);
+      }
+    } catch (e) {
+      setMsg(e instanceof Error ? e.message : "Payment failed.");
+      setPaying(false);
     }
+  };
+
+  if (!school) {
+    return (
+      <main style={{ maxWidth: 480, margin: "60px auto", padding: 20, color: "#333A45", textAlign: "center" }}>
+        <p style={{ fontSize: 14, color: "#5F6E7F" }}>School session not found.</p>
+        <button onClick={() => { window.location.href = "/school-login"; }}
+          style={{ height: 40, borderRadius: 8, border: 0, background: "#0F766E", color: "#fff", fontWeight: 800, padding: "0 20px", cursor: "pointer" }}>
+          Sign In to School
+        </button>
+      </main>
+    );
   }
 
-  if (!school) return <div style={{ padding: 20 }}>Loading…</div>;
-
-  const isActive = school.active === 1 && school.expiresAt && Date.parse(school.expiresAt) > Date.now();
+  const isActive = school.active === 1 && school.expires_at && Date.parse(school.expires_at) > Date.now();
 
   return (
-    <main style={{ maxWidth: 1100, margin: "0 auto", padding: 20, color: "#333A45" }}>
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
-        <h1 style={{ fontSize: 24, margin: 0 }}>Subscription & Billing</h1>
+    <main style={{ maxWidth: 700, margin: "20px auto", padding: 20, color: "#333A45" }}>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 24, flexWrap: "wrap", gap: 12 }}>
+        <div>
+          <h1 style={{ fontSize: 24, fontWeight: 800, color: "#1E242E", margin: 0 }}>School Subscription</h1>
+          <p style={{ fontSize: 13, color: "#5F6E7F", margin: "4px 0 0" }}>{school.name} · {school.code}</p>
+        </div>
+        <span style={{ fontSize: 11, fontWeight: 800, padding: "4px 10px", borderRadius: 999,
+          background: isActive ? "#16A34A" : "#DC2626", color: "#fff" }}>
+          {isActive ? "ACTIVE" : "INACTIVE"}
+        </span>
       </div>
 
-      <div style={card}>
-        <h2 style={{ fontSize: 16, margin: "0 0 12px", color: "#1E242E" }}>School Subscription</h2>
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 10 }}>
-          <div>
-            <strong>{school.name}</strong> <span style={{ color: "#5F6E7F", fontFamily: "monospace" }}>{school.code}</span>
+      {/* Warning about mid-subscription changes */}
+      <div style={{ background: "#FFF7ED", border: "1px solid #FDBA74", borderRadius: 10, padding: 12, marginBottom: 16, fontSize: 12, color: "#9A3412" }}>
+        <strong>Important:</strong> You cannot add students mid-subscription. Plan your student count carefully before subscribing. Changes take effect only after your current subscription expires and you resubscribe.
+      </div>
+
+      {/* Current Status */}
+      {isActive && (
+        <div style={{ background: "#ECFDF5", border: "1px solid #A7F3D0", borderRadius: 10, padding: 14, marginBottom: 16 }}>
+          <div style={{ fontSize: 13, color: "#5F6E7F", marginBottom: 6 }}><strong>Current Subscription</strong></div>
+          <div style={{ fontSize: 14, color: "#1E242E" }}>
+            Students: {school.max_seats} · Expires: {school.expires_at ? new Date(school.expires_at).toLocaleDateString("en-NG") : "No end date"}
           </div>
-          <span style={{ fontSize: 11, fontWeight: 800, padding: "4px 10px", borderRadius: 999,
-            background: school.active === 1 ? "#16A34A" : "#DC2626", color: "#fff" }}>
-            {school.active === 1 ? "ACTIVE" : "INACTIVE"}
-          </span>
         </div>
-        <div style={{ fontSize: 13, color: "#5F6E7F", marginBottom: 12 }}>
-          Students: {school.maxSeats ? "0 / " + school.maxSeats : "—"} · AI prompts used: {school.ai_prompts ?? 0} · Expires: {school.expiresAt || "No end date"}
+      )}
+
+      {/* Subscription Form */}
+      <div style={{ background: "#fff", border: "1px solid #E2E8F0", borderRadius: 16, padding: 20 }}>
+        <h2 style={{ fontSize: 16, fontWeight: 800, color: "#1E242E", margin: "0 0 16px" }}>New Subscription</h2>
+
+        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, marginBottom: 16 }}>
+          <div>
+            <label style={{ display: "block", fontSize: 12, fontWeight: 800, color: "#5F6E7F", marginBottom: 6 }}>Number of Students</label>
+            <input value={students} onChange={(e) => setStudents(e.target.value)} type="number" min={1}
+              placeholder="e.g. 200"
+              style={{ width: "100%", height: 44, borderRadius: 10, border: "1px solid #CBD5E1", padding: "0 12px" }} required />
+          </div>
+          <div>
+            <label style={{ display: "block", fontSize: 12, fontWeight: 800, color: "#5F6E7F", marginBottom: 6 }}>Subscription Term</label>
+            <select value={term?.months} onChange={(e) => setTerm(TERMS.find((t) => t.months === Number(e.target.value)) || null)}
+              style={{ width: "100%", height: 44, borderRadius: 10, border: "1px solid #CBD5E1", padding: "0 12px" }}>
+              {TERMS.map((t) => (
+                <option key={t.months} value={t.months}>{t.label}</option>
+              ))}
+            </select>
+          </div>
         </div>
 
-        {isActive ? (
-          <button onClick={() => {}} disabled style={{ height: 44, borderRadius: 10, border: 0, background: "#16A34A", color: "#fff", fontWeight: 800, padding: "0 20px", cursor: "not-allowed" }}>
-            Active Subscription
-          </button>
-        ) : (
-          <div style={{ background: "#F1F5F9", border: "1px solid #E2E8F0", borderRadius: 10, padding: 16, marginBottom: 12 }}>
-            <div style={{ fontSize: 13, color: "#5F6E7F", marginBottom: 8 }}>
-              <strong style={{ color: "#1E242E" }}>Test Mode — Admin-controlled access</strong>
+        <button onClick={handleCalculate}
+          style={{ width: "100%", height: 44, borderRadius: 10, border: 0, background: "#F1F5F9", color: "#1E242E", fontWeight: 800, cursor: "pointer", marginBottom: 16 }}>
+          Calculate Price
+        </button>
+
+        {/* Price Breakdown */}
+        {studentsNum > 0 && term && (
+          <div style={{ background: "#F8FAFC", border: "1px solid #E2E8F0", borderRadius: 10, padding: 14, marginBottom: 16 }}>
+            <div style={{ display: "flex", justifyContent: "space-between", fontSize: 13, color: "#5F6E7F", marginBottom: 4 }}>
+              <span>Base (₦2,000 × {studentsNum} × {termMultiplier} term(s))</span>
+              <span>₦{basePrice.toLocaleString()}</span>
             </div>
-            <div style={{ fontSize: 13, color: "#5F6E7F" }}>
-              Your school is currently inactive. Ask your admin to activate your school via the
-              <strong>School Access</strong> page in the admin portal. They can grant free full access
-              or pilot access with a custom duration.
+            {discountPercent > 0 && (
+              <div style={{ display: "flex", justifyContent: "space-between", fontSize: 13, color: "#166534", marginBottom: 4 }}>
+                <span>Discount ({discountPercent}%)</span>
+                <span>-₦{discountAmount.toLocaleString()}</span>
+              </div>
+            )}
+            <div style={{ display: "flex", justifyContent: "space-between", fontSize: 15, fontWeight: 800, color: "#1E242E", marginTop: 8, paddingTop: 8, borderTop: "1px solid #E2E8F0" }}>
+              <span>Total to Pay</span>
+              <span>{formatMoney(finalAmount)}</span>
             </div>
           </div>
         )}
+
+        {/* Pay Button */}
+        {studentsNum > 0 && term && finalAmount > 0 && (
+          <button onClick={handlePay} disabled={paying}
+            style={{ width: "100%", height: 48, borderRadius: 10, border: 0, background: paying ? "#9CA3AF" : "#0F766E", color: "#fff", fontWeight: 800, fontSize: 16, cursor: paying ? "not-allowed" : "pointer" }}>
+            {paying ? "Processing Payment…" : `Pay ${formatMoney(finalAmount)} via Paystack`}
+          </button>
+        )}
+
+        {msg && <p style={{ fontSize: 13, marginTop: 12, color: msg.startsWith("Payment successful") || msg.startsWith("₦") ? "#166534" : "#DC2626" }}>{msg}</p>}
       </div>
 
-      <div style={card}>
-        <h2 style={{ fontSize: 16, margin: "0 0 12px", color: "#1E242E" }}>How It Works</h2>
-        <p style={{ fontSize: 13, color: "#5F6E7F", margin: "0 0 8px" }}>
-          Your school subscription unlocks full access for all your students. Once subscribed, students can practise Unlimited until the expiry date.
-        </p>
-        <ul style={{ fontSize: 13, color: "#5F6E7F", lineHeight: "1.8", margin: 0 }}>
-          <li>Admin activates your school via the School Access page (test/pilot access).</li>
-          <li>Your school becomes active and all students get full access.</li>
-          <li>When access lapses, students drop to free access until renewed.</li>
-          <li>Contact EduPal AI to receive an invoice for your chosen plan.</li>
-        </ul>
+      <div style={{ textAlign: "center", marginTop: 24 }}>
+        <button onClick={() => { window.location.href = "/school/dashboard"; }}
+          style={{ height: 40, borderRadius: 8, border: "1px solid #CBD5E1", background: "#fff", color: "#5F6E7F", fontWeight: 700, padding: "0 20px", cursor: "pointer" }}>
+          Back to Dashboard
+        </button>
       </div>
-
-      {msg && <p style={{ fontSize: 13, color: msg.startsWith("School subscribed") ? "#166534" : "#DC2626", marginTop: 12 }}>{msg}</p>}
     </main>
   );
 }

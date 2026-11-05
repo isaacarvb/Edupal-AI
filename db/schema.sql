@@ -264,17 +264,66 @@ CREATE TABLE IF NOT EXISTS school_groups (
 );
 CREATE TABLE IF NOT EXISTS schools (
   id TEXT PRIMARY KEY,
-  group_id TEXT REFERENCES school_groups(id) ON DELETE SET NULL,
   name TEXT NOT NULL,
   code TEXT NOT NULL UNIQUE,
-  admin_user_id TEXT REFERENCES users(id) ON DELETE SET NULL,
+  email TEXT NOT NULL,
+  password_hash TEXT NOT NULL,
+  address TEXT DEFAULT '',
+  location TEXT DEFAULT '',
   active INTEGER NOT NULL DEFAULT 0,
   expires_at TEXT,
-  max_seats INTEGER NOT NULL DEFAULT 1500,
+  max_seats INTEGER NOT NULL DEFAULT 0,
+  seats_used INTEGER NOT NULL DEFAULT 0,
   ai_prompts INTEGER NOT NULL DEFAULT 0,
-  admin_emails TEXT DEFAULT '',
   created_at TEXT NOT NULL DEFAULT (datetime('now'))
 );
+
+CREATE TABLE IF NOT EXISTS school_students (
+  id TEXT PRIMARY KEY,
+  school_id TEXT NOT NULL REFERENCES schools(id) ON DELETE CASCADE,
+  user_id TEXT REFERENCES users(id) ON DELETE SET NULL,
+  name TEXT NOT NULL,
+  class_name TEXT NOT NULL DEFAULT '',
+  department TEXT,
+  created_at TEXT NOT NULL DEFAULT (datetime('now'))
+);
+CREATE INDEX IF NOT EXISTS idx_school_students_school ON school_students(school_id);
+CREATE INDEX IF NOT EXISTS idx_school_students_class ON school_students(class_name);
+CREATE INDEX IF NOT EXISTS idx_school_students_user ON school_students(user_id);
+
+CREATE TABLE IF NOT EXISTS school_subscriptions (
+  id TEXT PRIMARY KEY,
+  school_id TEXT NOT NULL REFERENCES schools(id) ON DELETE CASCADE,
+  students_count INTEGER NOT NULL DEFAULT 0,
+  term_months INTEGER NOT NULL DEFAULT 3,
+  amount_paid INTEGER NOT NULL DEFAULT 0,
+  discount_percent REAL NOT NULL DEFAULT 0,
+  paystack_reference TEXT DEFAULT '',
+  status TEXT NOT NULL DEFAULT 'pending',
+  paid_at TEXT,
+  expires_at TEXT,
+  created_at TEXT NOT NULL DEFAULT (datetime('now'))
+);
+CREATE INDEX IF NOT EXISTS idx_school_subscriptions_school ON school_subscriptions(school_id);
+
+CREATE TABLE IF NOT EXISTS school_sessions (
+  id TEXT PRIMARY KEY,
+  school_id TEXT NOT NULL REFERENCES schools(id) ON DELETE CASCADE,
+  student_name TEXT NOT NULL,
+  class_name TEXT NOT NULL DEFAULT '',
+  session_start TEXT NOT NULL DEFAULT (datetime('now')),
+  last_activity TEXT NOT NULL DEFAULT (datetime('now'))
+);
+CREATE INDEX IF NOT EXISTS idx_school_sessions_school ON school_sessions(school_id);
+CREATE INDEX IF NOT EXISTS idx_school_sessions_last_activity ON school_sessions(last_activity);
+
+CREATE TABLE IF NOT EXISTS school_notifications (
+  id TEXT PRIMARY KEY,
+  school_id TEXT NOT NULL REFERENCES schools(id) ON DELETE CASCADE,
+  type TEXT NOT NULL DEFAULT '',
+  sent_at TEXT NOT NULL DEFAULT (datetime('now'))
+);
+CREATE INDEX IF NOT EXISTS idx_school_notifications_school ON school_notifications(school_id);
 -- A student belongs to at most ONE school (UNIQUE user_id); class grouping
 -- inside the school (SS2, JSS3, ...).
 CREATE TABLE IF NOT EXISTS school_members (
