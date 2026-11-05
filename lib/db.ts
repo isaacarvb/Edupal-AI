@@ -132,9 +132,6 @@ async function sqliteMigrate(): Promise<void> {
   h.exec("CREATE INDEX IF NOT EXISTS idx_assignments_school_class ON assignments(school_id, class_name)");
   h.exec("CREATE INDEX IF NOT EXISTS idx_broadcasts_school ON broadcasts(school_id, starts_at, ends_at)");
 
-  // School credit pool
-  if (!cols("schools").has("credit_pool")) h.exec("ALTER TABLE schools ADD COLUMN credit_pool INTEGER NOT NULL DEFAULT 0");
-
   // ---- Security migration: failed login tracking + two-factor auth ----
   const ucols = cols("users");
   if (!ucols.has("failed_login_attempts")) h.exec("ALTER TABLE users ADD COLUMN failed_login_attempts INTEGER NOT NULL DEFAULT 0");
@@ -253,7 +250,6 @@ async function pgMigrate(): Promise<void> {
         ((await db.prepare("SELECT 1 FROM information_schema.columns WHERE table_name = 'schools' AND column_name = $1").get(col)) ? true : false);
       if (!(await hasScCol("max_seats"))) await db.prepare("ALTER TABLE schools ADD COLUMN max_seats INTEGER NOT NULL DEFAULT 1500").run();
       if (!(await hasScCol("admin_emails"))) await db.prepare("ALTER TABLE schools ADD COLUMN admin_emails TEXT DEFAULT ''").run();
-      if (!(await hasScCol("credit_pool"))) await db.prepare("ALTER TABLE schools ADD COLUMN credit_pool INTEGER NOT NULL DEFAULT 0").run();
       await db.prepare("CREATE INDEX IF NOT EXISTS idx_school_teachers_school ON school_teachers(school_id)").run();
       await db.prepare("CREATE INDEX IF NOT EXISTS idx_lesson_notes_school_status ON lesson_notes(school_id, status)").run();
       await db.prepare("CREATE INDEX IF NOT EXISTS idx_assignments_school_class ON assignments(school_id, class_name)").run();

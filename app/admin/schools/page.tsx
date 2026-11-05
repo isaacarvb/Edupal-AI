@@ -7,7 +7,6 @@ type School = {
   expiresAt: string | null; maxSeats: number; members: number | string;
   adminName: string | null; adminEmail: string | null; groupName: string | null;
   adminEmails: string; // comma-separated up to 3 admin emails
-  creditPool: number;
 };
 type Group = { id: string; name: string };
 type Teacher = {
@@ -26,7 +25,7 @@ export default function AdminSchools() {
   const [groups, setGroups] = useState<Group[]>([]);
   const [msg, setMsg] = useState("");
   const [busy, setBusy] = useState(false);
-  const [form, setForm] = useState({ name: "", groupName: "", adminName: "", adminEmail: "", adminPassword: "", adminEmails: "", creditPool: "0" });
+  const [form, setForm] = useState({ name: "", groupName: "", adminName: "", adminEmail: "", adminPassword: "", adminEmails: "" });
   const [expForm, setExpForm] = useState<Record<string, string>>({});
   const aid = () => localStorage.getItem("edupal_admin") ?? "";
 
@@ -55,14 +54,14 @@ export default function AdminSchools() {
     try {
       const res = await fetch("/api/admin/schools", {
         method: "POST", headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ adminId: aid(), name: form.name, groupName: form.groupName, adminName: form.adminName, adminEmail: form.adminEmail, adminPassword: form.adminPassword, admin_emails: form.adminEmails, credit_pool: Number(form.creditPool) })
+        body: JSON.stringify({ adminId: aid(), name: form.name, groupName: form.groupName, adminName: form.adminName, adminEmail: form.adminEmail, adminPassword: form.adminPassword, admin_emails: form.adminEmails })
       });
       const d = await res.json();
       setMsg(res.ok
         ? `Created ${form.name} — staff login: ${d.staffEmail}. Hand them the password you set; they sign in at /login.`
         : d.error || "Failed.");
       if (res.ok) {
-        setForm({ name: "", groupName: "", adminName: "", adminEmail: "", adminPassword: "", adminEmails: "", creditPool: "0" });
+        setForm({ name: "", groupName: "", adminName: "", adminEmail: "", adminPassword: "", adminEmails: "" });
         load();
       }
     } finally {
@@ -201,8 +200,6 @@ export default function AdminSchools() {
           {f("adminName", "Staff full name")}
           {f("adminEmail", "Staff email", "email")}
           {f("adminPassword", "Staff password", "password")}
-          <input value={form.creditPool} onChange={(e) => setForm({ ...form, creditPool: e.target.value })} placeholder="Credits" type="number"
-            style={{ width: 90, height: 42, borderRadius: 8, border: "1px solid #CBD5E1", padding: "0 10px" }} />
           <AdminButton onClick={create} busy={busy}>Create</AdminButton>
         </div>
       </div>
@@ -214,7 +211,7 @@ export default function AdminSchools() {
               <strong>{s.name}</strong> <span style={{ color: "#5F6E7F", fontFamily: "monospace" }}>{s.code}</span>
               {s.groupName && <span style={{ color: "#5F6E7F" }}> · {s.groupName}</span>}
               <div style={{ fontSize: 12, color: "#5F6E7F" }}>
-                {s.members} / {s.maxSeats} students · credits: {s.creditPool ?? 0} · staff: {s.adminName ?? "—"} {s.adminEmail ? `(${s.adminEmail})` : ""} · till {fmtDate(s.expiresAt)}
+                {s.members} / {s.maxSeats} students · staff: {s.adminName ?? "—"} {s.adminEmail ? `(${s.adminEmail})` : ""} · till {fmtDate(s.expiresAt)}
               </div>
             </div>
             <span style={{ fontSize: 11, fontWeight: 800, padding: "4px 10px", borderRadius: 999,
