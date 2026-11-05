@@ -24,9 +24,10 @@ export async function POST(req: Request) {
     }
 
     const sessionId = randomUUID();
+    const now = new Date().toISOString();
     await db.prepare(
-      "INSERT INTO school_sessions (id, school_id, student_name, class_name, session_start, last_activity) VALUES (?, ?, ?, ?, datetime('now'), datetime('now'))"
-    ).run(sessionId, schoolId, studentName, className);
+      "INSERT INTO school_sessions (id, school_id, student_name, class_name, session_start, last_activity) VALUES (?, ?, ?, ?, ?, ?)"
+    ).run(sessionId, schoolId, studentName, className, now, now);
 
     return NextResponse.json({ ok: true, sessionId });
   } catch (e) {

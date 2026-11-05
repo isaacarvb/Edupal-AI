@@ -42,10 +42,11 @@ export async function POST(req: Request) {
 
     const passwordHash = hashPassword(password);
     const id = randomUUID();
+    const now = new Date().toISOString();
 
     await db.prepare(
-      "INSERT INTO schools (id, name, code, email, password_hash, address, location, active, max_seats, seats_used, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, 0, ?, 0, datetime('now'))"
-    ).run(id, name, code, email, passwordHash, address, location, students);
+      "INSERT INTO schools (id, name, code, email, password_hash, address, location, active, max_seats, seats_used, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, 0, ?, 0, ?)"
+    ).run(id, name, code, email, passwordHash, address, location, students, now);
 
     return NextResponse.json({ ok: true, schoolId: id, code, name, email });
   } catch (e) {

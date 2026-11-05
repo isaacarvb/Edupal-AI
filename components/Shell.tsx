@@ -8,7 +8,7 @@ import NoticeBell from "./NoticeBell";
 import SchoolShell from "./SchoolShell";
 import TeacherShell from "./TeacherShell";
 
-const PUBLIC_ROUTES = ["/", "/login", "/signup"];
+const PUBLIC_ROUTES = ["/", "/login", "/signup", "/school-register", "/school-login", "/school-session"];
 
 // Persistent app shell: collapsible dark sidebar (desktop), hamburger drawer (mobile).
 export default function Shell({ children }: { children: React.ReactNode }) {

@@ -28,10 +28,11 @@ export async function POST(req: Request) {
         "INSERT INTO users (id, name, email, password_hash, role, level) VALUES (?, ?, ?, ?, 'SCHOOL_STUDENT', 'SECONDARY')"
       ).run(userId, s.name, `student_${userId}@school.local`, hashPassword(randomUUID()));
 
+      const now = new Date().toISOString();
       // Link to school
       await db.prepare(
-        "INSERT INTO school_students (id, school_id, user_id, name, class_name, department, created_at) VALUES (?, ?, ?, ?, ?, ?, datetime('now'))"
-      ).run(randomUUID(), schoolId, userId, s.name, s.className, s.department || null);
+        "INSERT INTO school_students (id, school_id, user_id, name, class_name, department, created_at) VALUES (?, ?, ?, ?, ?, ?, ?)"
+      ).run(randomUUID(), schoolId, userId, s.name, s.className, s.department || null, now);
       imported++;
     }
 
