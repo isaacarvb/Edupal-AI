@@ -19,6 +19,9 @@ function DashboardInner() {
   const [schoolBroadcasts, setSchoolBroadcasts] = useState<Array<{ id: string; body: string; className: string | null }>>([]);
   const [schoolAssignments, setSchoolAssignments] = useState<Array<{ id: string; subject: string; topic: string; instructions: string; dueAt: string | null; teacherName: string }>>([]);
   const [schoolStats, setSchoolStats] = useState<{ totalStudents: number; activeWeek: number; avgStreak: number } | null>(null);
+  const [schoolInfo, setSchoolInfo] = useState<{ name: string; code: string; active: number; expiresAt: string | null; creditPool: number; maxSeats: number } | null>(null);
+  const [linkingSchool, setLinkingSchool] = useState(false);
+  const [schoolCodeInput, setSchoolCodeInput] = useState("");
   const limited = params.get("limited") ?? "";
 
   function chipStyle(days: number | null): React.CSSProperties {
@@ -76,6 +79,10 @@ function DashboardInner() {
     fetch(`/api/school/overview?userId=${userId}`)
       .then((r) => (r.ok ? r.json() : null))
       .then((d) => { if (d?.summary) setSchoolStats(d.summary); }).catch(() => {});
+    // Fetch school info (name, code, active, credits)
+    fetch(`/api/school?userId=${userId}`)
+      .then((r) => (r.ok ? r.json() : null))
+      .then((d) => { if (d?.school) setSchoolInfo(d.school); }).catch(() => {});
   }
 
   useEffect(refresh, [userId]);
@@ -120,6 +127,56 @@ function DashboardInner() {
           </div>
         )}
       </div>
+
+      {/* SCHOOL STATUS */}
+      {schoolInfo ? (
+        <div style={{ background: "#fff", border: "1px solid #E2E8F0", borderRadius: 16, padding: 14, margin: "0 0 12px" }}>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
+            <h2 style={{ color: "#1E242E", fontSize: 16, margin: 0 }}>🏫 School: {schoolInfo.name}</h2>
+            <span style={{ fontSize: 11, fontWeight: 800, padding: "4px 10px", borderRadius: 999,
+              background: schoolInfo.active === 1 ? "#16A34A" : "#DC2626", color: "#fff" }}>
+              {schoolInfo.active === 1 ? "Active" : "Inactive"}
+            </span>
+          </div>
+          <div style={{ display: "flex", gap: 16, flexWrap: "wrap", fontSize: 13, color: "#5F6E7F" }}>
+            <span><strong>Code:</strong> {schoolInfo.code}</span>
+            <span><strong>Credits:</strong> {schoolInfo.creditPool}</span>
+            <span><strong>Seats:</strong> {schoolInfo.maxSeats}</span>
+            <span><strong>Expires:</strong> {schoolInfo.expiresAt ? new Date(schoolInfo.expiresAt).toLocaleDateString("en-NG") : "No end date"}</span>
+          </div>
+          {schoolInfo.active !== 1 && (
+            <p style={{ marginTop: 8, fontSize: 13, color: "#DC2626" }}>
+              Your school subscription has expired. Ask your admin to reactivate it for full access.
+            </p>
+          )}
+        </div>
+      ) : (
+        <div style={{ background: "#F1F5F9", border: "1px solid #E2E8F0", borderRadius: 16, padding: 14, margin: "0 0 12px" }}>
+          <h2 style={{ color: "#1E242E", fontSize: 16, margin: "0 0 10px" }}>🏫 Link to Your School</h2>
+          <p style={{ fontSize: 13, color: "#5F6E7F", marginBottom: 10 }}>
+            Enter your school code to link your account. Your school admin controls your access and credits.
+          </p>
+          <div style={{ display: "flex", gap: 8, maxWidth: 320 }}>
+            <input value={schoolCodeInput} onChange={(e) => setSchoolCodeInput(e.target.value)} placeholder="School code"
+              style={{ flex: 1, height: 44, borderRadius: 10, border: "1px solid #CBD5E1", padding: "0 12px" }} />
+            <button onClick={() => {
+              if (!schoolCodeInput.trim()) return;
+              setLinkingSchool(true);
+              fetch("/api/school/link", {
+                method: "POST", headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ userId, schoolCode: schoolCodeInput.trim() })
+              }).then((r) => r.json()).then((d) => {
+                setLinkingSchool(false);
+                if (d.ok) { setSchoolCodeInput(""); refresh(); }
+                else alert(d.error || "Failed to link school.");
+              });
+            }} disabled={linkingSchool || !schoolCodeInput.trim()}
+              style={{ height: 44, borderRadius: 10, border: 0, background: "#0F766E", color: "#fff", fontWeight: 800, padding: "0 16px", cursor: "pointer" }}>
+              {linkingSchool ? "Linking…" : "Link School"}
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* LIMIT BANNER */}
       {limited !== "" && (

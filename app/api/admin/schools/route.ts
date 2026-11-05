@@ -16,6 +16,7 @@ export async function GET(req: Request) {
     .prepare(
       `SELECT s.id, s.name, s.code, s.active, s.expires_at AS "expiresAt", s.max_seats AS "maxSeats",
               s.admin_user_id AS "adminUserId", s.admin_emails AS "adminEmails", s.created_at AS "createdAt",
+              s.credit_pool AS "creditPool",
               g.name AS "groupName", u.email AS "adminEmail", u.name AS "adminName",
               (SELECT COUNT(*) FROM school_members sm WHERE sm.school_id = s.id) AS members
        FROM schools s
@@ -48,6 +49,7 @@ export async function POST(req: Request) {
   const adminEmail = String(b?.adminEmail ?? "").trim().toLowerCase();
   const adminPassword = String(b?.adminPassword ?? "");
   const maxSeats = 1500; // LOCKED: all schools have 1500 seats
+  const creditPool = Number(b?.credit_pool) || 0;
   const groupName = String(b?.groupName ?? "").trim();
   if (!name) return NextResponse.json({ error: "school name required" }, { status: 400 });
   if (!adminName || !adminEmail.includes("@")) return NextResponse.json({ error: "staff name + valid email required" }, { status: 400 });
@@ -89,8 +91,8 @@ export async function POST(req: Request) {
     code = schoolCode();
   }
   await db
-    .prepare("INSERT INTO schools (id, group_id, name, code, admin_user_id, active, max_seats, admin_emails) VALUES (?, ?, ?, ?, ?, 0, ?, '')")
-    .run(id, groupId, name, code, staffId, maxSeats);
+    .prepare("INSERT INTO schools (id, group_id, name, code, admin_user_id, active, max_seats, admin_emails, credit_pool) VALUES (?, ?, ?, ?, ?, 0, ?, ?, ?)")
+    .run(id, groupId, name, code, staffId, maxSeats, '', creditPool);
   await logAudit(db, admin.id, "school:create", `${name} (${code})`);
   return NextResponse.json({ ok: true, schoolId: id, code, staffId, staffEmail: adminEmail });
 }
@@ -115,15 +117,16 @@ export async function PATCH(req: Request) {
     active: b?.active === undefined ? school.active : b.active ? 1 : 0,
     expiresAt: b?.expiresAt === undefined ? school.expiresAt : b.expiresAt ? String(b.expiresAt) : null,
     // maxSeats remains 1500 - locked, ignore any UI attempt to change it
-    maxSeats: 1500
+    maxSeats: 1500,
+    creditPool: b?.credit_pool === undefined ? school.creditPool : Number(b.credit_pool)
   };
   if (next.expiresAt && !Number.isFinite(Date.parse(next.expiresAt))) {
     return NextResponse.json({ error: "expiresAt must be a valid date" }, { status: 400 });
   }
   await db
-    .prepare("UPDATE schools SET active = ?, expires_at = ?, max_seats = ?, admin_emails = ? WHERE id = ?")
-    .run(next.active, next.expiresAt, next.maxSeats, b?.admin_emails ?? school.admin_emails, schoolId);
-  await logAudit(db, admin.id, `school:${next.active ? "activate" : "deactivate"}`, `${school.name} until ${next.expiresAt ?? "—"} (${next.maxSeats} seats)`);
+    .prepare("UPDATE schools SET active = ?, expires_at = ?, max_seats = ?, admin_emails = ?, credit_pool = ? WHERE id = ?")
+    .run(next.active, next.expiresAt, next.maxSeats, b?.admin_emails ?? school.admin_emails, next.creditPool, schoolId);
+  await logAudit(db, admin.id, `school:${next.active ? "activate" : "deactivate"}`, `${school.name} until ${next.expiresAt ?? "—"} (${next.maxSeats} seats, ${next.creditPool} credits)`);
   return NextResponse.json({ ok: true, status: schoolIsActive({ active: next.active, expiresAt: next.expiresAt }) ? "ACTIVE" : "INACTIVE" });
 }
 

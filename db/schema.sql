@@ -273,6 +273,7 @@ CREATE TABLE IF NOT EXISTS schools (
   max_seats INTEGER NOT NULL DEFAULT 1500,
   ai_prompts INTEGER NOT NULL DEFAULT 0,
   admin_emails TEXT DEFAULT '',
+  credit_pool INTEGER NOT NULL DEFAULT 0,
   created_at TEXT NOT NULL DEFAULT (datetime('now'))
 );
 -- A student belongs to at most ONE school (UNIQUE user_id); class grouping
