@@ -55,6 +55,12 @@ export default function SchoolSubscription() {
     if (s) {
       try { setSchool(JSON.parse(s)); } catch { /* ignore */ }
     }
+    // Check for payment success from callback URL
+    const params = new URLSearchParams(window.location.search);
+    if (params.get("paid") === "1") {
+      setMsg("Payment successful! Your school subscription is now active. Redirecting to dashboard…");
+      setTimeout(() => { window.location.href = "/school/dashboard"; }, 2500);
+    }
   }, []);
 
   useEffect(() => {
@@ -99,42 +105,21 @@ export default function SchoolSubscription() {
       });
       const d = await res.json();
       if (!res.ok) return setMsg(d.error || "Payment failed.");
-      // Initialize Paystack payment inline
-      const paystack = (window as any).PaystackPop;
-      if (paystack) {
-        paystack({
-          key: process.env.NEXT_PUBLIC_PAYSTACK_PUBLIC_KEY || "pk_test_placeholder",
-          email: school.email,
-          amount: finalAmount * 100, // Paystack expects kobo
-          ref: d.reference,
-          currency: "NGN",
-          metadata: {
-            school_id: school.id,
-            school_name: school.name,
-            students: studentsNum,
-            term_months: term.months
-          },
-          onClose: () => {
-            setPaying(false);
-            setMsg("Payment cancelled. You can try again.");
-          },
-          callback: (response: any) => {
-            setPaying(false);
-            if (response.status === "success") {
-              setMsg("Payment successful! Your school is now active. Redirecting to dashboard…");
-              setSchool((prev) => prev ? { ...prev, active: 1 } : prev);
-              setTimeout(() => { window.location.href = "/school/dashboard"; }, 2000);
-            } else {
-              setMsg("Payment not completed. Please try again.");
-            }
-          }
-        });
-      } else {
-        setMsg("Paystack not configured. Contact support.");
-        setPaying(false);
+      if (d.mode === "paystack" && d.authorizationUrl) {
+        // Redirect to Paystack for payment
+        window.location.href = d.authorizationUrl;
+        return;
       }
+      if (d.mode === "mock") {
+        setMsg("Payment successful! Your school is now active. Redirecting to dashboard…");
+        setSchool((prev) => prev ? { ...prev, active: 1 } : prev);
+        setTimeout(() => { window.location.href = "/school/dashboard"; }, 2000);
+        return;
+      }
+      setMsg("Unexpected payment response.");
     } catch (e) {
       setMsg(e instanceof Error ? e.message : "Payment failed.");
+    } finally {
       setPaying(false);
     }
   };

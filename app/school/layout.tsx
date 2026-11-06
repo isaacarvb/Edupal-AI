@@ -79,9 +79,13 @@ export default function SchoolLayout({ children }: { children: React.ReactNode }
           <button onClick={() => { localStorage.removeItem("edupal_school"); window.location.href = "/school-login"; }}
             style={{ background: "transparent", border: "1px solid #5F6E7F", color: "#fff", borderRadius: 8, fontSize: 14, padding: "4px 8px", cursor: "pointer" }}>🚪</button>
         </div>
-        <div style={{ marginTop: 10, fontSize: 11, color: "#94A3B8", textAlign: "center" }}>
-          View as Student Mode
-        </div>
+        <button onClick={() => {
+          localStorage.setItem("edupal_view_mode", "student");
+          window.location.href = "/dashboard";
+        }}
+          style={{ width: "100%", marginTop: 8, height: 36, borderRadius: 8, border: "1px solid #5F6E7F", background: "transparent", color: "#A7F3D0", fontSize: 12, fontWeight: 700, cursor: "pointer" }}>
+          👀 View as Students
+        </button>
       </div>
     </aside>
   );

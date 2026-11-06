@@ -151,6 +151,16 @@ export async function POST(req: Request) {
     );
   }
 
+  // Update school session activity if this user is in a school
+  try {
+    await db.prepare(
+      `UPDATE school_sessions SET last_activity = ? 
+       WHERE school_id = (SELECT school_id FROM school_students WHERE user_id = ? LIMIT 1) 
+       AND student_name = (SELECT name FROM school_students WHERE user_id = ? LIMIT 1)
+       AND class_name = (SELECT class_name FROM school_students WHERE user_id = ? LIMIT 1)`
+    ).run(now, userId, userId, userId);
+  } catch { /* school tables may not exist — ignore */ }
+
   const creditsLeft = wallet.plan === "UNLIMITED" ? wallet.creditsLeft : await getSubjectLeft(db, userId, q.subject, "FREE");
   return NextResponse.json({
     correct: Boolean(correct),

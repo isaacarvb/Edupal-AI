@@ -73,7 +73,7 @@ export default function SchoolDashboard() {
             {daysLeft > 0 && daysLeft <= 30 && ` · ${daysLeft} day(s) left`}
           </div>
         </div>
-        {!isActive && (
+      {!isActive && (
           <button onClick={() => { window.location.href = "/school/subscription"; }}
             style={{ height: 36, borderRadius: 8, border: 0, background: "#DC2626", color: "#fff", fontWeight: 800, padding: "0 16px", cursor: "pointer" }}>
             Renew Subscription
@@ -81,7 +81,7 @@ export default function SchoolDashboard() {
         )}
         {isActive && daysLeft <= 30 && (
           <button onClick={() => { window.location.href = "/school/subscription"; }}
-            style={{ height: 36, borderRadius: 8, border: "1px solid #0F766E", background: "#fff", color: "#0F766E", fontWeight: 800, padding: "0 16px", cursor: "pointer", marginLeft: 8 }}>
+            style={{ height: 36, borderRadius: 8, border: "1px solid #0F766E", background: "#fff", color: "#0F766E", fontWeight: 800, padding: "0 16px", cursor: "pointer" }}>
             Renew Now
           </button>
         )}

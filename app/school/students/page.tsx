@@ -11,6 +11,9 @@ export default function SchoolStudents() {
   const [classFilter, setClassFilter] = useState("");
   const [importMsg, setImportMsg] = useState("");
   const [importBusy, setImportBusy] = useState(false);
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
+
+  const fileInputRef = { current: null as HTMLInputElement | null };
 
   useEffect(() => {
     const s = localStorage.getItem("edupal_school");
@@ -36,6 +39,7 @@ export default function SchoolStudents() {
   async function handleImport(file: File) {
     setImportMsg("");
     setImportBusy(true);
+    setSelectedFile(file);
     try {
       const text = await file.text();
       const lines = text.trim().split("\n");
@@ -83,6 +87,20 @@ export default function SchoolStudents() {
     }
   }
 
+  const handleSelectFile = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const f = e.target.files?.[0];
+    if (f) handleImport(f);
+  };
+
+  const handleRemoveFile = () => {
+    setSelectedFile(null);
+    setImportMsg("");
+    setImportBusy(false);
+    // Clear the file input
+    const input = document.querySelector('input[type="file"]') as HTMLInputElement;
+    if (input) input.value = "";
+  };
+
   const filtered = students.filter((s) =>
     s.name.toLowerCase().includes(search.toLowerCase()) &&
     (!classFilter || s.className === classFilter)
@@ -111,12 +129,25 @@ export default function SchoolStudents() {
       {/* Import Section */}
       <div style={card}>
         <div style={{ fontSize: 12, fontWeight: 800, color: "#5F6E7F", textTransform: "uppercase", marginBottom: 10 }}>Upload CSV</div>
-        <input
-          type="file"
-          accept=".csv"
-          onChange={(e) => { const f = e.target.files?.[0]; if (f) handleImport(f); }}
-          style={{ width: "100%", height: 44, borderRadius: 10, border: "1px solid #CBD5E1", padding: "0 12px", marginBottom: 8 }}
-        />
+        <div style={{ display: "flex", gap: 8, alignItems: "center", marginBottom: 8 }}>
+          <input
+            type="file"
+            accept=".csv"
+            onChange={handleSelectFile}
+            style={{ flex: 1, height: 44, borderRadius: 10, border: "1px solid #CBD5E1", padding: "0 12px" }}
+          />
+          {selectedFile && (
+            <button onClick={handleRemoveFile}
+              style={{ height: 44, borderRadius: 10, border: "1px solid #DC2626", background: "#FFF1F2", color: "#DC2626", fontWeight: 800, fontSize: 16, padding: "0 16px", cursor: "pointer" }}>
+              ×
+            </button>
+          )}
+        </div>
+        {selectedFile && (
+          <p style={{ fontSize: 12, color: "#5F6E7F", marginBottom: 4 }}>
+            Selected: {selectedFile.name} ({(selectedFile.size / 1024).toFixed(1)} KB)
+          </p>
+        )}
         {importMsg && <p style={{ fontSize: 13, marginTop: 6, color: importMsg.startsWith("Imported") ? "#166534" : "#DC2626" }}>{importMsg}</p>}
         {importBusy && <p style={{ fontSize: 13, color: "#5F6E7F" }}>Importing…</p>}
       </div>

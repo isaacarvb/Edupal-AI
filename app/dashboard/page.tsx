@@ -95,6 +95,16 @@ function DashboardInner() {
 
   return (
     <main style={{ maxWidth: 1100, margin: "0 auto", padding: 20, color: "#333A45" }}>
+      {/* Admin view mode banner */}
+      {typeof window !== "undefined" && localStorage.getItem("edupal_view_mode") === "student" && (
+        <div style={{ background: "#1E242E", borderRadius: 12, padding: 12, marginBottom: 16, display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+          <span style={{ fontSize: 13, color: "#A7F3D0" }}>👁 Viewing as Student (Admin Mode)</span>
+          <button onClick={() => { localStorage.removeItem("edupal_view_mode"); window.location.href = "/school/dashboard"; }}
+            style={{ background: "#0F766E", border: 0, color: "#fff", borderRadius: 8, padding: "6px 12px", fontSize: 12, fontWeight: 700, cursor: "pointer" }}>
+            ← Back to School Admin
+          </button>
+        </div>
+      )}
       <h1 className="font-poppins" style={{ color: "#1E242E", fontSize: 40, fontWeight: 800, letterSpacing: "-0.5px" }}>{greeting}</h1>
 
       {/* STATUS */}
