@@ -29,10 +29,12 @@ function PracticeInner() {
   const [timed, setTimed] = useState(false);
   const [secs, setSecs] = useState(0);
   const [seniorOpen, setSeniorOpen] = useState(true);
+  const [juniorOpen, setJuniorOpen] = useState(true);
   const [switcher, setSwitcher] = useState<{ subject: string; left: number }[]>([]);
   const [bank, setBank] = useState<{ subject: string; n: number }[]>([]);
   const hidden = useHiddenSubjects();
   const [department, setDepartment] = useState("");
+  const [plan, setPlan] = useState("FREE");
   const [ready, setReady] = useState(false);
   const [alt, setAlt] = useState<null | { explanation: string; engine: string }>(null);
   const [altBusy, setAltBusy] = useState(false);
@@ -84,6 +86,7 @@ function PracticeInner() {
         .then((d) => {
           setSwitcher(d.subjectLimits ?? []);
           setDepartment(d.profile?.department ?? "");
+          setPlan(d.profile?.plan ?? "FREE");
         })
         .catch(() => setDepartment(""))
         .finally(() => setReady(true));
@@ -249,21 +252,51 @@ function PracticeInner() {
     const seniorCards = isJunior ? [] : hubSubjects;
     const juniorCards = isJunior ? hubSubjects : juniorCardsAll.filter((s) => !hubSubjects.some((h) => h.subject === s.subject));
     const juniorSoon = jss.filter((x) => !juniorCards.some((c) => c.subject === x) && !seniorCards.some((h) => h.subject === x));
-    const subjectCard = (s: { subject: string; left: number; n: number }) => (
-      <a key={s.subject} href={`/practice?userId=${userId}&subject=${encodeURIComponent(s.subject)}`}
-        style={{ background: "#fff", border: "2px solid #0F766E", borderRadius: 12, padding: 16, textDecoration: "none", color: "#1E242E" }}>
-        <strong style={{ fontSize: 17 }}>{shortSubject(s.subject)}</strong>
-        <div style={{ fontSize: 13, color: "#5F6E7F", marginTop: 4 }}>{s.left} free left today • {s.n} questions in bank</div>
-        <div style={{ fontSize: 14, fontWeight: 800, color: "#0F766E", marginTop: 8 }}>Start practicing →</div>
-      </a>
-    );
+
+    // Get all SSS subjects for department filtering
+    const allSSS = ["English", "Mathematics", "Physical Health Education", "Physics", "Chemistry", "Biology", "Commerce", "Accounting", "Marketing", "Economics", "Government", "Literature in English"];
+    
+    // For senior students with department, show all SSS subjects with locked ones for other departments
+    const allSeniorCards = isJunior ? [] : allSSS.map((subject) => {
+      const isAllowed = allowedSubjects.includes(subject);
+      const card = cardPool.find((c) => c.subject === subject);
+      return {
+        subject,
+        left: card?.left ?? 10,
+        n: card?.n ?? 0,
+        locked: !isAllowed
+      };
+    });
+
+    const subjectCard = (s: { subject: string; left: number; n: number; locked?: boolean }) => {
+      if (s.locked) {
+        return (
+          <div key={s.subject}
+            style={{ background: "#F8FAFC", border: "1px solid #E2E8F0", borderRadius: 12, padding: 16, color: "#94A3B8" }}>
+            <strong style={{ fontSize: 17 }}>{shortSubject(s.subject)} 🔒</strong>
+            <div style={{ fontSize: 13, marginTop: 4 }}>Not in your department</div>
+            <div style={{ fontSize: 14, fontWeight: 800, marginTop: 8, color: "#94A3B8" }}>Locked</div>
+          </div>
+        );
+      }
+      return (
+        <a key={s.subject} href={`/practice?userId=${userId}&subject=${encodeURIComponent(s.subject)}`}
+          style={{ background: "#fff", border: "2px solid #0F766E", borderRadius: 12, padding: 16, textDecoration: "none", color: "#1E242E" }}>
+          <strong style={{ fontSize: 17 }}>{shortSubject(s.subject)}</strong>
+          <div style={{ fontSize: 13, color: "#5F6E7F", marginTop: 4 }}>
+            {plan === "UNLIMITED" ? "Unlimited" : `${s.left} free left today`} • {s.n} questions in bank
+          </div>
+          <div style={{ fontSize: 14, fontWeight: 800, color: "#0F766E", marginTop: 8 }}>Start practicing →</div>
+        </a>
+      );
+    };
     return (
       <main style={{ maxWidth: 680, margin: "0 auto", padding: 20, color: "#333A45" }}>
         <h1 style={{ color: "#1E242E", fontSize: 24 }}>Practice</h1>
         {department && (
           <div style={{ background: "#F0F9FF", border: "1px solid #BAE6FD", borderRadius: 10, padding: 10, marginBottom: 12, fontSize: 13, color: "#0369A1" }}>
             <strong style={{ display: "block", fontSize: 12, marginBottom: 4, color: "#0c4a6e" }}>📚 {department} department focus</strong>
-            You're seeing {department} subjects only. English, Mathematics and Physical Health Education are included for everyone. Other subjects exist but stay hidden so you stay focused on your department.
+            You're seeing {department} subjects highlighted. English, Mathematics and Physical Health Education are included for everyone. Other subjects are visible but locked so you stay focused on your department.
           </div>
         )}
         <p style={{ fontSize: 14, color: "#5F6E7F" }}>Choose a subject to start. Budgets reset daily at midnight.</p>
@@ -271,7 +304,7 @@ function PracticeInner() {
           <p style={{ fontSize: 14, color: "#5F6E7F" }}>Loading subjects…</p>
         ) : (
           <>
-        {/* Seniors: dark collapsible tier bar + junior peek box below. */}
+        {/* Seniors: dark collapsible tier bar + junior dropdown below. */}
         {!isJunior && (
           <>
             <button onClick={() => setSeniorOpen((o) => !o)}
@@ -280,28 +313,30 @@ function PracticeInner() {
             </button>
             {seniorOpen && (
               <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))", gap: 12, marginBottom: 12 }}>
-                {hubSubjects.length === 0 && <p>Loading subjects…</p>}
-                {seniorCards.map(subjectCard)}
+                {allSeniorCards.length === 0 && <p>Loading subjects…</p>}
+                {allSeniorCards.map(subjectCard)}
               </div>
             )}
-            <div style={{ marginTop: 16, background: "#F8FAFC", border: "1px solid #E2E8F0", borderRadius: 14, padding: 16 }}>
-              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                <strong style={{ fontSize: 16 }}>Junior Secondary School</strong>
-                <span style={{ fontSize: 11, background: "#CCFBF1", color: "#0F766E", padding: "3px 10px", borderRadius: 999, fontWeight: 800, border: "1px solid #99F6E4" }}>Live</span>
-              </div>
-              <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))", gap: 12, marginTop: 12 }}>
-                {juniorCards.length === 0 && <p style={{ fontSize: 14, color: "#5F6E7F" }}>Loading subjects…</p>}
-                {juniorCards.map(subjectCard)}
-              </div>
-              {juniorSoon.length > 0 && (
-                <div style={{ fontSize: 13, color: "#5F6E7F", marginTop: 10 }}>
-                  Coming soon: {juniorSoon.map(shortSubject).join(" • ")}
+            <button onClick={() => setJuniorOpen((o) => !o)}
+              style={{ width: "100%", textAlign: "left", background: "#1E242E", color: "#fff", border: 0, borderRadius: 12, padding: 14, fontSize: 16, fontWeight: 800, cursor: "pointer", marginBottom: 8, marginTop: 16 }}>
+              {juniorOpen ? "▾" : "▸"} Junior Secondary School
+            </button>
+            {juniorOpen && (
+              <div>
+                <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))", gap: 12, marginBottom: 12 }}>
+                  {juniorCards.length === 0 && <p style={{ fontSize: 14, color: "#5F6E7F" }}>Loading subjects…</p>}
+                  {juniorCards.map(subjectCard)}
                 </div>
-              )}
-            </div>
+                {juniorSoon.length > 0 && (
+                  <div style={{ fontSize: 13, color: "#5F6E7F", marginBottom: 12 }}>
+                    Coming soon: {juniorSoon.map(shortSubject).join(" • ")}
+                  </div>
+                )}
+              </div>
+            )}
           </>
         )}
-        {/* Juniors see their tier exactly like seniors see theirs: dark bar + cards. */}
+        {/* Juniors see their tier as a dark bar + cards. */}
         {isJunior && (
           <>
             <button onClick={() => setSeniorOpen((o) => !o)}

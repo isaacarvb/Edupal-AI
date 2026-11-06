@@ -68,11 +68,19 @@ function CurriculumInner() {
   const tierSubjects = subjects.filter(
     (s) =>
       (tier === "jss" ? s.level === "JSS" : s.level === "SSS") &&
-      allowedSubjects.includes(s.name) &&
       !hidden.includes(s.name)
   );
 
+  // For department filtering: show all tier subjects, but mark others as locked
+  const allTierSubjects = subjects.filter(
+    (s) => (tier === "jss" ? s.level === "JSS" : s.level === "SSS") && !hidden.includes(s.name)
+  );
+
   function selectSubject(s: CSubject) {
+    // Don't allow opening locked subjects (not in department)
+    if (department && tier === "senior" && !allowedSubjects.includes(s.name)) {
+      return;
+    }
     setSelectedSubject(s);
     setOpenTopic(null);
   }
@@ -248,19 +256,27 @@ function CurriculumInner() {
       ) : (
         // ---------- Subject grid ----------
         <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(200px, 1fr))", gap: 12 }}>
-          {tierSubjects.length === 0 && <p style={{ fontSize: 14, color: "#5F6E7F" }}>No subjects available.</p>}
-          {tierSubjects.map((s) => {
+          {allTierSubjects.length === 0 && <p style={{ fontSize: 14, color: "#5F6E7F" }}>No subjects available.</p>}
+          {allTierSubjects.map((s) => {
+            const isLocked = department && tier === "senior" && !allowedSubjects.includes(s.name);
             const freeCount = unlimited ? s.topics.length : s.topics.filter((t) => !t.locked).length;
             const lockedCount = s.topics.length - freeCount;
             return (
-              <div key={s.id} style={{ background: "#fff", border: "1px solid #E2E8F0", borderRadius: 12, padding: 16, cursor: "pointer", transition: "all 0.2s ease" }} onMouseEnter={(e) => { (e.currentTarget as HTMLElement).style.boxShadow = "0 4px 14px -4px rgb(30 36 46 / 0.35)"; }} onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.boxShadow = "none"; }} onClick={() => selectSubject(s)}>
-                <div style={{ fontSize: 11, fontWeight: 800, color: "#0F766E", textTransform: "uppercase", marginBottom: 6 }}>{s.level}</div>
-                <div style={{ fontSize: 17, fontWeight: 800, color: "#1E242E", marginBottom: 6 }}>{s.name}</div>
+              <div key={s.id} style={{ background: isLocked ? "#F8FAFC" : "#fff", border: "1px solid #E2E8F0", borderRadius: 12, padding: 16, cursor: isLocked ? "not-allowed" : "pointer", transition: "all 0.2s ease", opacity: isLocked ? 0.6 : 1 }} onMouseEnter={(e) => { if (!isLocked) (e.currentTarget as HTMLElement).style.boxShadow = "0 4px 14px -4px rgb(30 36 46 / 0.35)"; }} onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.boxShadow = "none"; }} onClick={() => selectSubject(s)}>
+                <div style={{ fontSize: 11, fontWeight: 800, color: isLocked ? "#94A3B8" : "#0F766E", textTransform: "uppercase", marginBottom: 6 }}>{s.level}</div>
+                <div style={{ fontSize: 17, fontWeight: 800, color: isLocked ? "#94A3B8" : "#1E242E", marginBottom: 6 }}>
+                  {s.name} {isLocked && "🔒"}
+                </div>
                 <div style={{ fontSize: 12, color: "#5F6E7F" }}>
                   {s.topics.length} topics
                   {lockedCount > 0 && <span> • {freeCount} free • 🔒 {lockedCount}</span>}
                 </div>
                 <div style={{ fontSize: 11, color: "#5F6E7F", marginTop: 4 }}>{s.exams.join(", ")}</div>
+                {isLocked && (
+                  <div style={{ fontSize: 11, fontWeight: 700, color: "#DC2626", marginTop: 8 }}>
+                    Not in your department
+                  </div>
+                )}
               </div>
             );
           })}
