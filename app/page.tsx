@@ -42,22 +42,6 @@ export default function Landing() {
         </div>
       </section>
 
-      {/* STATS BANNER */}
-      <section style={{ background: "#ECFDF5", borderBottom: "1px solid #A7F3D0" }}>
-        <div style={{ maxWidth: 1100, margin: "0 auto", padding: "20px 16px", display: "flex", justifyContent: "space-around", textAlign: "center", flexWrap: "wrap", gap: 12 }}>
-          {[
-            ["20", "Core Subjects Supported (8 JSS + 12 SSS)"],
-            ["100+", "Practice Questions & Exam Topics"],
-            ["2", "Explanation Modes (Simple English & Pidgin)"]
-          ].map(([n, label]) => (
-            <div key={label}>
-              <div style={{ fontSize: 26, fontWeight: 800, color: "#0F766E" }}>{n}</div>
-              <div style={{ fontSize: 13, color: "#333A45" }}>{label}</div>
-            </div>
-          ))}
-        </div>
-      </section>
-
       {/* FEATURES */}
       <section id="features" style={{ maxWidth: 1100, margin: "0 auto", padding: "32px 16px" }}>
         <h2 style={{ color: "#1E242E", fontSize: 26 }}>Why students love EduPal</h2>
@@ -68,6 +52,10 @@ export default function Landing() {
           <Feature emoji="👪" color="#FDEAEA" title="Parents Stay in the Loop" text="Weekly progress updates and a view-only dashboard, with zero friction at payment." />
           <Feature emoji="📚" color="#E0E7FF" title="Robust Notes" text="Comprehensive, curriculum-aligned study notes and formula guides across all JSS and SSS subjects." />
           <Feature emoji="📅" color="#F3E8FF" title="Exam Info" text="Latest exam updates, syllabus changes, and countdown alerts for WAEC, JAMB, and more." />
+          <Feature emoji="🏫" color="#FEF3C7" title="School Administrator" text="Manage your school's subscription, upload student rosters, track progress analytics, and give students access with a single school code." />
+          <Feature emoji="📖" color="#CCFBF1" title="20+ Core Subjects Supported" text="JSS + SSS subjects — covering the full Nigerian secondary curriculum." />
+          <Feature emoji="📝" color="#E0E7FF" title="10,000+ Practice Questions" text="Real exam-style questions and topics so you can practice and improve daily." />
+          <Feature emoji="💬" color="#FDEAEA" title="2 Explanation Modes" text="Simple English & Pidgin — learn in the way that makes the most sense to you." />
         </div>
       </section>
 
@@ -75,11 +63,8 @@ export default function Landing() {
       <section id="exams" style={{ maxWidth: 1100, margin: "0 auto", padding: "8px 16px 32px" }}>
         <h2 style={{ color: "#1E242E", fontSize: 26 }}>Exams supported</h2>
         <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
-          {["WAEC", "JAMB"].map((e) => (
-            <span key={e} style={{ fontSize: 15, fontWeight: 700, background: "#1E242E", color: "#fff", padding: "10px 22px", borderRadius: 999 }}>{e} — live now</span>
-          ))}
-          {["Others (JSS & more)"].map((e) => (
-            <span key={e} style={{ fontSize: 15, fontWeight: 600, background: "#fff", color: "#5F6E7F", border: "1px solid #E2E8F0", padding: "10px 22px", borderRadius: 999 }}>{e} — growing</span>
+          {["WAEC", "JAMB", "BECE", "Others"].map((e) => (
+            <span key={e} style={{ fontSize: 15, fontWeight: 700, background: "#1E242E", color: "#fff", padding: "10px 22px", borderRadius: 999 }}>{e}</span>
           ))}
         </div>
       </section>
@@ -88,30 +73,56 @@ export default function Landing() {
       <section style={{ background: "#F8FAFC", borderTop: "1px solid #E2E8F0", borderBottom: "1px solid #E2E8F0" }}>
         <div style={{ maxWidth: 1100, margin: "0 auto", padding: "32px 16px" }}>
           <h2 style={{ color: "#1E242E", fontSize: 26 }}>How it works</h2>
+          <h3 style={{ color: "#1E242E", fontSize: 16, fontWeight: 700, margin: "16px 0 12px" }}>For Individual Students</h3>
           <div style={{ display: "flex", gap: 16, flexWrap: "wrap" }}>
             <Step n={1} title="Create Your Free Account" text="Name, email, password — 30 seconds." />
             <Step n={2} title="Choose Exam & Set Target Date" text="Level, exam, subjects, language." />
             <Step n={3} title="Take 10-Question Diagnostic" text="We find your baseline per topic." />
             <Step n={4} title="Target Weak Topics with AI" text="Practice daily, level up, repeat." />
           </div>
+          <h3 style={{ color: "#1E242E", fontSize: 16, fontWeight: 700, margin: "24px 0 12px" }}>For School Administrators</h3>
+          <div style={{ display: "flex", gap: 16, flexWrap: "wrap" }}>
+            <Step n={1} title="Register Your School" text="School name, address, email, password, and student count." />
+            <Step n={2} title="Upload Student Roster" text="Bulk upload student names, classes, and departments via CSV." />
+            <Step n={3} title="Subscribe via Paystack" text="Choose student count and term (3/6/9/12 months). Pay once, no auto-renewal." />
+            <Step n={4} title="Share School Code with Students" text="Students enter the code + name + class to access EduPal in the lab." />
+          </div>
         </div>
       </section>
 
       {/* PRICING */}
       <section id="pricing" style={{ maxWidth: 1100, margin: "0 auto", padding: "32px 16px" }}>
-        <h2 style={{ color: "#1E242E", fontSize: 26 }}>Pricing</h2>
+        <h2 style={{ color: "#1E242E", fontSize: 26, marginBottom: 16 }}>Pricing</h2>
         <div style={{ display: "flex", gap: 16, flexWrap: "wrap" }}>
           <div style={{ flex: "1 1 240px", minHeight: 180, background: "#fff", border: "1px solid #E2E8F0", borderRadius: 12, padding: 20 }}>
             <div style={{ fontWeight: 800, fontSize: 18 }}>Free</div>
-            <p style={{ fontSize: 14 }}>10 questions per subject, daily. Weak-topic tracking included.</p>
-            <p style={{ fontSize: 14 }}>Limited access to topics.</p>
+            <ul style={{ fontSize: 14, lineHeight: 1.8, paddingLeft: 18, margin: "10px 0" }}>
+              <li>10 questions per subject, daily</li>
+              <li>Weak-topic tracking</li>
+              <li>Study streaks & reminders</li>
+              <li>Limited subject access</li>
+            </ul>
             <div style={{ fontWeight: 800, fontSize: 22 }}>₦0</div>
           </div>
           <div style={{ flex: "1 1 240px", minHeight: 180, background: "#1E242E", color: "#fff", borderRadius: 12, padding: 20 }}>
             <div style={{ fontWeight: 800, fontSize: 18 }}>Paid</div>
-            <p style={{ fontSize: 14, opacity: 0.9 }}>Unlimited practice + parent dashboard + weekly digest.</p>
-            <p style={{ fontSize: 14, opacity: 0.9 }}>Unlimited access to all resources.</p>
+            <ul style={{ fontSize: 14, lineHeight: 1.8, paddingLeft: 18, margin: "10px 0" }}>
+              <li>Unlimited practice across all subjects</li>
+              <li>Parent dashboard + weekly digest</li>
+              <li>Full access to all resources</li>
+              <li>Exam countdown & priority support</li>
+            </ul>
             <div style={{ fontWeight: 800, fontSize: 22 }}>Paystack checkout</div>
+          </div>
+          <div style={{ flex: "1 1 240px", minHeight: 180, background: "#0F766E", color: "#fff", borderRadius: 12, padding: 20 }}>
+            <div style={{ fontWeight: 800, fontSize: 18 }}>Schools</div>
+            <ul style={{ fontSize: 14, lineHeight: 1.8, paddingLeft: 18, margin: "10px 0" }}>
+              <li>₦2,000 per student per term</li>
+              <li>Volume discounts up to 25%</li>
+              <li>Admin dashboard + progress analytics</li>
+              <li>Computer lab access for students</li>
+            </ul>
+            <div style={{ fontWeight: 800, fontSize: 22 }}>Per-student pricing</div>
           </div>
         </div>
       </section>
