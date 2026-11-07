@@ -129,8 +129,9 @@ export default function Landing() {
 
       {/* BOTTOM CTA */}
       <section style={{ textAlign: "center", padding: "16px 16px 48px" }}>
-        <div style={{ display: "flex", gap: 12, justifyContent: "center", flexWrap: "wrap" }}>
+        <div style={{ display: "flex", gap: 12, justifyContent: "center", alignItems: "center", flexWrap: "wrap" }}>
           <a href="/school-register" className="btn-journey" style={{ background: "#0F766E" }}>School Administrator</a>
+          <span style={{ fontSize: 13, fontWeight: 700, color: "#5F6E7F", letterSpacing: 0.5, whiteSpace: "nowrap" }}>← Start your journey →</span>
           <a href="/signup" className="btn-journey" style={{ background: "#2F5D7C" }}>Individual Student</a>
         </div>
         <p style={{ fontSize: 13, color: "#5F6E7F" }}>Know what you're learning, where you're weak, and when your exam is.</p>
