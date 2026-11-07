@@ -12,6 +12,7 @@ export default function SchoolStudents() {
   const [importMsg, setImportMsg] = useState("");
   const [importBusy, setImportBusy] = useState(false);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
 
   const fileInputRef = { current: null as HTMLInputElement | null };
 
@@ -101,6 +102,24 @@ export default function SchoolStudents() {
     if (input) input.value = "";
   };
 
+  const handleDelete = async (studentId: string, studentName: string) => {
+    if (!confirm(`Remove ${studentName} from roster?`)) return;
+    setDeletingId(studentId);
+    try {
+      const res = await fetch(`/api/school/students-delete?studentId=${encodeURIComponent(studentId)}`, { method: "DELETE" });
+      if (res.ok) {
+        setStudents((prev) => prev.filter((s) => s.id !== studentId));
+      } else {
+        const d = await res.json().catch(() => ({}));
+        setImportMsg(d.error || "Failed to remove student.");
+      }
+    } catch (e) {
+      setImportMsg(e instanceof Error ? e.message : "Failed to remove student.");
+    } finally {
+      setDeletingId(null);
+    }
+  };
+
   const filtered = students.filter((s) =>
     s.name.toLowerCase().includes(search.toLowerCase()) &&
     (!classFilter || s.className === classFilter)
@@ -168,6 +187,7 @@ export default function SchoolStudents() {
               <th style={{ padding: "10px 12px" }}>Student</th>
               <th style={{ padding: "10px 12px" }}>Class</th>
               <th style={{ padding: "10px 12px" }}>Department</th>
+              <th style={{ padding: "10px 12px" }}></th>
             </tr>
           </thead>
           <tbody>
@@ -177,11 +197,17 @@ export default function SchoolStudents() {
                   <td style={{ padding: "10px 12px", fontWeight: 700 }}>{s.name}</td>
                   <td style={{ padding: "10px 12px" }}>{s.className}</td>
                   <td style={{ padding: "10px 12px", color: "#5F6E7F" }}>{s.department || "—"}</td>
+                  <td style={{ padding: "10px 12px", textAlign: "right" }}>
+                    <button onClick={() => handleDelete(s.id, s.name)} disabled={deletingId === s.id}
+                      style={{ background: "#FFF1F2", border: "1px solid #FECACA", color: "#DC2626", fontWeight: 700, fontSize: 12, padding: "4px 10px", borderRadius: 6, cursor: deletingId === s.id ? "not-allowed" : "pointer" }}>
+                      {deletingId === s.id ? "…" : "✕"}
+                    </button>
+                  </td>
                 </tr>
               ))
             ) : (
               <tr>
-                <td colSpan={3} style={{ padding: "24px", textAlign: "center", color: "#94A3B8" }}>
+                <td colSpan={4} style={{ padding: "24px", textAlign: "center", color: "#94A3B8" }}>
                   No students found.
                 </td>
               </tr>

@@ -3,7 +3,7 @@ import { getDb } from "@/lib/db";
 import { verifyPayment } from "@/lib/paystack";
 import { findPlan, defaultPlan } from "@/lib/plans";
 import { unlockUnlimited } from "@/lib/parent";
-import { sendReceiptFor, sendParentLinkFor } from "@/lib/mail";
+import { sendReceiptFor } from "@/lib/mail";
 import { logError } from "@/lib/admin";
 
 // Paystack redirects here after payment. Verifies server-side, extends the
@@ -46,7 +46,6 @@ export async function GET(req: Request) {
       base: origin
     });
     // Parent gets their progress link at the same moment (same once-only guard).
-    void sendParentLinkFor(db, { userId, base: origin });
     return NextResponse.redirect(`${origin}/subscription?userId=${userId}&paid=1`);
   } catch (e) {
     await logError(db, "checkout/callback", e instanceof Error ? e.message : String(e));

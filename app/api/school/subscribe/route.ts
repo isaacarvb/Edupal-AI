@@ -13,7 +13,7 @@ export async function POST(req: Request) {
     const discountPercent = Number(b?.discountPercent);
 
     if (!schoolId) return NextResponse.json({ error: "School ID required" }, { status: 400 });
-    if (!students || students < 1) return NextResponse.json({ error: "Valid student count required" }, { status: 400 });
+    if (!students || students < 10) return NextResponse.json({ error: "Minimum 10 students required for school subscription" }, { status: 400 });
     if (![3, 6, 9, 12].includes(termMonths)) return NextResponse.json({ error: "Term must be 3, 6, 9, or 12 months" }, { status: 400 });
     if (!amount || amount < 1) return NextResponse.json({ error: "Valid amount required" }, { status: 400 });
 

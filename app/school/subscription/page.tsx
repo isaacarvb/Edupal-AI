@@ -74,8 +74,8 @@ export default function SchoolSubscription() {
   }, [school]);
 
   const handleCalculate = () => {
-    if (!studentsNum || studentsNum < 1) {
-      setMsg("Enter valid number of students.");
+    if (!studentsNum || studentsNum < 10) {
+      setMsg("Minimum 10 students required for school subscription.");
       return;
     }
     if (!term) {
@@ -86,7 +86,7 @@ export default function SchoolSubscription() {
   };
 
   const handlePay = async () => {
-    if (!studentsNum || studentsNum < 1) return setMsg("Enter valid number of students.");
+    if (!studentsNum || studentsNum < 10) return setMsg("Minimum 10 students required for school subscription.");
     if (!term) return setMsg("Select a subscription term.");
     if (!school) return setMsg("School session not found.");
     setMsg("");
@@ -173,8 +173,8 @@ export default function SchoolSubscription() {
         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, marginBottom: 16 }}>
           <div>
             <label style={{ display: "block", fontSize: 12, fontWeight: 800, color: "#5F6E7F", marginBottom: 6 }}>Number of Students</label>
-            <input value={students} onChange={(e) => setStudents(e.target.value)} type="number" min={1}
-              placeholder="e.g. 200"
+            <input value={students} onChange={(e) => setStudents(e.target.value)} type="number" min={10}
+              placeholder="Minimum 10 students"
               style={{ width: "100%", height: 44, borderRadius: 10, border: "1px solid #CBD5E1", padding: "0 12px" }} required />
           </div>
           <div>

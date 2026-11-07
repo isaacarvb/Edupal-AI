@@ -49,7 +49,7 @@ export default function Landing() {
           <Feature emoji="🤖" color="#CCFBF1" title="AI Tutor That Explains" text="Every answer comes with a step-by-step breakdown — essays get a checklist, a score, and a model answer." />
           <Feature emoji="🎯" color="#FEF3C7" title="Finds Your Weak Topics" text="Weak, Needs Work, Strong — the app points at exactly what to study next, and celebrates level-ups." />
           <Feature emoji="⏳" color="#E1EBF5" title="Countdowns & Streaks" text="Daily reminders, study streaks with a monthly freeze, and a countdown that pushes you at 30 and 7 days." />
-          <Feature emoji="👪" color="#FDEAEA" title="Parents Stay in the Loop" text="Weekly progress updates and a view-only dashboard, with zero friction at payment." />
+          <Feature emoji="🔥" color="#FDEAEA" title="Likely Questions" text="AI-curated questions that predict what is most likely to appear in your WAEC and JAMB exams." />
           <Feature emoji="📚" color="#E0E7FF" title="Robust Notes" text="Comprehensive, curriculum-aligned study notes and formula guides across all JSS and SSS subjects." />
           <Feature emoji="📅" color="#F3E8FF" title="Exam Info" text="Latest exam updates, syllabus changes, and countdown alerts for WAEC, JAMB, and more." />
           <Feature emoji="🏫" color="#FEF3C7" title="School Administrator" text="Manage your school's subscription, upload student rosters, track progress analytics, and give students access with a single school code." />
@@ -108,7 +108,6 @@ export default function Landing() {
             <div style={{ fontWeight: 800, fontSize: 18 }}>Paid</div>
             <ul style={{ fontSize: 14, lineHeight: 1.8, paddingLeft: 18, margin: "10px 0" }}>
               <li>Unlimited practice across all subjects</li>
-              <li>Parent dashboard + weekly digest</li>
               <li>Full access to all resources</li>
               <li>Exam countdown & priority support</li>
             </ul>
@@ -117,7 +116,7 @@ export default function Landing() {
           <div style={{ flex: "1 1 240px", minHeight: 180, background: "#0F766E", color: "#fff", borderRadius: 12, padding: 20 }}>
             <div style={{ fontWeight: 800, fontSize: 18 }}>Schools</div>
             <ul style={{ fontSize: 14, lineHeight: 1.8, paddingLeft: 18, margin: "10px 0" }}>
-              <li>₦2,000 per student per term</li>
+              <li>Charged per student per term</li>
               <li>Volume discounts up to 25%</li>
               <li>Admin dashboard + progress analytics</li>
               <li>Computer lab access for students</li>

@@ -172,7 +172,6 @@ export default function Shell({ children }: { children: React.ReactNode }) {
     { href: userId ? `/dashboard/curriculum${q}` : "/onboarding", match: "/dashboard/curriculum", label: "Curriculum & Notes", emoji: "📚", badge: "" },
     { href: userId ? `/likely-questions${q}` : "/onboarding", match: "/likely-questions", label: "Likely Questions", emoji: "🔥", badge: userId ? likelyBadge : "" },
     { href: "/metrics", match: "/metrics", label: "Progress Analytics", emoji: "📊", badge: "" },
-    { href: "/parent", match: "/parent", label: "Parent Portal", emoji: "👨‍👩‍👧", badge: "" },
     { href: userId ? `/subscription?userId=${userId}` : "/onboarding", match: "/subscription", label: "Subscription & Credits", emoji: "💳", badge: "" },
     { href: "/deadlines", match: "/deadlines", label: "Exam Info", emoji: "📅", badge: "" }
   ];
