@@ -106,6 +106,30 @@ export default function SchoolStudents() {
     if (input) input.value = "";
   };
 
+  const handleDeleteAll = async () => {
+    if (!confirm(`Delete ALL ${students.length} students from roster? This cannot be undone.`)) return;
+    setImportBusy(true);
+    try {
+      const s = localStorage.getItem("edupal_school");
+      if (!s) return;
+      const d = JSON.parse(s);
+      const res = await fetch("/api/school/students-delete-all", {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ schoolId: d.id })
+      });
+      const jd = await res.json();
+      if (!res.ok) return setImportMsg(jd.error || "Failed to delete all.");
+      setImportMsg(`Deleted ${jd.deleted} students.`);
+      setStudents([]);
+      fetchStudents();
+    } catch (e) {
+      setImportMsg(e instanceof Error ? e.message : "Failed to delete all.");
+    } finally {
+      setImportBusy(false);
+    }
+  };
+
   const handleDelete = async (studentId: string, studentName: string) => {
     if (!confirm(`Remove ${studentName} from roster?`)) return;
     setDeletingId(studentId);
@@ -177,13 +201,19 @@ export default function SchoolStudents() {
 
       {/* Student List */}
       <div style={card}>
-        <div style={{ display: "flex", gap: 8, marginBottom: 12, flexWrap: "wrap" }}>
-          <select value={classFilter} onChange={(e) => setClassFilter(e.target.value)} style={{ height: 44, borderRadius: 10, border: "1px solid #CBD5E1", padding: "0 12px" }}>
-            <option value="">All Classes</option>
-            {classes.map((c) => <option key={c} value={c}>{c}</option>)}
-          </select>
-          <input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search student…"
-            style={{ flex: 1, height: 44, borderRadius: 10, border: "1px solid #CBD5E1", padding: "0 12px" }} />
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12, flexWrap: "wrap", gap: 8 }}>
+          <div style={{ display: "flex", gap: 8, flexWrap: "wrap", flex: 1 }}>
+            <select value={classFilter} onChange={(e) => setClassFilter(e.target.value)} style={{ height: 44, borderRadius: 10, border: "1px solid #CBD5E1", padding: "0 12px" }}>
+              <option value="">All Classes</option>
+              {classes.map((c) => <option key={c} value={c}>{c}</option>)}
+            </select>
+            <input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search student…"
+              style={{ flex: 1, minWidth: 200, height: 44, borderRadius: 10, border: "1px solid #CBD5E1", padding: "0 12px" }} />
+          </div>
+          <button onClick={handleDeleteAll} disabled={importBusy || students.length === 0}
+            style={{ height: 44, borderRadius: 10, border: "1px solid #DC2626", background: "#FFF1F2", color: "#DC2626", fontWeight: 700, fontSize: 13, padding: "0 16px", cursor: importBusy || students.length === 0 ? "not-allowed" : "pointer", opacity: students.length === 0 ? 0.5 : 1 }}>
+            {importBusy ? "Deleting…" : "Delete All"}
+          </button>
         </div>
         <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
           <thead>
