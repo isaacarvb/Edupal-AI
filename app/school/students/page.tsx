@@ -62,6 +62,7 @@ export default function SchoolStudents() {
       if (lines.length < startRow + 1) return setImportMsg("No student data found in CSV.");
 
       const rows: Array<{ name: string; className: string; department: string | null }> = [];
+      let debugInfo = "";
       for (let i = startRow; i < lines.length; i++) {
         // Parse CSV line handling quoted values
         const cols = lines[i].split(",").map((c) => c.trim().replace(/^"|"$/g, ""));
@@ -69,6 +70,9 @@ export default function SchoolStudents() {
         const name = cols[nameIdx]?.trim() || "";
         const className = cols[classIdx]?.trim() || "";
         if (!name) continue;
+        if (i < startRow + 3) {
+          debugInfo += `[${i}: name="${name}" class="${className}" dept="${deptIdx !== -1 ? cols[deptIdx]?.trim() : "N/A"}"] `;
+        }
         rows.push({
           name,
           className: className || "Unassigned",
@@ -89,7 +93,7 @@ export default function SchoolStudents() {
       const res = await fetch("/api/school/students-import", { method: "POST", body: form });
       const jd = await res.json();
       if (!res.ok) return setImportMsg(jd.error || "Import failed.");
-      setImportMsg(`Imported ${jd.imported} students.`);
+      setImportMsg(`Imported ${jd.imported} students. Sample: ${debugInfo}`);
       fetchStudents();
     } catch (e) {
       setImportMsg(e instanceof Error ? e.message : "Import failed.");

@@ -93,8 +93,8 @@ export default function SchoolLayout({ children }: { children: React.ReactNode }
   return (
     <div style={{ display: "flex", minHeight: "100vh" }}>
       {sidebar}
-      <div style={{ flex: 1, minWidth: 0, marginLeft: collapsed ? 64 : 250, color: "#333A45", display: "flex", justifyContent: "center" }}>
-        <div style={{ width: "100%", maxWidth: 1200, padding: 20 }}>
+      <div style={{ flex: 1, minWidth: 0, marginLeft: collapsed ? 64 : 250, color: "#333A45" }}>
+        <div style={{ width: "100%", maxWidth: 900, padding: "20px 24px" }}>
           {children}
         </div>
       </div>
