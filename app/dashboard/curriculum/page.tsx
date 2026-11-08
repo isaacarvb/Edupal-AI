@@ -32,6 +32,7 @@ function CurriculumInner() {
   const [userReady, setUserReady] = useState(false);
   const [tier, setTier] = useState<"jss" | "senior">("senior");
   const [department, setDepartment] = useState<string | null>(null);
+  const [userDepartment, setUserDepartment] = useState<string | null>(null);
   const [level, setLevel] = useState<string>("SECONDARY");
   const [selectedSubject, setSelectedSubject] = useState<CSubject | null>(null);
   const [openTopic, setOpenTopic] = useState<string | null>(null);
@@ -53,6 +54,7 @@ function CurriculumInner() {
       .then((d) => {
         if (d.profile) {
           setLevel(d.profile.level ?? "SECONDARY");
+          setUserDepartment(d.profile.department ?? null);
           setDepartment(d.profile.department ?? null);
         }
       })
@@ -73,11 +75,11 @@ function CurriculumInner() {
       .catch(() => setLoading(false));
   }, [userReady, userId]);
 
-  // Allowed subjects for current tier + department + level
+  // Allowed subjects for current tier + user department + level
   const allowedSubjects = (() => {
     if (tier === "jss") return [...JSS_SUBJECTS];
     if (tier === "senior") {
-      if (department) return [...DEPARTMENTS[department as keyof typeof DEPARTMENTS]];
+      if (userDepartment) return [...DEPARTMENTS[userDepartment as keyof typeof DEPARTMENTS]];
       return [...SSS_SUBJECTS];
     }
     return [...SSS_SUBJECTS];
@@ -96,7 +98,7 @@ function CurriculumInner() {
 
   function selectSubject(s: CSubject) {
     // Don't allow opening locked subjects (tier or department mismatch)
-    if (department && tier === "senior" && !allowedSubjects.includes(s.name)) {
+    if (userDepartment && tier === "senior" && !allowedSubjects.includes(s.name)) {
       return;
     }
     // Don't allow opening locked subjects (level mismatch)
@@ -279,7 +281,7 @@ function CurriculumInner() {
         <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(200px, 1fr))", gap: 12 }}>
           {allTierSubjects.length === 0 && <p style={{ fontSize: 14, color: "#5F6E7F" }}>No subjects available.</p>}
           {allTierSubjects.map((s) => {
-            const isLocked = (department && tier === "senior" && !allowedSubjects.includes(s.name)) ||
+            const isLocked = (userDepartment && tier === "senior" && !allowedSubjects.includes(s.name)) ||
                              (level === "JUNIOR" && s.level === "SSS") ||
                              (level === "SENIOR" && s.level === "JSS");
             const freeCount = unlimited ? s.topics.length : s.topics.filter((t) => !t.locked).length;

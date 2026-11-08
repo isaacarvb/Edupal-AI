@@ -10,7 +10,7 @@ export async function GET(req: Request) {
   const userId = searchParams.get("userId");
   if (!userId) return NextResponse.json({ error: "userId required" }, { status: 400 });
   const db = await getDb();
-  const profile = await db.prepare('SELECT exam, exam_start AS "examStart", dates_confirmed AS "datesConfirmed", department, level FROM profiles WHERE user_id = ?').get(userId) as
+  const profile = await db.prepare('SELECT p.exam, p.exam_start AS "examStart", p.dates_confirmed AS "datesConfirmed", p.department, u.level FROM profiles p JOIN users u ON u.id = p.user_id WHERE p.user_id = ?').get(userId) as
     | { exam: string; examStart: string | null; datesConfirmed: number | null; department: string | null; level: string }
     | undefined;
   const confirmed = Number(profile?.datesConfirmed ?? 1) !== 0;

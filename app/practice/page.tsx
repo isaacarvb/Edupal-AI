@@ -35,6 +35,7 @@ function PracticeInner() {
   const hidden = useHiddenSubjects();
   const [department, setDepartment] = useState("");
   const [plan, setPlan] = useState("FREE");
+  const [level, setLevel] = useState("SECONDARY");
   const [ready, setReady] = useState(false);
   const [alt, setAlt] = useState<null | { explanation: string; engine: string }>(null);
   const [altBusy, setAltBusy] = useState(false);
@@ -69,11 +70,17 @@ function PracticeInner() {
     }
     const res = await fetch(`/api/diagnostic/next?userId=${userId}&subject=${encodeURIComponent(subject)}`);
     const data = await res.json();
+    if (!res.ok) {
+      setErr(data.error || "Failed to load question.");
+      return;
+    }
     if (data.done) setDone(true);
-    else {
+    else if (data.question) {
       setQ(data.question);
       setAnswered(data.answered);
       setSecs(data.question.type === "MCQ" ? 60 : 180);
+    } else {
+      setErr("No question available for this subject.");
     }
   }, [userId, subject, qotdMode, qotdServed]);
 
@@ -87,6 +94,7 @@ function PracticeInner() {
           setSwitcher(d.subjectLimits ?? []);
           setDepartment(d.profile?.department ?? "");
           setPlan(d.profile?.plan ?? "FREE");
+          setLevel(d.profile?.level ?? "SECONDARY");
         })
         .catch(() => setDepartment(""))
         .finally(() => setReady(true));
@@ -236,7 +244,7 @@ function PracticeInner() {
     ? [...COMMON_SUBJECTS, ...DEPARTMENTS[department as keyof typeof DEPARTMENTS]]
     : [...JSS_SUBJECTS];
   // Junior students (onboarding sets department to "") practice the junior list.
-  const isJunior = !department;
+  const isJunior = level === "JUNIOR";
   const cardPool = bank.length
     ? bank.map((b) => ({ subject: b.subject, left: switcher.find((s) => s.subject === b.subject)?.left ?? 10, n: b.n }))
     : switcher.map((s) => ({ ...s, n: 0 }));

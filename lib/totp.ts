@@ -40,7 +40,7 @@ export function totpVerify(secret: string, token: string, window = 1): boolean {
       ((hmac[offsetByte + 2] & 0xFF) << 8) |
       (hmac[offsetByte + 3] & 0xFF);
     const otp = (binary % 1000000).toString().padStart(6, "0");
-    return otp === token;
+    if (otp === token) return true;
   }
   return false;
 }
