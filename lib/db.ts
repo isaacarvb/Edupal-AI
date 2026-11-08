@@ -142,6 +142,11 @@ async function sqliteMigrate(): Promise<void> {
 
   // Create new tables for school subscription system
   h.exec("CREATE TABLE IF NOT EXISTS school_students (id TEXT PRIMARY KEY, school_id TEXT NOT NULL REFERENCES schools(id) ON DELETE CASCADE, user_id TEXT REFERENCES users(id) ON DELETE SET NULL, name TEXT NOT NULL, class_name TEXT NOT NULL DEFAULT '', department TEXT, created_at TEXT NOT NULL DEFAULT (datetime('now')))");
+
+  // Add missing columns to existing school_students table (for databases created before class_name was added)
+  if (!cols("school_students").has("class_name")) h.exec("ALTER TABLE school_students ADD COLUMN class_name TEXT NOT NULL DEFAULT ''");
+  if (!cols("school_students").has("department")) h.exec("ALTER TABLE school_students ADD COLUMN department TEXT");
+
   h.exec("CREATE INDEX IF NOT EXISTS idx_school_students_school ON school_students(school_id)");
   h.exec("CREATE INDEX IF NOT EXISTS idx_school_students_class ON school_students(class_name)");
   h.exec("CREATE INDEX IF NOT EXISTS idx_school_students_user ON school_students(user_id)");
@@ -280,6 +285,11 @@ async function pgMigrate(): Promise<void> {
       if (!(await hasScCol("location"))) await db.prepare("ALTER TABLE schools ADD COLUMN location TEXT DEFAULT ''").run();
       if (!(await hasScCol("seats_used"))) await db.prepare("ALTER TABLE schools ADD COLUMN seats_used INTEGER NOT NULL DEFAULT 0").run();
       await db.prepare("CREATE TABLE IF NOT EXISTS school_students (id TEXT PRIMARY KEY, school_id TEXT NOT NULL REFERENCES schools(id) ON DELETE CASCADE, user_id TEXT REFERENCES users(id) ON DELETE SET NULL, name TEXT NOT NULL, class_name TEXT NOT NULL DEFAULT '', department TEXT, created_at TEXT NOT NULL DEFAULT (TO_CHAR(NOW() AT TIME ZONE 'UTC', 'YYYY-MM-DD\"T\"HH24:MI:SS.MS\"Z\"')))").run();
+      // Add missing columns to existing school_students table
+      const hasSsCol = async (col: string) => ((await db.prepare("SELECT 1 FROM information_schema.columns WHERE table_name = 'school_students' AND column_name = $1").get(col)) ? true : false);
+      if (!(await hasSsCol("class_name"))) await db.prepare("ALTER TABLE school_students ADD COLUMN class_name TEXT NOT NULL DEFAULT ''").run();
+      if (!(await hasSsCol("department"))) await db.prepare("ALTER TABLE school_students ADD COLUMN department TEXT").run();
+      if (!(await hasSsCol("user_id"))) await db.prepare("ALTER TABLE school_students ADD COLUMN user_id TEXT REFERENCES users(id) ON DELETE SET NULL").run();
       await db.prepare("CREATE TABLE IF NOT EXISTS school_subscriptions (id TEXT PRIMARY KEY, school_id TEXT NOT NULL REFERENCES schools(id) ON DELETE CASCADE, students_count INTEGER NOT NULL DEFAULT 0, term_months INTEGER NOT NULL DEFAULT 3, amount_paid INTEGER NOT NULL DEFAULT 0, discount_percent REAL NOT NULL DEFAULT 0, paystack_reference TEXT DEFAULT '', status TEXT NOT NULL DEFAULT 'pending', paid_at TEXT, expires_at TEXT, created_at TEXT NOT NULL DEFAULT (TO_CHAR(NOW() AT TIME ZONE 'UTC', 'YYYY-MM-DD\"T\"HH24:MI:SS.MS\"Z\"')))").run();
       await db.prepare("CREATE TABLE IF NOT EXISTS school_sessions (id TEXT PRIMARY KEY, school_id TEXT NOT NULL REFERENCES schools(id) ON DELETE CASCADE, student_name TEXT NOT NULL, class_name TEXT NOT NULL DEFAULT '', session_start TEXT NOT NULL DEFAULT (TO_CHAR(NOW() AT TIME ZONE 'UTC', 'YYYY-MM-DD\"T\"HH24:MI:SS.MS\"Z\"')), last_activity TEXT NOT NULL DEFAULT (TO_CHAR(NOW() AT TIME ZONE 'UTC', 'YYYY-MM-DD\"T\"HH24:MI:SS.MS\"Z\"')))").run();
       await db.prepare("CREATE TABLE IF NOT EXISTS school_notifications (id TEXT PRIMARY KEY, school_id TEXT NOT NULL REFERENCES schools(id) ON DELETE CASCADE, type TEXT NOT NULL DEFAULT '', sent_at TEXT NOT NULL DEFAULT (TO_CHAR(NOW() AT TIME ZONE 'UTC', 'YYYY-MM-DD\"T\"HH24:MI:SS.MS\"Z\"')))").run();
