@@ -152,6 +152,8 @@ async function sqliteMigrate(): Promise<void> {
   h.exec("CREATE INDEX IF NOT EXISTS idx_school_students_user ON school_students(user_id)");
 
   h.exec("CREATE TABLE IF NOT EXISTS school_teachers (id TEXT PRIMARY KEY, school_id TEXT NOT NULL REFERENCES schools(id) ON DELETE CASCADE, user_id TEXT REFERENCES users(id) ON DELETE SET NULL, name TEXT NOT NULL, class_name TEXT NOT NULL DEFAULT '', subject TEXT NOT NULL DEFAULT '', created_at TEXT NOT NULL DEFAULT (datetime('now')))");
+  // Add missing user_id column to existing school_teachers table
+  if (!cols("school_teachers").has("user_id")) h.exec("ALTER TABLE school_teachers ADD COLUMN user_id TEXT REFERENCES users(id) ON DELETE SET NULL");
   h.exec("CREATE INDEX IF NOT EXISTS idx_school_teachers_school ON school_teachers(school_id)");
   h.exec("CREATE INDEX IF NOT EXISTS idx_school_teachers_class ON school_teachers(class_name)");
 
@@ -307,6 +309,8 @@ async function pgMigrate(): Promise<void> {
       if (!(await hasSsCol("department"))) await db.prepare("ALTER TABLE school_students ADD COLUMN department TEXT").run();
       if (!(await hasSsCol("user_id"))) await db.prepare("ALTER TABLE school_students ADD COLUMN user_id TEXT REFERENCES users(id) ON DELETE SET NULL").run();
       await db.prepare("CREATE TABLE IF NOT EXISTS school_teachers (id TEXT PRIMARY KEY, school_id TEXT NOT NULL REFERENCES schools(id) ON DELETE CASCADE, user_id TEXT REFERENCES users(id) ON DELETE SET NULL, name TEXT NOT NULL, class_name TEXT NOT NULL DEFAULT '', subject TEXT NOT NULL DEFAULT '', created_at TEXT NOT NULL DEFAULT (TO_CHAR(NOW() AT TIME ZONE 'UTC', 'YYYY-MM-DD\"T\"HH24:MI:SS.MS\"Z\"')))").run();
+      const hasStCol2 = async (col: string) => ((await db.prepare("SELECT 1 FROM information_schema.columns WHERE table_name = 'school_teachers' AND column_name = $1").get(col)) ? true : false);
+      if (!(await hasStCol2("user_id"))) await db.prepare("ALTER TABLE school_teachers ADD COLUMN user_id TEXT REFERENCES users(id) ON DELETE SET NULL").run();
       await db.prepare("CREATE TABLE IF NOT EXISTS lesson_notes (id TEXT PRIMARY KEY, school_id TEXT NOT NULL REFERENCES schools(id) ON DELETE CASCADE, teacher_id TEXT NOT NULL REFERENCES school_teachers(id) ON DELETE CASCADE, teacher_name TEXT NOT NULL DEFAULT '', class_name TEXT NOT NULL DEFAULT '', subject TEXT NOT NULL, topic TEXT NOT NULL, body TEXT NOT NULL DEFAULT '', attachment_url TEXT, attachment_name TEXT, status TEXT NOT NULL DEFAULT 'pending', reviewed_by TEXT, reviewed_at TEXT, created_at TEXT NOT NULL DEFAULT (TO_CHAR(NOW() AT TIME ZONE 'UTC', 'YYYY-MM-DD\"T\"HH24:MI:SS.MS\"Z\"')))").run();
       await db.prepare("CREATE TABLE IF NOT EXISTS school_announcements (id TEXT PRIMARY KEY, school_id TEXT NOT NULL REFERENCES schools(id) ON DELETE CASCADE, title TEXT NOT NULL DEFAULT '', body TEXT NOT NULL DEFAULT '', class_name TEXT, created_at TEXT NOT NULL DEFAULT (TO_CHAR(NOW() AT TIME ZONE 'UTC', 'YYYY-MM-DD\"T\"HH24:MI:SS.MS\"Z\"')))").run();
       await db.prepare("CREATE TABLE IF NOT EXISTS mock_exams (id TEXT PRIMARY KEY, school_id TEXT NOT NULL REFERENCES schools(id) ON DELETE CASCADE, title TEXT NOT NULL, subjects TEXT NOT NULL DEFAULT '', class_name TEXT NOT NULL DEFAULT '', duration_minutes INTEGER NOT NULL DEFAULT 30, scheduled_at TEXT, status TEXT NOT NULL DEFAULT 'scheduled', created_at TEXT NOT NULL DEFAULT (TO_CHAR(NOW() AT TIME ZONE 'UTC', 'YYYY-MM-DD\"T\"HH24:MI:SS.MS\"Z\"')))").run();

@@ -14,6 +14,8 @@ export default function SchoolQuestions() {
   const [answer, setAnswer] = useState("");
   const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState("");
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [importBusy, setImportBusy] = useState(false);
 
   useEffect(() => {
     const s = localStorage.getItem("edupal_school");
@@ -35,6 +37,82 @@ export default function SchoolQuestions() {
       }
     } catch { /* ignore */ }
   }
+
+  async function handleImport(file: File) {
+    setMsg("");
+    setImportBusy(true);
+    setSelectedFile(file);
+    try {
+      let text = await file.text();
+      text = text.replace(/^\uFEFF/, "");
+      const lines = text.trim().split(/\r?\n/);
+      if (lines.length < 2) return setMsg("CSV must have a header row and at least one question row.");
+
+      const header = lines[0].split(",").map((h) => h.trim().replace(/^"|"$/g, "").toLowerCase());
+      let subjectIdx = header.findIndex((h) => h === "subject");
+      let topicIdx = header.findIndex((h) => h === "topic");
+      let stemIdx = header.findIndex((h) => h === "stem" || h === "question" || h === "question stem");
+      let optionsIdx = header.findIndex((h) => h === "options");
+      let answerIdx = header.findIndex((h) => h === "answer");
+
+      const startRow = subjectIdx === -1 || topicIdx === -1 || stemIdx === -1 || optionsIdx === -1 || answerIdx === -1 ? 0 : 1;
+      if (subjectIdx === -1) subjectIdx = 0;
+      if (topicIdx === -1) topicIdx = 1;
+      if (stemIdx === -1) stemIdx = 2;
+      if (optionsIdx === -1) optionsIdx = 3;
+      if (answerIdx === -1) answerIdx = 4;
+
+      if (lines.length < startRow + 1) return setMsg("No question data found in CSV.");
+
+      const rows: Array<{ subject: string; topic: string; stem: string; options: string[]; answer: string }> = [];
+      for (let i = startRow; i < lines.length; i++) {
+        const cols = lines[i].split(",").map((c) => c.trim().replace(/^"|"$/g, ""));
+        if (cols.length <= Math.max(subjectIdx, topicIdx, stemIdx, optionsIdx, answerIdx)) continue;
+        const subj = cols[subjectIdx]?.trim() || "";
+        const top = cols[topicIdx]?.trim() || "";
+        const stemVal = cols[stemIdx]?.trim() || "";
+        const optionsVal = cols[optionsIdx]?.trim() || "";
+        const ans = cols[answerIdx]?.trim() || "";
+        if (!subj || !top || !stemVal || !optionsVal || !ans) continue;
+        const optsArray = optionsVal.split("|").map((o) => o.trim()).filter(Boolean);
+        if (optsArray.length === 0 || !optsArray.includes(ans)) continue;
+        rows.push({ subject: subj, topic: top, stem: stemVal, options: optsArray, answer: ans });
+      }
+
+      if (rows.length === 0) return setMsg("No valid question rows found. Check columns: subject, topic, stem, options (| separated), answer.");
+
+      const s = localStorage.getItem("edupal_school");
+      if (!s) return;
+      const d = JSON.parse(s);
+
+      const form = new FormData();
+      form.append("schoolId", d.id);
+      form.append("questions", JSON.stringify(rows));
+
+      const res = await fetch("/api/school/questions-import", { method: "POST", body: form });
+      const jd = await res.json();
+      if (!res.ok) return setMsg(jd.error || "Import failed.");
+      setMsg(`Imported ${jd.imported} questions.`);
+      fetchQuestions();
+    } catch (e) {
+      setMsg(e instanceof Error ? e.message : "Import failed.");
+    } finally {
+      setImportBusy(false);
+    }
+  }
+
+  const handleSelectFile = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const f = e.target.files?.[0];
+    if (f) handleImport(f);
+  };
+
+  const handleRemoveFile = () => {
+    setSelectedFile(null);
+    setMsg("");
+    setImportBusy(false);
+    const input = document.querySelector('input[type="file"]') as HTMLInputElement;
+    if (input) input.value = "";
+  };
 
   async function addQuestion() {
     if (!subject.trim() || !topic.trim() || !stem.trim() || !options.trim() || !answer.trim()) {
@@ -86,6 +164,33 @@ export default function SchoolQuestions() {
       <p style={{ fontSize: 13, color: "#5F6E7F", marginBottom: 16 }}>
         Add school-specific questions. They're mixed into practice sessions for your students.
       </p>
+
+      <div style={card}>
+        <div style={{ fontSize: 12, fontWeight: 800, color: "#5F6E7F", textTransform: "uppercase", marginBottom: 10 }}>Upload CSV</div>
+        <p style={{ fontSize: 12, color: "#5F6E7F", marginBottom: 8 }}>
+          CSV columns: <code style={{ color: "#1E242E" }}>subject, topic, stem, options, answer</code> — options separated by |
+        </p>
+        <div style={{ display: "flex", gap: 8, alignItems: "center", marginBottom: 8 }}>
+          <input
+            type="file"
+            accept=".csv"
+            onChange={handleSelectFile}
+            style={{ flex: 1, height: 44, borderRadius: 10, border: "1px solid #CBD5E1", padding: "0 12px" }}
+          />
+          {selectedFile && (
+            <button onClick={handleRemoveFile}
+              style={{ height: 44, borderRadius: 10, border: "1px solid #DC2626", background: "#FFF1F2", color: "#DC2626", fontWeight: 800, fontSize: 16, padding: "0 16px", cursor: "pointer" }}>
+              ×
+            </button>
+          )}
+        </div>
+        {selectedFile && (
+          <p style={{ fontSize: 12, color: "#5F6E7F", marginBottom: 4 }}>
+            Selected: {selectedFile.name} ({(selectedFile.size / 1024).toFixed(1)} KB)
+          </p>
+        )}
+        {importBusy && <p style={{ fontSize: 13, color: "#5F6E7F" }}>Importing…</p>}
+      </div>
 
       <div style={card}>
         <h2 style={{ fontSize: 15, fontWeight: 800, color: "#1E242E", margin: "0 0 12px" }}>Add Question</h2>
