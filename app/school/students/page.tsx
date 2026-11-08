@@ -42,21 +42,27 @@ export default function SchoolStudents() {
     setImportBusy(true);
     setSelectedFile(file);
     try {
-      const text = await file.text();
-      const lines = text.trim().split("\n");
+      let text = await file.text();
+      // Strip BOM (Byte Order Mark) if present
+      text = text.replace(/^\uFEFF/, "");
+      const lines = text.trim().split(/\r?\n/);
       if (lines.length < 2) return setImportMsg("CSV must have a header row and at least one student row.");
 
       const header = lines[0].split(",").map((h) => h.trim().replace(/^"|"$/g, "").toLowerCase());
-      const nameIdx = header.findIndex((h) => h === "name" || h === "student" || h === "student name" || h === "full name");
-      const classIdx = header.findIndex((h) => h === "class" || h === "class_name" || h === "classname" || h === "class name");
-      const deptIdx = header.findIndex((h) => h === "department" || h === "dept");
+      let nameIdx = header.findIndex((h) => h === "name" || h === "student" || h === "student name" || h === "full name");
+      let classIdx = header.findIndex((h) => h === "class" || h === "class_name" || h === "classname" || h === "class name");
+      let deptIdx = header.findIndex((h) => h === "department" || h === "dept");
 
-      if (nameIdx === -1 || classIdx === -1) {
-        return setImportMsg("CSV must have columns: name, class (department optional). Header found: " + header.join(", "));
-      }
+      // Auto-detect if headers don't match — assume order: name, class, department
+      const startRow = nameIdx === -1 || classIdx === -1 ? 0 : 1;
+      if (nameIdx === -1) nameIdx = 0;
+      if (classIdx === -1) classIdx = 1;
+      if (deptIdx === -1 && header.length > 2) deptIdx = 2;
+
+      if (lines.length < startRow + 1) return setImportMsg("No student data found in CSV.");
 
       const rows: Array<{ name: string; className: string; department: string | null }> = [];
-      for (let i = 1; i < lines.length; i++) {
+      for (let i = startRow; i < lines.length; i++) {
         // Parse CSV line handling quoted values
         const cols = lines[i].split(",").map((c) => c.trim().replace(/^"|"$/g, ""));
         if (cols.length <= Math.max(nameIdx, classIdx)) continue;
