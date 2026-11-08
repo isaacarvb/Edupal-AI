@@ -15,6 +15,7 @@ export async function GET(req: Request) {
       | undefined;
 
     if (!school) return NextResponse.json({ error: "Invalid school code" }, { status: 404 });
+    if (!school.active) return NextResponse.json({ error: "School portal is deactivated. Contact your school admin." }, { status: 403 });
 
     return NextResponse.json({ ok: true, school });
   } catch (e) {

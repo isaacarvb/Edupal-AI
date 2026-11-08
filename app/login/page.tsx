@@ -48,6 +48,18 @@ export default function Login() {
 
   return (
     <main style={{ maxWidth: 420, margin: "24px auto", padding: "0 16px", color: "#333A45" }}>
+      <div style={{ display: "flex", gap: 8, marginBottom: 16 }}>
+        <button
+          onClick={() => {}}
+          style={{ flex: 1, height: 44, borderRadius: 10, border: "2px solid #1E242E", background: "#0F766E", color: "#fff", fontWeight: 800, fontSize: 14, cursor: "pointer" }}>
+          Individual Student
+        </button>
+        <button
+          onClick={() => { window.location.href = "/school-session"; }}
+          style={{ flex: 1, height: 44, borderRadius: 10, border: "2px solid #1E242E", background: "#fff", color: "#1E242E", fontWeight: 800, fontSize: 14, cursor: "pointer" }}>
+          Student with School Code
+        </button>
+      </div>
       <div style={{ background: "#fff", border: "2px solid #1E242E", borderRadius: 16, padding: 20, boxShadow: "6px 6px 0 #0F766E" }}>
         <h1 style={{ color: "#1E242E", fontSize: 22, margin: "0 0 12px" }}>Welcome back</h1>
         <label style={{ fontSize: 12, fontWeight: 800, letterSpacing: 1 }}>EMAIL</label>

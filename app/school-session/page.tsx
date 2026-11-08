@@ -7,6 +7,7 @@ export default function SchoolSession() {
   const [schoolCode, setSchoolCode] = useState("");
   const [studentName, setStudentName] = useState("");
   const [className, setClassName] = useState("");
+  const [department, setDepartment] = useState("");
   const [school, setSchool] = useState<{ id: string; name: string; code: string; active: number; expires_at: string | null } | null>(null);
   const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState("");
@@ -35,23 +36,29 @@ export default function SchoolSession() {
   const enterSession = async () => {
     if (!studentName.trim()) return setMsg("Enter your name.");
     if (!className.trim()) return setMsg("Enter your class.");
+    // Department is required for SSS students
+    const isSSS = className.toLowerCase().includes("ss") || className.toLowerCase().includes("sss");
+    if (isSSS && !department.trim()) return setMsg("Department is required for senior secondary students.");
     setMsg("");
     setBusy(true);
     try {
       const res = await fetch("/api/school/session-start", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ schoolId: school!.id, studentName: studentName.trim(), className: className.trim() })
+        body: JSON.stringify({ schoolId: school!.id, studentName: studentName.trim(), className: className.trim(), department: department.trim() })
       });
       const d = await res.json();
       if (!res.ok) return setMsg(d.error || "Failed to start session.");
-      // Store session in localStorage
+      // Store session in localStorage with 2-hour expiry
+      const expiresAt = Date.now() + 2 * 60 * 60 * 1000;
       localStorage.setItem("edupal_school_session", JSON.stringify({
         schoolId: school!.id,
         schoolName: school!.name,
         studentName: studentName.trim(),
         className: className.trim(),
-        sessionId: d.sessionId
+        department: department.trim(),
+        sessionId: d.sessionId,
+        expiresAt
       }));
       // Also store as edupal_user for compatibility with existing pages
       localStorage.setItem("edupal_user", d.sessionId);
@@ -92,18 +99,23 @@ export default function SchoolSession() {
         <div style={{ textAlign: "center", marginBottom: 32 }}>
           <h1 style={{ fontSize: 32, fontWeight: 800, color: "#1E242E", margin: "0 0 8px" }}>{school?.name}</h1>
           <div style={{ fontSize: 13, color: "#5F6E7F", fontFamily: "monospace" }}>{school?.code}</div>
-          <p style={{ fontSize: 13, color: "#5F6E7F", marginTop: 8 }}>Enter your name and class to access EduPal.</p>
+          <p style={{ fontSize: 13, color: "#5F6E7F", marginTop: 8 }}>Enter your name, class, and department to access EduPal.</p>
         </div>
         <div style={{ background: "#fff", border: "1px solid #E2E8F0", borderRadius: 16, padding: 24 }}>
           <input value={studentName} onChange={(e) => setStudentName(e.target.value)} placeholder="Your full name"
             style={{ width: "100%", height: 48, borderRadius: 10, border: "1px solid #CBD5E1", padding: "0 16px", fontSize: 16, marginBottom: 12 }} />
           <input value={className} onChange={(e) => setClassName(e.target.value)} placeholder="Your class (e.g. SS2A)"
             style={{ width: "100%", height: 48, borderRadius: 10, border: "1px solid #CBD5E1", padding: "0 16px", fontSize: 16, marginBottom: 12 }} />
+          <input value={department} onChange={(e) => setDepartment(e.target.value)} placeholder="Department (required for SSS, optional for JSS)"
+            style={{ width: "100%", height: 48, borderRadius: 10, border: "1px solid #CBD5E1", padding: "0 16px", fontSize: 16, marginBottom: 12 }} />
           {msg && <p style={{ fontSize: 13, color: "#DC2626", marginBottom: 12 }}>{msg}</p>}
           <button onClick={enterSession} disabled={busy}
             style={{ width: "100%", height: 48, borderRadius: 10, border: 0, background: busy ? "#9CA3AF" : "#0F766E", color: "#fff", fontWeight: 800, fontSize: 16, cursor: busy ? "not-allowed" : "pointer" }}>
             {busy ? "Starting…" : "Start Session"}
           </button>
+          <p style={{ fontSize: 12, color: "#5F6E7F", marginTop: 12, textAlign: "center" }}>
+            Your name, class, and department must match the school roster exactly.
+          </p>
         </div>
       </main>
     );

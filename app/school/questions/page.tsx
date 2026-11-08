@@ -1,89 +1,127 @@
 "use client";
+
 import { useEffect, useState } from "react";
 
 const card: React.CSSProperties = { background: "#fff", border: "1px solid #E2E8F0", borderRadius: 16, padding: 16, margin: "0 0 12px" };
 
-type QuestionRow = { id: string; subject: string; topic: string; type: string; stem: string; answer: string };
-
 export default function SchoolQuestions() {
-  const [userId, setUserId] = useState<string | null>(null);
-  const [questions, setQuestions] = useState<QuestionRow[]>([]);
-  const [search, setSearch] = useState("");
-  const [subjectFilter, setSubjectFilter] = useState("");
+  const [school, setSchool] = useState<{ id: string; name: string } | null>(null);
+  const [questions, setQuestions] = useState<{ id: string; subject: string; topic: string; stem: string; answer: string; createdAt: string }[]>([]);
+  const [subject, setSubject] = useState("");
+  const [topic, setTopic] = useState("");
+  const [stem, setStem] = useState("");
+  const [options, setOptions] = useState("");
+  const [answer, setAnswer] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [msg, setMsg] = useState("");
 
   useEffect(() => {
-    const id = localStorage.getItem("edupal_user");
-    setUserId(id);
-    if (!id) return;
-    // Browse questions from the question bank (all subjects, school-scoped)
-    fetch(`/api/questions?userId=${id}`)
-      .then((r) => (r.ok ? r.json() : null))
-      .then((d) => {
-        if (d?.questions) setQuestions(d.questions.map((q: any) => ({
-          id: q.id,
-          subject: q.subject,
-          topic: q.topic,
-          type: q.type,
-          stem: q.stem,
-          answer: q.answer_key
-        })));
-      });
+    const s = localStorage.getItem("edupal_school");
+    if (s) {
+      try { setSchool(JSON.parse(s)); } catch { /* ignore */ }
+    }
+    fetchQuestions();
   }, []);
 
-  const subjects = [...new Set(questions.map((q) => q.subject))].sort();
-  const filtered = questions.filter((q) =>
-    q.subject.toLowerCase().includes(search.toLowerCase()) ||
-    q.topic.toLowerCase().includes(search.toLowerCase()) &&
-    (!subjectFilter || q.subject === subjectFilter)
-  );
+  async function fetchQuestions() {
+    const s = localStorage.getItem("edupal_school");
+    if (!s) return;
+    try {
+      const d = JSON.parse(s);
+      const res = await fetch(`/api/school/questions-list?schoolId=${d.id}`);
+      if (res.ok) {
+        const jd = await res.json();
+        setQuestions(jd.questions ?? []);
+      }
+    } catch { /* ignore */ }
+  }
+
+  async function addQuestion() {
+    if (!subject.trim() || !topic.trim() || !stem.trim() || !options.trim() || !answer.trim()) {
+      return setMsg("All fields required. Use | to separate options (e.g. Option A|Option B|Option C|Option D).");
+    }
+    setMsg("");
+    setBusy(true);
+    try {
+      const s = localStorage.getItem("edupal_school");
+      if (!s) return;
+      const d = JSON.parse(s);
+      const optsArray = options.split("|").map((o) => o.trim()).filter(Boolean);
+      const res = await fetch("/api/school/questions-add", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ schoolId: d.id, subject: subject.trim(), topic: topic.trim(), stem: stem.trim(), options: optsArray, answer: answer.trim() })
+      });
+      const jd = await res.json();
+      if (!res.ok) return setMsg(jd.error || "Failed to add.");
+      setMsg("Question added to bank.");
+      setSubject("");
+      setTopic("");
+      setStem("");
+      setOptions("");
+      setAnswer("");
+      fetchQuestions();
+    } catch (e) {
+      setMsg(e instanceof Error ? e.message : "Failed to add.");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  if (!school) {
+    return (
+      <main style={{ maxWidth: 480, margin: "60px auto", padding: 20, color: "#333A45", textAlign: "center" }}>
+        <p style={{ fontSize: 14, color: "#5F6E7F" }}>School session not found.</p>
+        <button onClick={() => { window.location.href = "/school-login"; }}
+          style={{ height: 40, borderRadius: 8, border: 0, background: "#0F766E", color: "#fff", fontWeight: 800, padding: "0 20px", cursor: "pointer" }}>
+          Sign In to School
+        </button>
+      </main>
+    );
+  }
 
   return (
     <main style={{ maxWidth: 1100, margin: "0 auto", padding: 20, color: "#333A45" }}>
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16, flexWrap: "wrap", gap: 10 }}>
-        <h1 style={{ fontSize: 24, margin: 0 }}>Questions & Assessments</h1>
-        <div style={{ display: "flex", gap: 8 }}>
-          <select value={subjectFilter} onChange={(e) => setSubjectFilter(e.target.value)} style={{ height: 44, borderRadius: 10, border: "1px solid #CBD5E1", padding: "0 12px" }}>
-            <option value="">All Subjects</option>
-            {subjects.map((s) => <option key={s} value={s}>{s}</option>)}
-          </select>
-          <input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search questions…"
-            style={{ flex: 1, height: 44, borderRadius: 10, border: "1px solid #CBD5E1", padding: "0 12px" }} />
-        </div>
-      </div>
+      <h1 style={{ fontSize: 22, fontWeight: 800, color: "#1E242E", margin: "0 0 16px" }}>Question Bank</h1>
+      <p style={{ fontSize: 13, color: "#5F6E7F", marginBottom: 16 }}>
+        Add school-specific questions. They're mixed into practice sessions for your students.
+      </p>
 
       <div style={card}>
-        <p style={{ fontSize: 13, color: "#5F6E7F", margin: "0 0 12px" }}>
-          Browse the school question bank. Questions are sourced from past exams and curated content.
-        </p>
-        {filtered.length > 0 ? (
-          <div style={{ maxHeight: 600, overflow: "auto" }}>
-            <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
-              <thead>
-                <tr style={{ textAlign: "left", color: "#5F6E7F", fontSize: 11, borderBottom: "2px solid #F1F5F9" }}>
-                  <th style={{ padding: "10px 12px", textAlign: "left" }}>Subject</th>
-                  <th style={{ padding: "10px 12px", textAlign: "left" }}>Topic</th>
-                  <th style={{ padding: "10px 12px", textAlign: "left" }}>Question</th>
-                  <th style={{ padding: "10px 12px" }}>Type</th>
-                  <th style={{ padding: "10px 12px" }}>Answer</th>
-                </tr>
-              </thead>
-              <tbody>
-                {filtered.map((q) => (
-                  <tr key={q.id} style={{ borderBottom: "1px solid #F1F5F9" }}>
-                    <td style={{ padding: "10px 12px", fontWeight: 700 }}>{q.subject}</td>
-                    <td style={{ padding: "10px 12px", fontSize: 12 }}>{q.topic}</td>
-                    <td style={{ padding: "10px 12px", fontSize: 12 }}>{q.stem}</td>
-                    <td style={{ padding: "10px 12px" }}>{q.type}</td>
-                    <td style={{ padding: "10px 12px", fontSize: 11, color: "#5F6E7F" }}>{q.answer}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+        <h2 style={{ fontSize: 15, fontWeight: 800, color: "#1E242E", margin: "0 0 12px" }}>Add Question</h2>
+        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
+          <input value={subject} onChange={(e) => setSubject(e.target.value)} placeholder="Subject (e.g. Mathematics)"
+            style={{ height: 44, borderRadius: 10, border: "1px solid #CBD5E1", padding: "0 12px" }} />
+          <input value={topic} onChange={(e) => setTopic(e.target.value)} placeholder="Topic (e.g. Algebra)"
+            style={{ height: 44, borderRadius: 10, border: "1px solid #CBD5E1", padding: "0 12px" }} />
+          <textarea value={stem} onChange={(e) => setStem(e.target.value)} placeholder="Question stem…" rows={2}
+            style={{ borderRadius: 10, border: "1px solid #CBD5E1", padding: "10px 12px", fontSize: 14, gridColumn: "1 / -1", resize: "vertical" }} />
+          <input value={options} onChange={(e) => setOptions(e.target.value)} placeholder="Options (separate with | — e.g. Ans A|Ans B|Ans C|Ans D)"
+            style={{ height: 44, borderRadius: 10, border: "1px solid #CBD5E1", padding: "0 12px", gridColumn: "1 / -1" }} />
+          <input value={answer} onChange={(e) => setAnswer(e.target.value)} placeholder="Correct answer (must match one option exactly)"
+            style={{ height: 44, borderRadius: 10, border: "1px solid #CBD5E1", padding: "0 12px", gridColumn: "1 / -1" }} />
+          <button onClick={addQuestion} disabled={busy}
+            style={{ height: 44, borderRadius: 10, border: 0, background: busy ? "#9CA3AF" : "#0F766E", color: "#fff", fontWeight: 800, fontSize: 14, cursor: busy ? "not-allowed" : "pointer", gridColumn: "1 / -1" }}>
+            {busy ? "Adding…" : "Add to Question Bank"}
+          </button>
+        </div>
+        {msg && <p style={{ fontSize: 13, marginTop: 8, color: msg.startsWith("Question") ? "#166534" : "#DC2626" }}>{msg}</p>}
+      </div>
+
+      <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+        {questions.length === 0 ? (
+          <p style={{ fontSize: 13, color: "#5F6E7F", textAlign: "center", padding: 24 }}>No custom questions yet.</p>
         ) : (
-          <p style={{ fontSize: 13, color: "#94A3B8", margin: 0, textAlign: "center" }}>
-            No questions found.
-          </p>
+          questions.map((q) => (
+            <div key={q.id} style={card}>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 4 }}>
+                <span style={{ fontSize: 13, fontWeight: 800, color: "#1E242E" }}>{q.subject} — {q.topic}</span>
+                <span style={{ fontSize: 11, color: "#5F6E7F" }}>{new Date(q.createdAt).toLocaleDateString("en-NG")}</span>
+              </div>
+              <p style={{ fontSize: 13, color: "#333A45", margin: "0 0 4px" }}>{q.stem}</p>
+              <p style={{ fontSize: 12, color: "#5F6E7F" }}>Answer: <strong>{q.answer}</strong></p>
+            </div>
+          ))
         )}
       </div>
     </main>

@@ -1,111 +1,117 @@
 "use client";
+
 import { useEffect, useState } from "react";
 
 const card: React.CSSProperties = { background: "#fff", border: "1px solid #E2E8F0", borderRadius: 16, padding: 16, margin: "0 0 12px" };
 
-type Broadcast = { id: string; body: string; className: string | null; startsAt: string; endsAt: string | null };
-
-export default function Announcements() {
-  const [userId, setUserId] = useState<string | null>(null);
-  const [broadcasts, setBroadcasts] = useState<Broadcast[]>([]);
+export default function SchoolAnnouncements() {
+  const [school, setSchool] = useState<{ id: string; name: string } | null>(null);
+  const [announcements, setAnnouncements] = useState<{ id: string; title: string; body: string; className: string | null; createdAt: string }[]>([]);
+  const [title, setTitle] = useState("");
   const [body, setBody] = useState("");
   const [className, setClassName] = useState("");
-  const [startsAt, setStartsAt] = useState("");
-  const [endsAt, setEndsAt] = useState("");
   const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState("");
 
   useEffect(() => {
-    const id = localStorage.getItem("edupal_user");
-    setUserId(id);
-    if (!id) return;
-    fetch(`/api/school/broadcasts?userId=${id}`)
-      .then((r) => (r.ok ? r.json() : null))
-      .then((d) => {
-        if (d?.broadcasts) setBroadcasts(d.broadcasts.map((b: any) => ({
-          id: b.id,
-          body: b.body,
-          className: b.className,
-          startsAt: b.startsAt,
-          endsAt: b.endsAt
-        })));
-      });
+    const s = localStorage.getItem("edupal_school");
+    if (s) {
+      try { setSchool(JSON.parse(s)); } catch { /* ignore */ }
+    }
+    fetchAnnouncements();
   }, []);
 
-  async function createBroadcast() {
+  async function fetchAnnouncements() {
+    const s = localStorage.getItem("edupal_school");
+    if (!s) return;
+    try {
+      const d = JSON.parse(s);
+      const res = await fetch(`/api/school/announcements-list?schoolId=${d.id}`);
+      if (res.ok) {
+        const jd = await res.json();
+        setAnnouncements(jd.announcements ?? []);
+      }
+    } catch { /* ignore */ }
+  }
+
+  async function sendAnnouncement() {
+    if (!title.trim() || !body.trim()) return setMsg("Title and message required.");
     setMsg("");
-    if (busy) return;
     setBusy(true);
     try {
-      const res = await fetch("/api/school/broadcasts", {
-        method: "POST", headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ userId, className: className || null, body, startsAt: startsAt || new Date().toISOString(), endsAt: endsAt || null })
+      const s = localStorage.getItem("edupal_school");
+      if (!s) return;
+      const d = JSON.parse(s);
+      const res = await fetch("/api/school/announcements-send", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ schoolId: d.id, title: title.trim(), body: body.trim(), className: className || null })
       });
-      const d = await res.json();
-      if (!res.ok) return setMsg(d.error || "Failed.");
-      setMsg("Broadcast sent.");
-      setBody(""); setClassName(""); setStartsAt(""); setEndsAt("");
-      fetch(`/api/school/broadcasts?userId=${userId}`)
-        .then((r) => (r.ok ? r.json() : null))
-        .then((d) => d?.broadcasts && setBroadcasts(d.broadcasts.map((b: any) => ({
-          id: b.id, body: b.body, className: b.className, startsAt: b.startsAt, endsAt: b.endsAt
-        }))));
+      const jd = await res.json();
+      if (!res.ok) return setMsg(jd.error || "Failed to send.");
+      setMsg("Announcement sent to students.");
+      setTitle("");
+      setBody("");
+      setClassName("");
+      fetchAnnouncements();
+    } catch (e) {
+      setMsg(e instanceof Error ? e.message : "Failed to send.");
     } finally {
       setBusy(false);
     }
   }
 
-  async function removeBroadcast(id: string) {
-    if (!confirm("Remove this broadcast?")) return;
-    const res = await fetch(`/api/school/broadcasts?broadcastId=${encodeURIComponent(id)}&userId=${userId}`, { method: "DELETE" });
-    if (res.ok) setBroadcasts(broadcasts.filter((b) => b.id !== id));
+  if (!school) {
+    return (
+      <main style={{ maxWidth: 480, margin: "60px auto", padding: 20, color: "#333A45", textAlign: "center" }}>
+        <p style={{ fontSize: 14, color: "#5F6E7F" }}>School session not found.</p>
+        <button onClick={() => { window.location.href = "/school-login"; }}
+          style={{ height: 40, borderRadius: 8, border: 0, background: "#0F766E", color: "#fff", fontWeight: 800, padding: "0 20px", cursor: "pointer" }}>
+          Sign In to School
+        </button>
+      </main>
+    );
   }
 
   return (
     <main style={{ maxWidth: 1100, margin: "0 auto", padding: 20, color: "#333A45" }}>
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16, flexWrap: "wrap", gap: 10 }}>
-        <h1 style={{ fontSize: 24, margin: 0 }}>Announcements</h1>
-      </div>
+      <h1 style={{ fontSize: 22, fontWeight: 800, color: "#1E242E", margin: "0 0 16px" }}>Announcements</h1>
+      <p style={{ fontSize: 13, color: "#5F6E7F", marginBottom: 16 }}>
+        Broadcast messages to your students. They'll appear as popups and bell notifications.
+      </p>
 
       <div style={card}>
-        <h2 style={{ fontSize: 16, margin: "0 0 10px", color: "#1E242E" }}>Send Broadcast</h2>
-        <p style={{ fontSize: 13, color: "#5F6E7F", margin: "0 0 10px" }}>
-          Send a one-line message to the whole school or a specific class. Appears as a banner on student dashboards.
-        </p>
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(160px, 1fr))", gap: 10, marginBottom: 10 }}>
-          <input value={body} onChange={(e) => setBody(e.target.value)} placeholder="Message body…"
+        <h2 style={{ fontSize: 15, fontWeight: 800, color: "#1E242E", margin: "0 0 12px" }}>Send Announcement</h2>
+        <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+          <input value={title} onChange={(e) => setTitle(e.target.value)} placeholder="Title (e.g. Exam Tomorrow)"
             style={{ height: 44, borderRadius: 10, border: "1px solid #CBD5E1", padding: "0 12px" }} />
-          <input value={className} onChange={(e) => setClassName(e.target.value)} placeholder="Class (optional, all if empty)"
+          <textarea value={body} onChange={(e) => setBody(e.target.value)} placeholder="Message to students…" rows={3}
+            style={{ borderRadius: 10, border: "1px solid #CBD5E1", padding: "10px 12px", fontSize: 14, resize: "vertical" }} />
+          <input value={className} onChange={(e) => setClassName(e.target.value)} placeholder="Class (optional — leave empty for all students)"
             style={{ height: 44, borderRadius: 10, border: "1px solid #CBD5E1", padding: "0 12px" }} />
-          <input value={startsAt} onChange={(e) => setStartsAt(e.target.value)} type="datetime-local"
-            style={{ height: 44, borderRadius: 10, border: "1px solid #CBD5E1", padding: "0 12px" }} />
-          <input value={endsAt} onChange={(e) => setEndsAt(e.target.value)} type="datetime-local"
-            style={{ height: 44, borderRadius: 10, border: "1px solid #CBD5E1", padding: "0 12px" }} />
-          <button onClick={createBroadcast} disabled={busy}
-            style={{ height: 44, borderRadius: 10, border: 0, background: "#0F766E", color: "#fff", fontWeight: 800, padding: "0 20px", cursor: "pointer" }}>
-            {busy ? "Sending…" : "Send Broadcast"}
+          <button onClick={sendAnnouncement} disabled={busy}
+            style={{ height: 44, borderRadius: 10, border: 0, background: busy ? "#9CA3AF" : "#0F766E", color: "#fff", fontWeight: 800, fontSize: 14, cursor: busy ? "not-allowed" : "pointer" }}>
+            {busy ? "Sending…" : "📢 Send to Students"}
           </button>
+          {msg && <p style={{ fontSize: 13, color: msg.startsWith("Announcement") ? "#166534" : "#DC2626", margin: "4px 0 0" }}>{msg}</p>}
         </div>
-        {msg && <p style={{ fontSize: 13, color: msg.startsWith("Broadcast") ? "#166534" : "#DC2626", marginTop: 8 }}>{msg}</p>}
       </div>
 
-      <div style={card}>
-        <h2 style={{ fontSize: 16, margin: "0 0 12px", color: "#1E242E" }}>Active Broadcasts ({broadcasts.length})</h2>
-        {broadcasts.length === 0 && (
-          <p style={{ fontSize: 13, color: "#94A3B8", margin: 0 }}>No active broadcasts.</p>
-        )}
-        {broadcasts.map((b) => (
-          <div key={b.id} style={{ borderBottom: "1px solid #F1F5F9", padding: "10px 0", fontSize: 13 }}>
-            <div style={{ fontSize: 13, color: "#333A45" }}>{b.body}</div>
-            <div style={{ fontSize: 11, color: "#5F6E7F", marginTop: 4 }}>
-              {b.className ? `Class: {b.className}` : "Whole School"} · {new Date(b.startsAt).toLocaleDateString("en-NG", { day: "numeric", month: "short" })}
-              {b.endsAt ? ` · until ${new Date(b.endsAt).toLocaleDateString("en-NG", { day: "numeric", month: "short" })}` : ""}
+      <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+        {announcements.length === 0 ? (
+          <p style={{ fontSize: 13, color: "#5F6E7F", textAlign: "center", padding: 24 }}>No announcements sent yet.</p>
+        ) : (
+          announcements.map((a) => (
+            <div key={a.id} style={card}>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 4 }}>
+                <span style={{ fontSize: 14, fontWeight: 800, color: "#1E242E" }}>{a.title}</span>
+                <span style={{ fontSize: 11, color: "#5F6E7F" }}>{new Date(a.createdAt).toLocaleDateString("en-NG", { day: "numeric", month: "short" })}</span>
+              </div>
+              <p style={{ fontSize: 13, color: "#333A45", margin: "0 0 4px" }}>{a.body}</p>
+              {a.className && <span style={{ fontSize: 11, color: "#5F6E7F" }}>Class: {a.className}</span>}
             </div>
-            <button onClick={() => removeBroadcast(b.id)} style={{ background: "#DC2626", color: "#fff", borderRadius: 8, padding: "4px 12px", fontSize: 12, fontWeight: 700, border: 0, cursor: "pointer" }}>
-              Remove
-            </button>
-          </div>
-        ))}
+          ))
+        )}
       </div>
     </main>
   );

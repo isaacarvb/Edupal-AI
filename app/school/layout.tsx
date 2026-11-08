@@ -8,6 +8,12 @@ const LINKS = [
   { href: "/school/analytics", label: "Progress Analytics", emoji: "📈" },
   { href: "/school/subscription", label: "School Subscription", emoji: "💳" },
   { href: "/school/students", label: "Student Roster", emoji: "👥" },
+  { href: "/school/teachers", label: "Teacher Roster", emoji: "👨‍🏫" },
+  { href: "/school/lesson-notes", label: "Lesson Notes", emoji: "📚" },
+  { href: "/school/announcements", label: "Announcements", emoji: "📢" },
+  { href: "/school/mock-exams", label: "Mock Exams", emoji: "📝" },
+  { href: "/school/questions", label: "Question Bank", emoji: "❓" },
+  { href: "/school/settings", label: "Settings", emoji: "⚙️" },
 ];
 
 export default function SchoolLayout({ children }: { children: React.ReactNode }) {

@@ -291,6 +291,71 @@ CREATE INDEX IF NOT EXISTS idx_school_students_school ON school_students(school_
 CREATE INDEX IF NOT EXISTS idx_school_students_class ON school_students(class_name);
 CREATE INDEX IF NOT EXISTS idx_school_students_user ON school_students(user_id);
 
+CREATE TABLE IF NOT EXISTS school_teachers (
+  id TEXT PRIMARY KEY,
+  school_id TEXT NOT NULL REFERENCES schools(id) ON DELETE CASCADE,
+  user_id TEXT REFERENCES users(id) ON DELETE SET NULL,
+  name TEXT NOT NULL,
+  class_name TEXT NOT NULL DEFAULT '',
+  subject TEXT NOT NULL DEFAULT '',
+  created_at TEXT NOT NULL DEFAULT (datetime('now'))
+);
+CREATE INDEX IF NOT EXISTS idx_school_teachers_school ON school_teachers(school_id);
+CREATE INDEX IF NOT EXISTS idx_school_teachers_class ON school_teachers(class_name);
+
+CREATE TABLE IF NOT EXISTS lesson_notes (
+  id TEXT PRIMARY KEY,
+  school_id TEXT NOT NULL REFERENCES schools(id) ON DELETE CASCADE,
+  teacher_id TEXT NOT NULL REFERENCES school_teachers(id) ON DELETE CASCADE,
+  teacher_name TEXT NOT NULL DEFAULT '',
+  class_name TEXT NOT NULL DEFAULT '',
+  subject TEXT NOT NULL,
+  topic TEXT NOT NULL,
+  body TEXT NOT NULL DEFAULT '',
+  attachment_url TEXT,
+  attachment_name TEXT,
+  status TEXT NOT NULL DEFAULT 'pending',
+  reviewed_by TEXT,
+  reviewed_at TEXT,
+  created_at TEXT NOT NULL DEFAULT (datetime('now'))
+);
+CREATE INDEX IF NOT EXISTS idx_lesson_notes_school_status ON lesson_notes(school_id, status);
+
+CREATE TABLE IF NOT EXISTS school_announcements (
+  id TEXT PRIMARY KEY,
+  school_id TEXT NOT NULL REFERENCES schools(id) ON DELETE CASCADE,
+  title TEXT NOT NULL DEFAULT '',
+  body TEXT NOT NULL DEFAULT '',
+  class_name TEXT,
+  created_at TEXT NOT NULL DEFAULT (datetime('now'))
+);
+CREATE INDEX IF NOT EXISTS idx_school_announcements_school ON school_announcements(school_id);
+
+CREATE TABLE IF NOT EXISTS mock_exams (
+  id TEXT PRIMARY KEY,
+  school_id TEXT NOT NULL REFERENCES schools(id) ON DELETE CASCADE,
+  title TEXT NOT NULL,
+  subjects TEXT NOT NULL DEFAULT '',
+  class_name TEXT NOT NULL DEFAULT '',
+  duration_minutes INTEGER NOT NULL DEFAULT 30,
+  scheduled_at TEXT,
+  status TEXT NOT NULL DEFAULT 'scheduled',
+  created_at TEXT NOT NULL DEFAULT (datetime('now'))
+);
+CREATE INDEX IF NOT EXISTS idx_mock_exams_school ON mock_exams(school_id);
+
+CREATE TABLE IF NOT EXISTS school_questions (
+  id TEXT PRIMARY KEY,
+  school_id TEXT NOT NULL REFERENCES schools(id) ON DELETE CASCADE,
+  subject TEXT NOT NULL,
+  topic TEXT NOT NULL,
+  stem TEXT NOT NULL,
+  options_json TEXT NOT NULL DEFAULT '[]',
+  answer TEXT NOT NULL DEFAULT '',
+  created_at TEXT NOT NULL DEFAULT (datetime('now'))
+);
+CREATE INDEX IF NOT EXISTS idx_school_questions_school ON school_questions(school_id);
+
 CREATE TABLE IF NOT EXISTS school_subscriptions (
   id TEXT PRIMARY KEY,
   school_id TEXT NOT NULL REFERENCES schools(id) ON DELETE CASCADE,

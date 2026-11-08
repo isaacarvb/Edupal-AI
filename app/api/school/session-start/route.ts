@@ -23,6 +23,27 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "School subscription expired" }, { status: 403 });
     }
 
+    // Verify student exists in roster with matching name, class, and department
+    const student = (await db.prepare(
+      "SELECT id, name, class_name, department FROM school_students WHERE school_id = ? AND LOWER(name) = LOWER(?) AND LOWER(class_name) = LOWER(?) LIMIT 1"
+    ).get(schoolId, studentName, className)) as
+      | { id: string; name: string; class_name: string; department: string | null }
+      | undefined;
+
+    if (!student) {
+      return NextResponse.json({ error: "Student not found in roster. Check your name and class spelling." }, { status: 404 });
+    }
+
+    // For SSS students, department is required and must match
+    const dept = String(b?.department ?? "").trim();
+    const isSSS = className.toLowerCase().includes("ss") || className.toLowerCase().includes("sss");
+    if (isSSS && !dept) {
+      return NextResponse.json({ error: "Department is required for senior secondary students." }, { status: 400 });
+    }
+    if (isSSS && student.department && dept.toLowerCase() !== student.department.toLowerCase()) {
+      return NextResponse.json({ error: "Department does not match roster." }, { status: 400 });
+    }
+
     const sessionId = randomUUID();
     const now = new Date().toISOString();
     await db.prepare(

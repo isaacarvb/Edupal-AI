@@ -11,6 +11,7 @@ export default function SchoolAnalytics() {
   const [leaders, setLeaders] = useState<{ name: string; className: string; department: string | null; answers: number; avgAccuracy: number }[]>([]);
   const [departments, setDepartments] = useState<{ departmentName: string; students: number; avgAccuracy: number; totalAnswers: number }[]>([]);
   const [leaderboard, setLeaderboard] = useState<Record<string, Array<{ name: string; answers: number; avgAccuracy: number }>>>({});
+  const [online, setOnline] = useState<{ name: string; className: string; sessionStart: string; lastActivity: string }[]>([]);
   const [busy, setBusy] = useState(false);
 
   useEffect(() => {
@@ -27,18 +28,20 @@ export default function SchoolAnalytics() {
     try {
       const d = JSON.parse(s);
       setBusy(true);
-      const [r1, r2, r3, r4, r5] = await Promise.all([
+      const [r1, r2, r3, r4, r5, r6] = await Promise.all([
         fetch(`/api/school/analytics-subjects?schoolId=${d.id}`),
         fetch(`/api/school/analytics-classes?schoolId=${d.id}`),
         fetch(`/api/school/analytics-leaders?schoolId=${d.id}`),
         fetch(`/api/school/analytics-departments?schoolId=${d.id}`),
-        fetch(`/api/school/analytics-leaderboard?schoolId=${d.id}`)
+        fetch(`/api/school/analytics-leaderboard?schoolId=${d.id}`),
+        fetch(`/api/school/online?schoolId=${d.id}`)
       ]);
       if (r1.ok) { const jd = await r1.json(); setSubjects(jd.subjects ?? []); }
       if (r2.ok) { const jd = await r2.json(); setClasses(jd.classes ?? []); }
       if (r3.ok) { const jd = await r3.json(); setLeaders(jd.leaders ?? []); }
       if (r4.ok) { const jd = await r4.json(); setDepartments(jd.departments ?? []); }
       if (r5.ok) { const jd = await r5.json(); setLeaderboard(jd.leaderboard ?? {}); }
+      if (r6.ok) { const jd = await r6.json(); setOnline(jd.online ?? []); }
     } catch { /* ignore */ } finally {
       setBusy(false);
     }
@@ -166,6 +169,26 @@ export default function SchoolAnalytics() {
             <p style={{ fontSize: 13, color: "#5F6E7F", textAlign: "center", marginTop: 20 }}>No leaderboard data yet.</p>
           )}
         </div>
+      </div>
+
+      <div style={card}>
+        <h2 style={{ fontSize: 15, fontWeight: 800, color: "#1E242E", margin: "0 0 12px" }}>🟢 Who's Online Now ({online.length})</h2>
+        {online.length > 0 ? (
+          <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+            {online.map((o, i) => (
+              <div key={i} style={{ display: "flex", justifyContent: "space-between", fontSize: 13, borderBottom: "1px solid #F1F5F9", paddingBottom: 6 }}>
+                <span>
+                  <span style={{ width: 8, height: 8, borderRadius: 999, background: "#16A34A", display: "inline-block", marginRight: 8 }}></span>
+                  <span style={{ fontWeight: 600 }}>{o.name}</span>
+                  <span style={{ fontSize: 11, color: "#5F6E7F", marginLeft: 8 }}>{o.className}</span>
+                </span>
+                <span style={{ fontSize: 11, color: "#5F6E7F" }}>{new Date(o.lastActivity).toLocaleTimeString("en-NG", { hour: "numeric", minute: "2-digit" })}</span>
+              </div>
+            ))}
+          </div>
+        ) : (
+          <p style={{ fontSize: 13, color: "#5F6E7F", textAlign: "center", marginTop: 8 }}>No students online right now.</p>
+        )}
       </div>
 
       {busy && <p style={{ textAlign: "center", color: "#5F6E7F", marginTop: 20 }}>Loading…</p>}

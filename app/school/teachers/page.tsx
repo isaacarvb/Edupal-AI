@@ -1,115 +1,251 @@
 "use client";
+
 import { useEffect, useState } from "react";
 
 const card: React.CSSProperties = { background: "#fff", border: "1px solid #E2E8F0", borderRadius: 16, padding: 16, margin: "0 0 12px" };
 
-type TeacherRow = { id: string; name: string; email: string; classes: string[]; subject: string; department: string | null; active: number };
-
 export default function SchoolTeachers() {
-  const [userId, setUserId] = useState<string | null>(null);
-  const [teachers, setTeachers] = useState<TeacherRow[]>([]);
-  const [name, setName] = useState("");
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
-  const [classes, setClasses] = useState("");
-  const [subject, setSubject] = useState("");
-  const [department, setDepartment] = useState("");
-  const [busy, setBusy] = useState(false);
-  const [msg, setMsg] = useState("");
+  const [school, setSchool] = useState<{ id: string; name: string; code: string } | null>(null);
+  const [teachers, setTeachers] = useState<{ id: string; name: string; className: string; subject: string }[]>([]);
+  const [search, setSearch] = useState("");
+  const [classFilter, setClassFilter] = useState("");
+  const [importMsg, setImportMsg] = useState("");
+  const [importBusy, setImportBusy] = useState(false);
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
 
   useEffect(() => {
-    const id = localStorage.getItem("edupal_user");
-    setUserId(id);
-    if (!id) return;
-    fetch(`/api/school/teachers?userId=${id}`)
-      .then((r) => (r.ok ? r.json() : null))
-      .then((d) => {
-        if (d?.teachers) setTeachers(d.teachers);
-      });
+    const s = localStorage.getItem("edupal_school");
+    if (s) {
+      try { setSchool(JSON.parse(s)); } catch { /* ignore */ }
+    }
+    fetchTeachers();
   }, []);
 
-  async function createTeacher() {
-    setMsg("");
-    if (busy) return;
-    setBusy(true);
+  async function fetchTeachers() {
+    const s = localStorage.getItem("edupal_school");
+    if (!s) return;
     try {
-      const classList = classes.split(",").map((c) => c.trim()).filter(Boolean);
-      const res = await fetch("/api/school/teachers", {
-        method: "POST", headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ userId, name, email, password, classes: classList, subject, department: department || null })
-      });
-      const d = await res.json();
-      if (!res.ok) return setMsg(d.error || "Failed.");
-      setMsg(`Created ${d.teacher.name} — temp password: ${d.temporaryPassword}`);
-      setName(""); setEmail(""); setPassword(""); setClasses(""); setSubject(""); setDepartment("");
-      fetch(`/api/school/teachers?userId=${userId}`)
-        .then((r) => (r.ok ? r.json() : null))
-        .then((d) => d?.teachers && setTeachers(d.teachers));
+      const d = JSON.parse(s);
+      const res = await fetch(`/api/school/teachers-list?schoolId=${d.id}`);
+      if (res.ok) {
+        const jd = await res.json();
+        setTeachers(jd.teachers ?? []);
+      }
+    } catch { /* ignore */ }
+  }
+
+  async function handleImport(file: File) {
+    setImportMsg("");
+    setImportBusy(true);
+    setSelectedFile(file);
+    try {
+      let text = await file.text();
+      text = text.replace(/^\uFEFF/, "");
+      const lines = text.trim().split(/\r?\n/);
+      if (lines.length < 2) return setImportMsg("CSV must have a header row and at least one teacher row.");
+
+      const header = lines[0].split(",").map((h) => h.trim().replace(/^"|"$/g, "").toLowerCase());
+      let nameIdx = header.findIndex((h) => h === "name" || h === "teacher" || h === "teacher name" || h === "full name");
+      let classIdx = header.findIndex((h) => h === "class" || h === "class_name" || h === "classname" || h === "class name");
+      let subjectIdx = header.findIndex((h) => h === "subject");
+
+      const startRow = nameIdx === -1 || classIdx === -1 || subjectIdx === -1 ? 0 : 1;
+      if (nameIdx === -1) nameIdx = 0;
+      if (classIdx === -1) classIdx = 1;
+      if (subjectIdx === -1) subjectIdx = 2;
+
+      if (lines.length < startRow + 1) return setImportMsg("No teacher data found in CSV.");
+
+      const rows: Array<{ name: string; className: string; subject: string }> = [];
+      for (let i = startRow; i < lines.length; i++) {
+        const cols = lines[i].split(",").map((c) => c.trim().replace(/^"|"$/g, ""));
+        if (cols.length <= Math.max(nameIdx, classIdx, subjectIdx)) continue;
+        const name = cols[nameIdx]?.trim() || "";
+        const className = cols[classIdx]?.trim() || "";
+        const subject = cols[subjectIdx]?.trim() || "";
+        if (!name) continue;
+        rows.push({ name, className: className || "Unassigned", subject: subject || "General" });
+      }
+
+      if (rows.length === 0) return setImportMsg("No valid teacher rows found.");
+
+      const s = localStorage.getItem("edupal_school");
+      if (!s) return;
+      const d = JSON.parse(s);
+
+      const form = new FormData();
+      form.append("schoolId", d.id);
+      form.append("teachers", JSON.stringify(rows));
+
+      const res = await fetch("/api/school/teachers-import", { method: "POST", body: form });
+      const jd = await res.json();
+      if (!res.ok) return setImportMsg(jd.error || "Import failed.");
+      setImportMsg(`Imported ${jd.imported} teachers.`);
+      fetchTeachers();
+    } catch (e) {
+      setImportMsg(e instanceof Error ? e.message : "Import failed.");
     } finally {
-      setBusy(false);
+      setImportBusy(false);
     }
   }
 
-  async function removeTeacher(id: string) {
-    if (!confirm("Remove this teacher?")) return;
-    const res = await fetch(`/api/school/teachers?teacherId=${encodeURIComponent(id)}&userId=${userId}`, { method: "DELETE" });
-    if (res.ok) setTeachers(teachers.filter((t) => t.id !== id));
+  const handleSelectFile = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const f = e.target.files?.[0];
+    if (f) handleImport(f);
+  };
+
+  const handleRemoveFile = () => {
+    setSelectedFile(null);
+    setImportMsg("");
+    setImportBusy(false);
+    const input = document.querySelector('input[type="file"]') as HTMLInputElement;
+    if (input) input.value = "";
+  };
+
+  const handleDeleteAll = async () => {
+    if (!confirm(`Delete ALL ${teachers.length} teachers from roster? This cannot be undone.`)) return;
+    setImportBusy(true);
+    try {
+      const s = localStorage.getItem("edupal_school");
+      if (!s) return;
+      const d = JSON.parse(s);
+      const res = await fetch("/api/school/teachers-delete-all", {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ schoolId: d.id })
+      });
+      const jd = await res.json();
+      if (!res.ok) return setImportMsg(jd.error || "Failed to delete all.");
+      setImportMsg(`Deleted ${jd.deleted} teachers.`);
+      setTeachers([]);
+      fetchTeachers();
+    } catch (e) {
+      setImportMsg(e instanceof Error ? e.message : "Failed to delete all.");
+    } finally {
+      setImportBusy(false);
+    }
+  };
+
+  const handleDelete = async (teacherId: string, teacherName: string) => {
+    if (!confirm(`Remove ${teacherName} from roster?`)) return;
+    setDeletingId(teacherId);
+    try {
+      const res = await fetch(`/api/school/teachers-delete?teacherId=${encodeURIComponent(teacherId)}`, { method: "DELETE" });
+      if (res.ok) {
+        setTeachers((prev) => prev.filter((t) => t.id !== teacherId));
+      } else {
+        const d = await res.json().catch(() => ({}));
+        setImportMsg(d.error || "Failed to remove teacher.");
+      }
+    } catch (e) {
+      setImportMsg(e instanceof Error ? e.message : "Failed to remove teacher.");
+    } finally {
+      setDeletingId(null);
+    }
+  };
+
+  const filtered = teachers.filter((t) =>
+    t.name.toLowerCase().includes(search.toLowerCase()) &&
+    (!classFilter || t.className === classFilter)
+  );
+  const classes = [...new Set(teachers.map((t) => t.className))].sort();
+
+  if (!school) {
+    return (
+      <main style={{ maxWidth: 480, margin: "60px auto", padding: 20, color: "#333A45", textAlign: "center" }}>
+        <p style={{ fontSize: 14, color: "#5F6E7F" }}>School session not found.</p>
+        <button onClick={() => { window.location.href = "/school-login"; }}
+          style={{ height: 40, borderRadius: 8, border: 0, background: "#0F766E", color: "#fff", fontWeight: 800, padding: "0 20px", cursor: "pointer" }}>
+          Sign In to School
+        </button>
+      </main>
+    );
   }
 
   return (
     <main style={{ maxWidth: 1100, margin: "0 auto", padding: 20, color: "#333A45" }}>
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16, flexWrap: "wrap", gap: 10 }}>
-        <h1 style={{ fontSize: 24, margin: 0 }}>Teachers & Staff</h1>
+      <h1 style={{ fontSize: 22, fontWeight: 800, color: "#1E242E", margin: "0 0 16px" }}>Teacher Roster</h1>
+      <p style={{ fontSize: 13, color: "#5F6E7F", marginBottom: 16 }}>
+        Upload teacher roster via CSV. Columns: <code style={{ color: "#1E242E" }}>name, class, subject</code>.
+      </p>
+
+      {/* Import Section */}
+      <div style={card}>
+        <div style={{ fontSize: 12, fontWeight: 800, color: "#5F6E7F", textTransform: "uppercase", marginBottom: 10 }}>Upload CSV</div>
+        <div style={{ display: "flex", gap: 8, alignItems: "center", marginBottom: 8 }}>
+          <input
+            type="file"
+            accept=".csv"
+            onChange={handleSelectFile}
+            style={{ flex: 1, height: 44, borderRadius: 10, border: "1px solid #CBD5E1", padding: "0 12px" }}
+          />
+          {selectedFile && (
+            <button onClick={handleRemoveFile}
+              style={{ height: 44, borderRadius: 10, border: "1px solid #DC2626", background: "#FFF1F2", color: "#DC2626", fontWeight: 800, fontSize: 16, padding: "0 16px", cursor: "pointer" }}>
+              ×
+            </button>
+          )}
+        </div>
+        {selectedFile && (
+          <p style={{ fontSize: 12, color: "#5F6E7F", marginBottom: 4 }}>
+            Selected: {selectedFile.name} ({(selectedFile.size / 1024).toFixed(1)} KB)
+          </p>
+        )}
+        {importMsg && <p style={{ fontSize: 13, marginTop: 6, color: importMsg.startsWith("Imported") || importMsg.startsWith("Deleted") ? "#166534" : "#DC2626" }}>{importMsg}</p>}
+        {importBusy && <p style={{ fontSize: 13, color: "#5F6E7F" }}>Processing…</p>}
       </div>
 
+      {/* Teacher List */}
       <div style={card}>
-        <h2 style={{ fontSize: 16, margin: "0 0 12px", color: "#1E242E" }}>Add Teacher</h2>
-        <p style={{ fontSize: 13, color: "#5F6E7F", margin: "0 0 10px" }}>
-          Teachers can log in and manage their assigned classes. They write lesson notes and set assignments.
-        </p>
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(150px, 1fr))", gap: 10, marginBottom: 10 }}>
-          <input value={name} onChange={(e) => setName(e.target.value)} placeholder="Full name"
-            style={{ height: 44, borderRadius: 10, border: "1px solid #CBD5E1", padding: "0 12px" }} />
-          <input value={email} onChange={(e) => setEmail(e.target.value)} placeholder="email@school.com" type="email"
-            style={{ height: 44, borderRadius: 10, border: "1px solid #CBD5E1", padding: "0 12px" }} />
-          <input value={password} onChange={(e) => setPassword(e.target.value)} placeholder="Password (6+)" type="password"
-            style={{ height: 44, borderRadius: 10, border: "1px solid #CBD5E1", padding: "0 12px" }} />
-          <input value={classes} onChange={(e) => setClasses(e.target.value)} placeholder="Classes (SS2, SS3)"
-            style={{ height: 44, borderRadius: 10, border: "1px solid #CBD5E1", padding: "0 12px" }} />
-          <input value={subject} onChange={(e) => setSubject(e.target.value)} placeholder="Subject (optional)"
-            style={{ height: 44, borderRadius: 10, border: "1px solid #CBD5E1", padding: "0 12px" }} />
-          <input value={department} onChange={(e) => setDepartment(e.target.value)} placeholder="Department (optional)"
-            style={{ height: 44, borderRadius: 10, border: "1px solid #CBD5E1", padding: "0 12px" }} />
-          <button onClick={createTeacher} disabled={busy}
-            style={{ height: 44, borderRadius: 10, border: 0, background: "#0F766E", color: "#fff", fontWeight: 800, padding: "0 20px", cursor: "pointer" }}>
-            {busy ? "Creating…" : "Add Teacher"}
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12, flexWrap: "wrap", gap: 8 }}>
+          <div style={{ display: "flex", gap: 8, flexWrap: "wrap", flex: 1 }}>
+            <select value={classFilter} onChange={(e) => setClassFilter(e.target.value)} style={{ height: 44, borderRadius: 10, border: "1px solid #CBD5E1", padding: "0 12px" }}>
+              <option value="">All Classes</option>
+              {classes.map((c) => <option key={c} value={c}>{c}</option>)}
+            </select>
+            <input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search teacher…"
+              style={{ flex: 1, minWidth: 200, height: 44, borderRadius: 10, border: "1px solid #CBD5E1", padding: "0 12px" }} />
+          </div>
+          <button onClick={handleDeleteAll} disabled={importBusy || teachers.length === 0}
+            style={{ height: 44, borderRadius: 10, border: "1px solid #DC2626", background: "#FFF1F2", color: "#DC2626", fontWeight: 700, fontSize: 13, padding: "0 16px", cursor: importBusy || teachers.length === 0 ? "not-allowed" : "pointer", opacity: teachers.length === 0 ? 0.5 : 1 }}>
+            {importBusy ? "Deleting…" : "Delete All"}
           </button>
         </div>
-        {msg && <p style={{ fontSize: 13, color: msg.startsWith("Created") ? "#166534" : "#DC2626", marginTop: 8 }}>{msg}</p>}
-      </div>
-
-      <div style={card}>
-        <h2 style={{ fontSize: 16, margin: "0 0 12px", color: "#1E242E" }}>Current Teachers ({teachers.length})</h2>
-        {teachers.length === 0 && (
-          <p style={{ fontSize: 13, color: "#94A3B8", margin: 0 }}>No teachers yet. Add one above.</p>
-        )}
-        {teachers.map((t) => (
-          <div key={t.id} style={{ borderBottom: "1px solid #F1F5F9", padding: "12px 0", fontSize: 13, display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-            <div>
-              <strong>{t.name}</strong> <span style={{ color: "#5F6E7F", fontSize: 11, marginLeft: 6 }}>{t.email}</span>
-              <div style={{ fontSize: 11, color: "#5F6E7F", marginTop: 2 }}>{t.classes.join(", ") || "— no classes"}{t.subject ? ` · ${t.subject}` : ""}{t.department ? ` · ${t.department}` : ""}</div>
-            </div>
-            <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-              <span style={{ fontSize: 10, fontWeight: 800, padding: "4px 8px", borderRadius: 999,
-                background: t.active === 1 ? "#DCFCE7" : "#FEE2E2", color: t.active === 1 ? "#166534" : "#991B1B" }}>
-                {t.active === 1 ? "Active" : "Inactive"}
-              </span>
-              <button onClick={() => removeTeacher(t.id)} style={{ background: "#DC2626", color: "#fff", borderRadius: 8, padding: "6px 12px", fontSize: 12, fontWeight: 700, border: 0, cursor: "pointer" }}>
-                Remove
-              </button>
-            </div>
-          </div>
-        ))}
+        <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
+          <thead>
+            <tr style={{ textAlign: "left", color: "#5F6E7F", fontSize: 11, borderBottom: "2px solid #F1F5F9" }}>
+              <th style={{ padding: "10px 12px" }}>Teacher</th>
+              <th style={{ padding: "10px 12px" }}>Class</th>
+              <th style={{ padding: "10px 12px" }}>Subject</th>
+              <th style={{ padding: "10px 12px" }}></th>
+            </tr>
+          </thead>
+          <tbody>
+            {filtered.length > 0 ? (
+              filtered.map((t) => (
+                <tr key={t.id} style={{ borderBottom: "1px solid #F1F5F9" }}>
+                  <td style={{ padding: "10px 12px", fontWeight: 700 }}>{t.name}</td>
+                  <td style={{ padding: "10px 12px", color: t.className ? "#333A45" : "#94A3B8" }}>{t.className || "Unassigned"}</td>
+                  <td style={{ padding: "10px 12px", color: "#5F6E7F" }}>{t.subject || "—"}</td>
+                  <td style={{ padding: "10px 12px", textAlign: "right" }}>
+                    <button onClick={() => handleDelete(t.id, t.name)} disabled={deletingId === t.id}
+                      style={{ background: "#FFF1F2", border: "1px solid #FECACA", color: "#DC2626", fontWeight: 700, fontSize: 12, padding: "4px 10px", borderRadius: 6, cursor: deletingId === t.id ? "not-allowed" : "pointer" }}>
+                      {deletingId === t.id ? "…" : "✕"}
+                    </button>
+                  </td>
+                </tr>
+              ))
+            ) : (
+              <tr>
+                <td colSpan={4} style={{ padding: "24px", textAlign: "center", color: "#94A3B8" }}>
+                  No teachers found.
+                </td>
+              </tr>
+            )}
+          </tbody>
+        </table>
+        <p style={{ fontSize: 12, color: "#5F6E7F", marginTop: 8 }}>{filtered.length} teacher(s) displayed</p>
       </div>
     </main>
   );
