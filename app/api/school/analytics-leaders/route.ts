@@ -12,6 +12,7 @@ export async function GET(req: Request) {
     const sql =
       "SELECT ss.name AS name, " +
       "ss.class_name AS className, " +
+      "ss.department AS department, " +
       "COUNT(a.id) AS answers, " +
       "COALESCE(ROUND(AVG(tm.accuracy)), 0) AS avgAccuracy " +
       "FROM school_students ss " +
@@ -19,13 +20,14 @@ export async function GET(req: Request) {
       "LEFT JOIN attempts a ON a.user_id = u.id " +
       "LEFT JOIN topic_mastery tm ON tm.user_id = u.id " +
       "WHERE ss.school_id = ? " +
-      "GROUP BY ss.id, ss.name, ss.class_name " +
+      "GROUP BY ss.id, ss.name, ss.class_name, ss.department " +
       "ORDER BY answers DESC " +
-      "LIMIT 20";
+      "LIMIT 15";
 
     const rows = (await db.prepare(sql).all(schoolId)) as Array<{
       name: string;
       className: string;
+      department: string | null;
       answers: number;
       avgAccuracy: number;
     }>;

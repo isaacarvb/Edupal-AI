@@ -10,16 +10,12 @@ const TERMS = [
 ];
 
 const DISCOUNT_TIERS: Array<{ min: number; percent: number }> = [
-  { min: 1000, percent: 25 },
-  { min: 900, percent: 22.5 },
-  { min: 800, percent: 20 },
-  { min: 700, percent: 17.5 },
-  { min: 600, percent: 15 },
-  { min: 500, percent: 12.5 },
-  { min: 400, percent: 10 },
-  { min: 300, percent: 7.5 },
-  { min: 200, percent: 5 },
-  { min: 100, percent: 2.5 },
+  { min: 901, percent: 35 },
+  { min: 701, percent: 30 },
+  { min: 501, percent: 25 },
+  { min: 301, percent: 20 },
+  { min: 101, percent: 15 },
+  { min: 20, percent: 10 },
   { min: 0, percent: 0 },
 ];
 
@@ -45,7 +41,7 @@ export default function SchoolSubscription() {
   // Calculated values
   const studentsNum = Number(students) || 0;
   const termMultiplier = term?.multiplier ?? 1;
-  const basePrice = 2000 * studentsNum * termMultiplier;
+  const basePrice = 1500 * studentsNum * termMultiplier;
   const discountPercent = getDiscount(studentsNum);
   const discountAmount = Math.round(basePrice * (discountPercent / 100));
   const finalAmount = basePrice - discountAmount;
@@ -74,8 +70,8 @@ export default function SchoolSubscription() {
   }, [school]);
 
   const handleCalculate = () => {
-    if (!studentsNum || studentsNum < 10) {
-      setMsg("Minimum 10 students required for school subscription.");
+    if (!studentsNum || studentsNum < 20) {
+      setMsg("Minimum 20 students required for school subscription.");
       return;
     }
     if (!term) {
@@ -86,7 +82,7 @@ export default function SchoolSubscription() {
   };
 
   const handlePay = async () => {
-    if (!studentsNum || studentsNum < 10) return setMsg("Minimum 10 students required for school subscription.");
+    if (!studentsNum || studentsNum < 20) return setMsg("Minimum 20 students required for school subscription.");
     if (!term) return setMsg("Select a subscription term.");
     if (!school) return setMsg("School session not found.");
     setMsg("");
@@ -173,8 +169,8 @@ export default function SchoolSubscription() {
         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, marginBottom: 16 }}>
           <div>
             <label style={{ display: "block", fontSize: 12, fontWeight: 800, color: "#5F6E7F", marginBottom: 6 }}>Number of Students</label>
-            <input value={students} onChange={(e) => setStudents(e.target.value)} type="number" min={10}
-              placeholder="Minimum 10 students"
+            <input value={students} onChange={(e) => setStudents(e.target.value)} type="number" min={20}
+              placeholder="Minimum 20 students"
               style={{ width: "100%", height: 44, borderRadius: 10, border: "1px solid #CBD5E1", padding: "0 12px" }} required />
           </div>
           <div>
@@ -197,7 +193,7 @@ export default function SchoolSubscription() {
         {studentsNum > 0 && term && (
           <div style={{ background: "#F8FAFC", border: "1px solid #E2E8F0", borderRadius: 10, padding: 14, marginBottom: 16 }}>
             <div style={{ display: "flex", justifyContent: "space-between", fontSize: 13, color: "#5F6E7F", marginBottom: 4 }}>
-              <span>Base (₦2,000 × {studentsNum} × {termMultiplier} term(s))</span>
+              <span>Base (₦1,500 × {studentsNum} × {termMultiplier} term(s))</span>
               <span>₦{basePrice.toLocaleString()}</span>
             </div>
             {discountPercent > 0 && (

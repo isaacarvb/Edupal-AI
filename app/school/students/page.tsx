@@ -46,22 +46,26 @@ export default function SchoolStudents() {
       const lines = text.trim().split("\n");
       if (lines.length < 2) return setImportMsg("CSV must have a header row and at least one student row.");
 
-      const header = lines[0].split(",").map((h) => h.trim().toLowerCase());
-      const nameIdx = header.indexOf("name");
-      const classIdx = header.indexOf("class");
-      const deptIdx = header.indexOf("department");
+      const header = lines[0].split(",").map((h) => h.trim().replace(/^"|"$/g, "").toLowerCase());
+      const nameIdx = header.findIndex((h) => h === "name" || h === "student" || h === "student name" || h === "full name");
+      const classIdx = header.findIndex((h) => h === "class" || h === "class_name" || h === "classname" || h === "class name");
+      const deptIdx = header.findIndex((h) => h === "department" || h === "dept");
 
       if (nameIdx === -1 || classIdx === -1) {
-        return setImportMsg("CSV must have columns: name, class (department optional)");
+        return setImportMsg("CSV must have columns: name, class (department optional). Header found: " + header.join(", "));
       }
 
       const rows: Array<{ name: string; className: string; department: string | null }> = [];
       for (let i = 1; i < lines.length; i++) {
-        const cols = lines[i].split(",");
-        if (cols.length < 2) continue;
+        // Parse CSV line handling quoted values
+        const cols = lines[i].split(",").map((c) => c.trim().replace(/^"|"$/g, ""));
+        if (cols.length <= Math.max(nameIdx, classIdx)) continue;
+        const name = cols[nameIdx]?.trim() || "";
+        const className = cols[classIdx]?.trim() || "";
+        if (!name) continue;
         rows.push({
-          name: cols[nameIdx]?.trim() || "",
-          className: cols[classIdx]?.trim() || "",
+          name,
+          className: className || "Unassigned",
           department: deptIdx !== -1 ? (cols[deptIdx]?.trim() || null) : null
         });
       }
@@ -195,7 +199,7 @@ export default function SchoolStudents() {
               filtered.map((s) => (
                 <tr key={s.id} style={{ borderBottom: "1px solid #F1F5F9" }}>
                   <td style={{ padding: "10px 12px", fontWeight: 700 }}>{s.name}</td>
-                  <td style={{ padding: "10px 12px" }}>{s.className}</td>
+                  <td style={{ padding: "10px 12px", color: s.className ? "#333A45" : "#94A3B8" }}>{s.className || "Unassigned"}</td>
                   <td style={{ padding: "10px 12px", color: "#5F6E7F" }}>{s.department || "—"}</td>
                   <td style={{ padding: "10px 12px", textAlign: "right" }}>
                     <button onClick={() => handleDelete(s.id, s.name)} disabled={deletingId === s.id}
