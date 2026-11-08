@@ -33,7 +33,7 @@ html.dark img { filter: invert(0.93) hue-rotate(180deg); }
 /* ─── Reduced data mode: flat, text-only, no decoration ─── */
 body.lite { background: #fff; }
 body.lite * { box-shadow: none !important; transition: none !important; animation: none !important; }
-body.lite .deco { display: none !important; }
+body.lite .deco span, body.lite .deco { font-size: 0 !important; }
 body.lite .lite-flat { background: #1E242E !important; }
 
 .btn-journey {

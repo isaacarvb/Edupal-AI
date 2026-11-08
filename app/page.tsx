@@ -36,7 +36,7 @@ export default function Landing() {
           </p>
           <div style={{ display: "flex", gap: 12, justifyContent: "center", flexWrap: "wrap" }}>
             <a href="/school-register" className="btn-journey" style={{ background: "#0F766E" }}>START YOUR JOURNEY — School Administrator</a>
-            <a href="/signup" className="btn-journey" style={{ background: "#2F5D7C" }}>START YOUR JOURNEY — Individual Student</a>
+            <a href="/signup" className="btn-journey" style={{ background: "#fff", color: "#1E242E", border: "2px solid #fff" }}>START YOUR JOURNEY — Individual Student</a>
           </div>
           <p style={{ fontSize: 13, opacity: 0.8 }}>Free daily practice • No card needed to start</p>
         </div>
@@ -131,7 +131,7 @@ export default function Landing() {
         <div style={{ display: "flex", gap: 12, justifyContent: "center", alignItems: "center", flexWrap: "wrap" }}>
           <a href="/school-register" className="btn-journey" style={{ background: "#0F766E" }}>School Administrator</a>
           <span style={{ fontSize: 13, fontWeight: 700, color: "#5F6E7F", letterSpacing: 0.5, whiteSpace: "nowrap" }}>← Start your journey →</span>
-          <a href="/signup" className="btn-journey" style={{ background: "#2F5D7C" }}>Individual Student</a>
+          <a href="/signup" className="btn-journey" style={{ background: "#fff", color: "#1E242E", border: "2px solid #0F766E" }}>Individual Student</a>
         </div>
         <p style={{ fontSize: 13, color: "#5F6E7F" }}>Know what you're learning, where you're weak, and when your exam is.</p>
       </section>
