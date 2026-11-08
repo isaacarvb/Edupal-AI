@@ -25,7 +25,8 @@ export async function GET(req: Request) {
        WHERE a.user_id = ? AND q.subject = ?`
     )
     .get(userId, subject) as { n: number };
-  if (done.n >= DIAGNOSTIC_CAP) return NextResponse.json({ done: true, answered: done.n });
+  // UNLIMITED users have no question cap
+  if (freeOnly && done.n >= DIAGNOSTIC_CAP) return NextResponse.json({ done: true, answered: done.n });
 
   const recent = await db
     .prepare(
@@ -60,6 +61,7 @@ export async function GET(req: Request) {
          FROM tiered
          WHERE difficulty = ? AND id NOT IN (SELECT question_id FROM attempts WHERE user_id = ?)
           ${freeOnly ? "AND bank_idx <= 10" : ""}
+          AND (type != 'MCQ' OR LENGTH(options_json) < 500)
          ORDER BY CASE WHEN source = 'CURATED' THEN 0 ELSE 1 END, id
          LIMIT 1`
       )

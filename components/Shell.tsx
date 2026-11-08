@@ -164,7 +164,7 @@ export default function Shell({ children }: { children: React.ReactNode }) {
   // Individual student shell.
   const q = userId ? `?userId=${userId}${adminView ? "&adminView=1" : ""}` : "";
   const likelyBadge =
-    daysLeft === null ? "Locked" : daysLeft > 7 ? `${daysLeft} left` : "Live";
+    daysLeft === null ? "Locked" : daysLeft > 10 ? `${daysLeft} left` : "Live";
   const links = [
     { href: userId ? `/dashboard${q}` : "/onboarding", match: "/dashboard", label: "Dashboard", emoji: "🏠", badge: "" },
     { href: userId ? `/practice?userId=${userId}` : "/onboarding", match: "/practice", label: "Practice", emoji: "📝", badge: "" },

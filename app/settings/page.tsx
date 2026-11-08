@@ -288,8 +288,15 @@ function SettingsInner() {
           <div style={{ ...card, marginTop: 12 }}>
             <h2 style={{ fontSize: 16, margin: "0 0 8px", color: "#1E242E" }}>Set up authenticator app</h2>
             <p style={{ fontSize: 13, color: "#5F6E7F", margin: "0 0 10px" }}>
-              Open Google Authenticator, Authy, or similar app and scan the QR code or enter the key manually:
+              Scan the QR code with Google Authenticator, Authy, or similar app. Or enter the key manually:
             </p>
+            <div style={{ display: "flex", justifyContent: "center", marginBottom: 12 }}>
+              <img
+                src={`https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(`otpauth://totp/EduPal AI:${tfSecret}?secret=${tfSecret}&issuer=EduPal AI`)}`}
+                alt="QR Code for 2FA setup"
+                style={{ border: "1px solid #E2E8F0", borderRadius: 8 }}
+              />
+            </div>
             <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 8 }}>
               <div style={{ fontFamily: "monospace", fontSize: 13, padding: "8px 12px", background: "#F1F5F9", borderRadius: 8, flex: 1 }}>{tfSecret}</div>
               <button onClick={copySecret} style={{ height: 40, borderRadius: 8, border: 0, background: "#1E242E", color: "#fff", fontWeight: 700, padding: "0 14px", cursor: "pointer" }}>Copy</button>

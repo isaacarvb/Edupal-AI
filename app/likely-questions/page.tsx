@@ -25,7 +25,7 @@ function LikelyInner() {
     return (
       <main style={{ maxWidth: 640, margin: "0 auto", padding: 20, color: "#333A45", textAlign: "center" }}>
         <div style={{ fontSize: 48 }}>🔒</div>
-        <h1 style={{ color: "#1E242E" }}>Unlocks 7 days before your exam</h1>
+        <h1 style={{ color: "#1E242E" }}>Unlocks 10 days before your exam</h1>
         <p style={{ fontSize: 20, fontWeight: 800, color: "#0F766E" }}>{data.daysLeft} day(s) to {data.exam} — keep building your base.</p>
         <p style={{ fontSize: 14, color: "#5F6E7F" }}>Final-week predictions appear here automatically. Meanwhile, your Next Up topics are the best preparation.</p>
         <a href={`/dashboard?userId=${userId}`} style={{ color: "#0F766E", fontWeight: 700 }}>Back to dashboard</a>
@@ -39,7 +39,7 @@ function LikelyInner() {
         <div style={{ fontSize: 48 }}>📅</div>
         <h1 style={{ color: "#1E242E" }}>Likely questions are ready when you are</h1>
         <p style={{ fontSize: 16, margin: "12px 0" }}>
-          This section shows the questions most likely to appear in your exam — unlocked automatically 7 days before your exam date.
+          This section shows the questions most likely to appear in your exam — unlocked automatically 10 days before your exam date.
         </p>
         <p style={{ fontSize: 14, color: "#5F6E7F" }}>
           Your exam dates aren't confirmed yet, so predictions stay locked. Set your start and end dates in Settings as soon as the timetable is out, and this section will spring to life on its own.

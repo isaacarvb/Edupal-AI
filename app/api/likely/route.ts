@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { getDb } from "@/lib/db";
 import { groqChat, groqConfigured, type ChatMsg } from "@/lib/groq";
 
-// Likely-questions trend workspace. Gated: unlocks ≤7 days before exam date.
+// Likely-questions trend workspace. Gated: unlocks ≤10 days before exam date.
 // Evidence comes ONLY from real bank metadata (predicted flags, topic frequency,
 // class-wide miss rates) — never invented years.
 export async function GET(req: Request) {
@@ -10,18 +10,20 @@ export async function GET(req: Request) {
   const userId = searchParams.get("userId");
   if (!userId) return NextResponse.json({ error: "userId required" }, { status: 400 });
   const db = await getDb();
-  const profile = await db.prepare('SELECT exam, exam_start AS "examStart", dates_confirmed AS "datesConfirmed" FROM profiles WHERE user_id = ?').get(userId) as
-    | { exam: string; examStart: string | null; datesConfirmed: number | null }
+  const profile = await db.prepare('SELECT exam, exam_start AS "examStart", dates_confirmed AS "datesConfirmed", department, level FROM profiles WHERE user_id = ?').get(userId) as
+    | { exam: string; examStart: string | null; datesConfirmed: number | null; department: string | null; level: string }
     | undefined;
   const confirmed = Number(profile?.datesConfirmed ?? 1) !== 0;
   const start = confirmed ? profile?.examStart ?? null : null;
   const daysLeft = start ? Math.ceil((Date.parse(start) - Date.now()) / 86400000) : null;
-  if (daysLeft !== null && daysLeft > 7) {
+  if (daysLeft !== null && daysLeft > 10) {
     return NextResponse.json({ locked: true, reason: "countdown", daysLeft, exam: profile?.exam });
   }
 
   // Evidence pack: predicted-repeat topics with bank depth + cohort miss rates.
+  // Filtered by department for senior students.
   const examName = profile?.exam ?? "JAMB";
+  const dept = profile?.department ?? "";
   const topics = await db
     .prepare(
       `SELECT q.subject AS subject, q.topic AS topic,
@@ -35,8 +37,14 @@ export async function GET(req: Request) {
        ORDER BY flagged DESC, bank DESC`
     )
     .all(examName) as { subject: string; topic: string; flagged: number; bank: number; cohortAcc: number | null }[];
-  const hot = topics.filter((t) => t.flagged > 0).slice(0, 8);
-  const picks = (hot.length ? hot : topics.slice(0, 8)).map((t) => ({ subject: t.subject, topic: t.topic }));
+
+  // Filter by department if student has one
+  const { COMMON_SUBJECTS, DEPARTMENTS: DEPT_MAP } = await import("@/lib/syllabus");
+  const allowedSubjects = dept ? [...COMMON_SUBJECTS, ...(DEPT_MAP[dept as keyof typeof DEPT_MAP] || [])] : topics.map((t) => t.subject);
+  const filteredTopics = topics.filter((t) => allowedSubjects.includes(t.subject));
+
+  const hot = filteredTopics.filter((t) => t.flagged > 0).slice(0, 8);
+  const picks = (hot.length ? hot : filteredTopics.slice(0, 8)).map((t) => ({ subject: t.subject, topic: t.topic }));
 
   // Representative questions (flagged first, unattempted by this student preferred).
   const recs: { id: string; subject: string; topic: string; type: string; stem: string; optionsJson: string }[] = [];

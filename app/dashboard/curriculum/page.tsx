@@ -32,6 +32,7 @@ function CurriculumInner() {
   const [userReady, setUserReady] = useState(false);
   const [tier, setTier] = useState<"jss" | "senior">("senior");
   const [department, setDepartment] = useState<string | null>(null);
+  const [level, setLevel] = useState<string>("SECONDARY");
   const [selectedSubject, setSelectedSubject] = useState<CSubject | null>(null);
   const [openTopic, setOpenTopic] = useState<string | null>(null);
   const [subjects, setSubjects] = useState<CSubject[]>([]);
@@ -43,6 +44,20 @@ function CurriculumInner() {
     setUserId(params.get("userId") ?? localStorage.getItem("edupal_user") ?? "");
     setUserReady(true);
   }, [params]);
+
+  // Load user profile for level and department
+  useEffect(() => {
+    if (!userId) return;
+    fetch(`/api/topics?userId=${userId}`)
+      .then((r) => r.json())
+      .then((d) => {
+        if (d.profile) {
+          setLevel(d.profile.level ?? "SECONDARY");
+          setDepartment(d.profile.department ?? null);
+        }
+      })
+      .catch(() => {});
+  }, [userId]);
 
   // Load curriculum (with this user's access level) once we know who is asking.
   useEffect(() => {
@@ -58,10 +73,13 @@ function CurriculumInner() {
       .catch(() => setLoading(false));
   }, [userReady, userId]);
 
-  // Allowed subjects for current tier + department
+  // Allowed subjects for current tier + department + level
   const allowedSubjects = (() => {
     if (tier === "jss") return [...JSS_SUBJECTS];
-    if (department) return [...DEPARTMENTS[department as keyof typeof DEPARTMENTS]];
+    if (tier === "senior") {
+      if (department) return [...DEPARTMENTS[department as keyof typeof DEPARTMENTS]];
+      return [...SSS_SUBJECTS];
+    }
     return [...SSS_SUBJECTS];
   })();
 
@@ -71,16 +89,19 @@ function CurriculumInner() {
       !hidden.includes(s.name)
   );
 
-  // For department filtering: show all tier subjects, but mark others as locked
+  // For tier locking: show all subjects, but mark others as locked
   const allTierSubjects = subjects.filter(
     (s) => (tier === "jss" ? s.level === "JSS" : s.level === "SSS") && !hidden.includes(s.name)
   );
 
   function selectSubject(s: CSubject) {
-    // Don't allow opening locked subjects (not in department)
+    // Don't allow opening locked subjects (tier or department mismatch)
     if (department && tier === "senior" && !allowedSubjects.includes(s.name)) {
       return;
     }
+    // Don't allow opening locked subjects (level mismatch)
+    if (level === "JUNIOR" && s.level === "SSS") return;
+    if (level === "SENIOR" && s.level === "JSS") return;
     setSelectedSubject(s);
     setOpenTopic(null);
   }
@@ -258,7 +279,9 @@ function CurriculumInner() {
         <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(200px, 1fr))", gap: 12 }}>
           {allTierSubjects.length === 0 && <p style={{ fontSize: 14, color: "#5F6E7F" }}>No subjects available.</p>}
           {allTierSubjects.map((s) => {
-            const isLocked = department && tier === "senior" && !allowedSubjects.includes(s.name);
+            const isLocked = (department && tier === "senior" && !allowedSubjects.includes(s.name)) ||
+                             (level === "JUNIOR" && s.level === "SSS") ||
+                             (level === "SENIOR" && s.level === "JSS");
             const freeCount = unlimited ? s.topics.length : s.topics.filter((t) => !t.locked).length;
             const lockedCount = s.topics.length - freeCount;
             return (
@@ -274,7 +297,9 @@ function CurriculumInner() {
                 <div style={{ fontSize: 11, color: "#5F6E7F", marginTop: 4 }}>{s.exams.join(", ")}</div>
                 {isLocked && (
                   <div style={{ fontSize: 11, fontWeight: 700, color: "#DC2626", marginTop: 8 }}>
-                    Not in your department
+                    {(level === "JUNIOR" && s.level === "SSS") || (level === "SENIOR" && s.level === "JSS")
+                      ? "Not for your level"
+                      : "Not in your department"}
                   </div>
                 )}
               </div>

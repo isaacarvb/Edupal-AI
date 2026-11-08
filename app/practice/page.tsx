@@ -250,7 +250,8 @@ function PracticeInner() {
     // students see their department plus a peek at the junior tier.
     const juniorCardsAll = cardsIn(jss);
     const seniorCards = isJunior ? [] : hubSubjects;
-    const juniorCards = isJunior ? hubSubjects : juniorCardsAll.filter((s) => !hubSubjects.some((h) => h.subject === s.subject));
+    // For senior students, show ALL JSS subjects (including common ones) but locked
+    const juniorCards = isJunior ? hubSubjects : juniorCardsAll;
     const juniorSoon = jss.filter((x) => !juniorCards.some((c) => c.subject === x) && !seniorCards.some((h) => h.subject === x));
 
     // Get all SSS subjects for department filtering
@@ -268,13 +269,20 @@ function PracticeInner() {
       };
     });
 
+    // For senior students, JSS subjects are locked (tier locking)
+    const juniorCardsWithLock = isJunior ? juniorCards : juniorCards.map((c) => ({ ...c, locked: true }));
+
     const subjectCard = (s: { subject: string; left: number; n: number; locked?: boolean }) => {
       if (s.locked) {
+        // Determine lock reason
+        const isTierLock = (isJunior && !(JSS_SUBJECTS as readonly string[]).includes(s.subject)) ||
+                          (!isJunior && (JSS_SUBJECTS as readonly string[]).includes(s.subject) && !allowedSubjects.includes(s.subject));
+        const lockMessage = isTierLock ? "Not for your level" : "Not in your department";
         return (
           <div key={s.subject}
             style={{ background: "#F8FAFC", border: "1px solid #E2E8F0", borderRadius: 12, padding: 16, color: "#94A3B8" }}>
             <strong style={{ fontSize: 17 }}>{shortSubject(s.subject)} 🔒</strong>
-            <div style={{ fontSize: 13, marginTop: 4 }}>Not in your department</div>
+            <div style={{ fontSize: 13, marginTop: 4 }}>{lockMessage}</div>
             <div style={{ fontSize: 14, fontWeight: 800, marginTop: 8, color: "#94A3B8" }}>Locked</div>
           </div>
         );
@@ -324,8 +332,8 @@ function PracticeInner() {
             {juniorOpen && (
               <div>
                 <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))", gap: 12, marginBottom: 12 }}>
-                  {juniorCards.length === 0 && <p style={{ fontSize: 14, color: "#5F6E7F" }}>Loading subjects…</p>}
-                  {juniorCards.map(subjectCard)}
+                  {juniorCardsWithLock.length === 0 && <p style={{ fontSize: 14, color: "#5F6E7F" }}>Loading subjects…</p>}
+                  {juniorCardsWithLock.map(subjectCard)}
                 </div>
                 {juniorSoon.length > 0 && (
                   <div style={{ fontSize: 13, color: "#5F6E7F", marginBottom: 12 }}>
@@ -354,6 +362,18 @@ function PracticeInner() {
                     Coming soon: {juniorSoon.map(shortSubject).join(" • ")}
                   </div>
                 )}
+              </div>
+            )}
+            <button onClick={() => setJuniorOpen((o) => !o)}
+              style={{ width: "100%", textAlign: "left", background: "#1E242E", color: "#fff", border: 0, borderRadius: 12, padding: 14, fontSize: 16, fontWeight: 800, cursor: "pointer", marginTop: 16, marginBottom: 8 }}>
+              {juniorOpen ? "▾" : "▸"} Senior Secondary School
+            </button>
+            {juniorOpen && (
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))", gap: 12, marginBottom: 12 }}>
+                {allSSS.map((subject) => {
+                  const card = cardPool.find((c) => c.subject === subject);
+                  return subjectCard({ subject, left: card?.left ?? 10, n: card?.n ?? 0, locked: true });
+                })}
               </div>
             )}
           </>
@@ -444,7 +464,29 @@ function PracticeInner() {
           <p>{q.stem}</p>
           {(() => {
             if (q.type !== "MCQ") return null;
-            const opts: string[] = JSON.parse(q.optionsJson);
+            let opts: string[] = [];
+            try {
+              opts = JSON.parse(q.optionsJson);
+            } catch {
+              opts = [];
+            }
+            // Fix corrupted options: if many single-char options, reconstruct from answer
+            if (opts.length > 10 && opts.every((o) => o.length <= 2)) {
+              // This is corrupted data — show message
+              return (
+                <div style={{ background: "#FFFBEB", border: "1px solid #F59E0B", borderRadius: 10, padding: 16, marginTop: 12 }}>
+                  <p style={{ fontSize: 14, color: "#92400E", margin: "0 0 8px" }}>
+                    <strong>Question data issue:</strong> This question's options are corrupted in the database.
+                  </p>
+                  <p style={{ fontSize: 13, color: "#78350F", margin: "0 0 8px" }}>
+                    Correct answer: <strong>{(q as any).answerKey || "Unknown"}</strong>
+                  </p>
+                  <button onClick={() => load()} style={{ background: "#F59E0B", color: "#fff", border: 0, borderRadius: 8, padding: "8px 16px", fontWeight: 700, cursor: "pointer" }}>
+                    Skip to next question →
+                  </button>
+                </div>
+              );
+            }
             const norm = (s: string) => s.trim().toLowerCase();
             const correctNorm = result ? norm(result.correctAnswer) : "";
             const pickedNorm = norm(answer);
