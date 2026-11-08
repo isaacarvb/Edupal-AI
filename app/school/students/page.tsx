@@ -93,7 +93,7 @@ export default function SchoolStudents() {
       const res = await fetch("/api/school/students-import", { method: "POST", body: form });
       const jd = await res.json();
       if (!res.ok) return setImportMsg(jd.error || "Import failed.");
-      setImportMsg(`Imported ${jd.imported} students. Sample: ${debugInfo}`);
+      setImportMsg(`Imported ${jd.imported} students. Frontend parsed: ${debugInfo} | API saved: ${jd.debug || "N/A"}`);
       fetchStudents();
     } catch (e) {
       setImportMsg(e instanceof Error ? e.message : "Import failed.");

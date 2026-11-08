@@ -21,6 +21,7 @@ export async function POST(req: Request) {
     if (!school) return NextResponse.json({ error: "School not found" }, { status: 404 });
 
     let imported = 0;
+    let firstSample = "";
     for (const s of students) {
       // Create a user entry for the student (no password - they login via school code + name + class)
       const userId = randomUUID();
@@ -33,13 +34,16 @@ export async function POST(req: Request) {
       await db.prepare(
         "INSERT INTO school_students (id, school_id, user_id, name, class_name, department, created_at) VALUES (?, ?, ?, ?, ?, ?, ?)"
       ).run(randomUUID(), schoolId, userId, s.name, s.className, s.department || null, now);
+      if (imported === 0) {
+        firstSample = `DB saved: name="${s.name}" class_name="${s.className}" dept="${s.department || "null"}"`;
+      }
       imported++;
     }
 
     // Update seats_used
     await db.prepare("UPDATE schools SET seats_used = seats_used + ? WHERE id = ?").run(imported, schoolId);
 
-    return NextResponse.json({ ok: true, imported });
+    return NextResponse.json({ ok: true, imported, debug: firstSample });
   } catch (e) {
     return NextResponse.json({ error: e instanceof Error ? e.message : "failed" }, { status: 500 });
   }
