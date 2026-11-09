@@ -100,6 +100,13 @@ async function sqliteMigrate(): Promise<void> {
   h.exec("CREATE TABLE IF NOT EXISTS admin_allowlist (email TEXT PRIMARY KEY, role TEXT NOT NULL DEFAULT 'CONTENT_ADMIN', added_at TEXT NOT NULL DEFAULT (datetime('now')))");
   h.exec("CREATE TABLE IF NOT EXISTS error_logs (id TEXT PRIMARY KEY, source TEXT NOT NULL DEFAULT '', message TEXT NOT NULL DEFAULT '', created_at TEXT NOT NULL DEFAULT (datetime('now')))");
 
+  // Add missing columns to existing questions table (for databases created before these were added)
+  if (!cols("questions").has("options_json")) h.exec("ALTER TABLE questions ADD COLUMN options_json TEXT NOT NULL DEFAULT '[]'");
+  if (!cols("questions").has("answer_key")) h.exec("ALTER TABLE questions ADD COLUMN answer_key TEXT NOT NULL DEFAULT ''");
+  if (!cols("questions").has("marking_rubric")) h.exec("ALTER TABLE questions ADD COLUMN marking_rubric TEXT NOT NULL DEFAULT ''");
+  if (!cols("questions").has("source")) h.exec("ALTER TABLE questions ADD COLUMN source TEXT NOT NULL DEFAULT 'CURATED'");
+  if (!cols("questions").has("predicted_repeat")) h.exec("ALTER TABLE questions ADD COLUMN predicted_repeat INTEGER NOT NULL DEFAULT 0");
+
   // ---- Stage C migrations: teacher accounts, lesson notes, assignments, broadcasts ----
   // CREATE TABLE IF NOT EXISTS handles new databases; ALTER COLUMN handles existing
   // databases where the table was created by an earlier partial migration.
@@ -273,6 +280,15 @@ async function pgMigrate(): Promise<void> {
       await db.prepare("UPDATE profiles SET subjects = REPLACE(subjects, 'Intermediate Science', 'Intermediate Science (Basic Science and Technology)') WHERE subjects LIKE '%Intermediate Science%' AND subjects NOT LIKE '%Intermediate Science (%'").run();
       await db.prepare("UPDATE profiles SET subjects = REPLACE(subjects, 'Integrated Science', 'Intermediate Science (Basic Science and Technology)') WHERE subjects LIKE '%Integrated Science%'").run();
       // ---- Stage C migrations ----
+      // Add missing columns to existing questions table (PostgreSQL)
+      const hasQCol = async (col: string) =>
+        ((await db.prepare("SELECT 1 FROM information_schema.columns WHERE table_name = 'questions' AND column_name = $1").get(col)) ? true : false);
+      if (!(await hasQCol("options_json"))) await db.prepare("ALTER TABLE questions ADD COLUMN options_json TEXT NOT NULL DEFAULT '[]'").run();
+      if (!(await hasQCol("answer_key"))) await db.prepare("ALTER TABLE questions ADD COLUMN answer_key TEXT NOT NULL DEFAULT ''").run();
+      if (!(await hasQCol("marking_rubric"))) await db.prepare("ALTER TABLE questions ADD COLUMN marking_rubric TEXT NOT NULL DEFAULT ''").run();
+      if (!(await hasQCol("source"))) await db.prepare("ALTER TABLE questions ADD COLUMN source TEXT NOT NULL DEFAULT 'CURATED'").run();
+      if (!(await hasQCol("predicted_repeat"))) await db.prepare("ALTER TABLE questions ADD COLUMN predicted_repeat INTEGER NOT NULL DEFAULT 0").run();
+
       const hasStCol = async (col: string) =>
         ((await db.prepare("SELECT 1 FROM information_schema.columns WHERE table_name = 'school_teachers' AND column_name = $1").get(col)) ? true : false);
       if (!(await hasStCol("id"))) await db.prepare("CREATE TABLE IF NOT EXISTS school_teachers (id TEXT PRIMARY KEY, school_id TEXT NOT NULL REFERENCES schools(id) ON DELETE CASCADE, name TEXT NOT NULL, email TEXT NOT NULL, password_hash TEXT NOT NULL, classes TEXT NOT NULL DEFAULT '', active INTEGER NOT NULL DEFAULT 1, created_at TEXT NOT NULL DEFAULT (TO_CHAR(NOW() AT TIME ZONE 'UTC', 'YYYY-MM-DD\"T\"HH24:MI:SS.MS\"Z\"')))").run();
