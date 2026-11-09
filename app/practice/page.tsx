@@ -456,7 +456,19 @@ function PracticeInner() {
         </div>
       )}
       {!q ? (
-        <p>Loading…</p>
+        err ? (
+          <div style={{ background: "#FEF2F2", border: "1px solid #FECACA", borderRadius: 12, padding: 20, marginTop: 16, textAlign: "center" }}>
+            <p style={{ fontSize: 16, color: "#DC2626", margin: "0 0 8px" }}>{err}</p>
+            <button onClick={() => load()} style={{ background: "#0F766E", color: "#fff", border: 0, borderRadius: 8, padding: "10px 20px", fontWeight: 700, cursor: "pointer", marginTop: 8 }}>
+              Try Again
+            </button>
+            <div style={{ marginTop: 12 }}>
+              <a href={`/practice?userId=${userId}`} style={{ color: "#0F766E", fontWeight: 700 }}>← Back to subject picker</a>
+            </div>
+          </div>
+        ) : (
+          <p>Loading…</p>
+        )
       ) : (
         <>
           <h2 style={{ color: "#1E242E", fontSize: 20 }}>{q.topic}</h2>
