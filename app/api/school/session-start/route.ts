@@ -1,6 +1,15 @@
 import { NextResponse } from "next/server";
 import { getDb } from "@/lib/db";
 import { randomUUID } from "crypto";
+import { hashPassword } from "@/lib/password";
+import {
+  GENERAL_SUBJECTS,
+  JSS_SUBJECTS,
+  DEPARTMENTS,
+  canonicalDepartment,
+  isJuniorClass,
+  isSeniorClass
+} from "@/lib/syllabus";
 
 export async function POST(req: Request) {
   try {
@@ -23,34 +32,87 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "School subscription expired" }, { status: 403 });
     }
 
-    // Verify student exists in roster with matching name, class, and department
+    // Verify student exists in roster with matching name, class, and department.
     const student = (await db.prepare(
-      "SELECT id, name, class_name, department FROM school_students WHERE school_id = ? AND LOWER(name) = LOWER(?) AND LOWER(class_name) = LOWER(?) LIMIT 1"
+      "SELECT id, user_id, name, class_name, department FROM school_students WHERE school_id = ? AND LOWER(name) = LOWER(?) AND LOWER(class_name) = LOWER(?) LIMIT 1"
     ).get(schoolId, studentName, className)) as
-      | { id: string; name: string; class_name: string; department: string | null }
+      | { id: string; user_id: string | null; name: string; class_name: string; department: string | null }
       | undefined;
 
     if (!student) {
       return NextResponse.json({ error: "Student not found in roster. Check your name and class spelling." }, { status: 404 });
     }
 
-    // For SSS students, department is required and must match
-    const dept = String(b?.department ?? "").trim();
-    const isSSS = className.toLowerCase().includes("ss") || className.toLowerCase().includes("sss");
+    // JSS vs SSS detection must not confuse "JSS2" with "SS2".
+    const junior = isJuniorClass(className);
+    const senior = isSeniorClass(className);
+    const rosterDept = student.department ? canonicalDepartment(student.department) : "";
+    const isSSS = senior || (!junior && !!rosterDept);
+
+    // For SSS students, department is required and must match the roster.
+    const dept = canonicalDepartment(String(b?.department ?? rosterDept ?? "").trim());
     if (isSSS && !dept) {
       return NextResponse.json({ error: "Department is required for senior secondary students." }, { status: 400 });
     }
-    if (isSSS && student.department && dept.toLowerCase() !== student.department.toLowerCase()) {
+    if (isSSS && rosterDept && dept.toLowerCase() !== rosterDept.toLowerCase()) {
       return NextResponse.json({ error: "Department does not match roster." }, { status: 400 });
     }
 
-    const sessionId = randomUUID();
+    // Link to the student's real EduPal account so every profile/practice API
+    // behaves exactly like a self-signup student. Older roster rows may have no
+    // user_id yet, so create and link one on first login.
+    let userId = student.user_id;
+    if (userId) {
+      const existing = await db.prepare("SELECT id FROM users WHERE id = ?").get(userId);
+      if (!existing) userId = null;
+    }
+    if (!userId) {
+      userId = randomUUID();
+      await db.prepare(
+        "INSERT INTO users (id, name, email, password_hash, role, level) VALUES (?, ?, ?, ?, 'SCHOOL_STUDENT', 'SECONDARY')"
+      ).run(userId, student.name, `student_${userId}@school.local`, hashPassword(randomUUID()));
+      await db.prepare("UPDATE school_students SET user_id = ? WHERE id = ?").run(userId, student.id);
+    } else {
+      // Keep the display name in sync with the roster.
+      await db.prepare("UPDATE users SET name = ? WHERE id = ?").run(student.name, userId);
+    }
+
+    // Sync class + department + level into the real profile. School-code SSS
+    // students default to WAEC; JSS students default to Others.
+    const exam = isSSS ? "WAEC" : "Others";
+    const subjects = isSSS
+      ? [...GENERAL_SUBJECTS, ...(DEPARTMENTS[dept as keyof typeof DEPARTMENTS] ?? [])]
+      : [...JSS_SUBJECTS];
+    const uniqueSubjects = [...new Set(subjects)];
     const now = new Date().toISOString();
+
+    await db.prepare("UPDATE users SET level = 'SECONDARY' WHERE id = ?").run(userId);
+    await db.prepare(
+      `INSERT INTO profiles (user_id, exam, exam_date, exam_start, exam_end, dates_confirmed, department, subjects, language)
+       VALUES (?, ?, NULL, NULL, NULL, 0, ?, ?, 'SIMPLE')
+       ON CONFLICT(user_id) DO UPDATE SET
+         exam = excluded.exam,
+         exam_date = NULL,
+         exam_start = NULL,
+         exam_end = NULL,
+         dates_confirmed = 0,
+         department = excluded.department,
+         subjects = excluded.subjects,
+         language = COALESCE(NULLIF(profiles.language, ''), excluded.language)`
+    ).run(userId, exam, isSSS ? dept : "", uniqueSubjects.join(","));
+
+    // Every student needs a wallet + streak for the normal APIs to work.
+    await db.prepare(
+      "INSERT INTO wallets (user_id, credits_left, reset_at, plan) VALUES (?, 10, ?, 'FREE') ON CONFLICT DO NOTHING"
+    ).run(userId, now);
+    await db.prepare("INSERT INTO streaks (user_id) VALUES (?) ON CONFLICT DO NOTHING").run(userId);
+
+    const sessionId = randomUUID();
     await db.prepare(
       "INSERT INTO school_sessions (id, school_id, student_name, class_name, session_start, last_activity) VALUES (?, ?, ?, ?, ?, ?)"
     ).run(sessionId, schoolId, studentName, className, now, now);
 
-    return NextResponse.json({ ok: true, sessionId });
+    return NextResponse.json({ ok: true, sessionId, userId, exam, department: isSSS ? dept : "", level: isSSS ? "SENIOR" : "JUNIOR" });
   } catch (e) {
     return NextResponse.json({ error: e instanceof Error ? e.message : "failed" }, { status: 500 });
   }

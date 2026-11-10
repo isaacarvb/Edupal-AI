@@ -1,15 +1,26 @@
 "use client";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { useHiddenSubjects } from "@/components/useHiddenSubjects";
 import { NotesMarkdown } from "@/components/NotesMarkdown";
-import { DEPARTMENTS, DEPARTMENT_NAMES, JSS_SUBJECTS, SSS_SUBJECTS } from "@/lib/syllabus";
+import {
+  DEPARTMENTS,
+  DEPARTMENT_NAMES,
+  GENERAL_SUBJECTS,
+  JSS_SUBJECTS,
+  SSS_SUBJECTS,
+  canonicalDepartment
+} from "@/lib/syllabus";
 
 type CSubject = { id: string; name: string; level: "SSS" | "JSS"; exams: string[]; topics: CTopic[] };
 type CTopic = {
   id: string; name: string; class: string; subject: string; level: string; exams: string[]; subjectId: string;
   learningObjectives: string[]; notes: string[]; activities: string[]; examFocus: string[]; source: string; locked?: boolean;
 };
+
+const GENERAL = GENERAL_SUBJECTS as readonly string[];
+const JSS = JSS_SUBJECTS as readonly string[];
+const SSS = SSS_SUBJECTS as readonly string[];
 
 function viewPill(open: boolean, locked: boolean): React.CSSProperties {
   if (locked && !open) {
@@ -26,19 +37,23 @@ function viewPill(open: boolean, locked: boolean): React.CSSProperties {
   };
 }
 
+function stubSubject(name: string, level: "SSS" | "JSS"): CSubject {
+  return { id: `stub-${level}-${name}`, name, level, exams: [], topics: [] };
+}
+
 function CurriculumInner() {
   const params = useSearchParams();
   const [userId, setUserId] = useState("");
   const [userReady, setUserReady] = useState(false);
   const [tier, setTier] = useState<"jss" | "senior">("senior");
-  const [department, setDepartment] = useState<string | null>(null);
+  const [studentIsJunior, setStudentIsJunior] = useState(false);
   const [userDepartment, setUserDepartment] = useState<string | null>(null);
-  const [level, setLevel] = useState<string>("SECONDARY");
   const [selectedSubject, setSelectedSubject] = useState<CSubject | null>(null);
   const [openTopic, setOpenTopic] = useState<string | null>(null);
   const [subjects, setSubjects] = useState<CSubject[]>([]);
   const [unlimited, setUnlimited] = useState(false);
   const [loading, setLoading] = useState(true);
+  const autoLanded = useRef(false);
   const hidden = useHiddenSubjects();
 
   useEffect(() => {
@@ -46,16 +61,21 @@ function CurriculumInner() {
     setUserReady(true);
   }, [params]);
 
-  // Load user profile for level and department
+  // Load user profile for level and department. School-code students use the
+  // same real account, so this works exactly like a self-signup student.
   useEffect(() => {
     if (!userId) return;
     fetch(`/api/topics?userId=${userId}`)
       .then((r) => r.json())
       .then((d) => {
-        if (d.profile) {
-          setLevel(d.profile.level ?? "SECONDARY");
-          setUserDepartment(d.profile.department ?? null);
-          setDepartment(d.profile.department ?? null);
+        if (!d.profile) return;
+        const junior = d.profile.level === "JUNIOR" || d.profile.exam === "Others";
+        setStudentIsJunior(junior);
+        setUserDepartment(d.profile.department ? canonicalDepartment(String(d.profile.department)) : null);
+        // JSS students land on the Junior view automatically.
+        if (!autoLanded.current) {
+          setTier(junior ? "jss" : "senior");
+          autoLanded.current = true;
         }
       })
       .catch(() => {});
@@ -75,43 +95,101 @@ function CurriculumInner() {
       .catch(() => setLoading(false));
   }, [userReady, userId]);
 
-  // Allowed subjects for current tier + user department + level
-  const allowedSubjects = (() => {
-    if (tier === "jss") return [...JSS_SUBJECTS];
-    if (tier === "senior") {
-      if (userDepartment) return [...DEPARTMENTS[userDepartment as keyof typeof DEPARTMENTS]];
-      return [...SSS_SUBJECTS];
-    }
-    return [...SSS_SUBJECTS];
-  })();
-
-  const tierSubjects = subjects.filter(
-    (s) =>
-      (tier === "jss" ? s.level === "JSS" : s.level === "SSS") &&
-      !hidden.includes(s.name)
+  const byLevel = useMemo(
+    () => ({
+      SSS: subjects.filter((s) => s.level === "SSS" && !hidden.includes(s.name)),
+      JSS: subjects.filter((s) => s.level === "JSS" && !hidden.includes(s.name))
+    }),
+    [subjects, hidden]
   );
 
-  // For tier locking: show all subjects, but mark others as locked
-  const allTierSubjects = subjects.filter(
-    (s) => (tier === "jss" ? s.level === "JSS" : s.level === "SSS") && !hidden.includes(s.name)
-  );
+  function findSubject(name: string, level: "SSS" | "JSS"): CSubject {
+    return byLevel[level].find((s) => s.name === name) ?? stubSubject(name, level);
+  }
+
+  // Which cards can be opened right now?
+  function isOpen(name: string, level: "SSS" | "JSS"): boolean {
+    if (hidden.includes(name)) return false;
+    if (tier === "jss") return level === "JSS" && studentIsJunior;
+    if (level === "JSS") return false; // other tier
+    if (studentIsJunior) return false; // JSS student peeking at senior
+    if (!userDepartment) return true;
+    if (GENERAL.includes(name)) return true;
+    return (DEPARTMENTS[userDepartment as keyof typeof DEPARTMENTS] ?? []).includes(name);
+  }
+
+  function lockReason(name: string, level: "SSS" | "JSS"): string {
+    if (level === "JSS" && !studentIsJunior) return "Not for your level";
+    if (level === "SSS" && studentIsJunior) return "Not for your level";
+    if (level === "SSS" && userDepartment && !GENERAL.includes(name)) return `Not in your ${userDepartment} department`;
+    return "Locked";
+  }
 
   function selectSubject(s: CSubject) {
-    // Don't allow opening locked subjects (tier or department mismatch)
-    if (userDepartment && tier === "senior" && !allowedSubjects.includes(s.name)) {
-      return;
-    }
-    // Don't allow opening locked subjects (level mismatch)
-    if (level === "JUNIOR" && s.level === "SSS") return;
-    if (level === "SENIOR" && s.level === "JSS") return;
+    if (!isOpen(s.name, s.level)) return;
     setSelectedSubject(s);
     setOpenTopic(null);
   }
 
   const subLink = `/subscription${userId ? `?userId=${encodeURIComponent(userId)}` : ""}`;
 
+  function subjectCard(s: CSubject) {
+    const locked = !isOpen(s.name, s.level);
+    const freeCount = unlimited ? s.topics.length : s.topics.filter((t) => !t.locked).length;
+    const lockedCount = s.topics.length - freeCount;
+    return (
+      <div
+        key={`${s.level}-${s.name}`}
+        style={{
+          background: locked ? "#F8FAFC" : "#fff",
+          border: "1px solid #E2E8F0",
+          borderRadius: 12,
+          padding: 16,
+          cursor: locked ? "not-allowed" : "pointer",
+          transition: "all 0.2s ease",
+          opacity: locked ? 0.65 : 1
+        }}
+        onMouseEnter={(e) => { if (!locked) (e.currentTarget as HTMLElement).style.boxShadow = "0 4px 14px -4px rgb(30 36 46 / 0.35)"; }}
+        onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.boxShadow = "none"; }}
+        onClick={() => selectSubject(s)}
+      >
+        <div style={{ fontSize: 11, fontWeight: 800, color: locked ? "#94A3B8" : "#0F766E", textTransform: "uppercase", marginBottom: 6 }}>
+          {s.level}
+        </div>
+        <div style={{ fontSize: 17, fontWeight: 800, color: locked ? "#94A3B8" : "#1E242E", marginBottom: 6 }}>
+          {s.name} {locked && "🔒"}
+        </div>
+        <div style={{ fontSize: 12, color: "#5F6E7F" }}>
+          {s.topics.length} topics
+          {lockedCount > 0 && <span> • {freeCount} free • 🔒 {lockedCount}</span>}
+        </div>
+        {s.exams.length > 0 && <div style={{ fontSize: 11, color: "#5F6E7F", marginTop: 4 }}>{s.exams.join(", ")}</div>}
+        {locked && (
+          <div style={{ fontSize: 11, fontWeight: 700, color: "#DC2626", marginTop: 8 }}>
+            {lockReason(s.name, s.level)}
+          </div>
+        )}
+      </div>
+    );
+  }
+
+  function section(title: string, subtitle: string, names: string[], level: "SSS" | "JSS") {
+    if (names.length === 0) return null;
+    return (
+      <section style={{ marginBottom: 24 }}>
+        <div style={{ display: "flex", alignItems: "baseline", gap: 8, flexWrap: "wrap", marginBottom: 8 }}>
+          <h2 style={{ fontSize: 17, color: "#1E242E", margin: 0 }}>{title}</h2>
+          <span style={{ fontSize: 12, color: "#5F6E7F" }}>{subtitle}</span>
+        </div>
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(200px, 1fr))", gap: 12 }}>
+          {names.map((name) => subjectCard(findSubject(name, level)))}
+        </div>
+      </section>
+    );
+  }
+
   return (
-    <main style={{ maxWidth: 1100, margin: "0 auto", padding: 20, color: "#333A45" }}>
+    <main style={{ maxWidth: 1180, margin: 0, padding: 20, color: "#333A45" }}>
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, flexWrap: "wrap" }}>
         <h1 style={{ color: "#1E242E", fontSize: 24, margin: 0 }}>Curriculum &amp; Notes</h1>
         {unlimited ? (
@@ -126,7 +204,7 @@ function CurriculumInner() {
         {(["jss", "senior"] as const).map((t) => (
           <button
             key={t}
-            onClick={() => { setTier(t); setDepartment(null); setSelectedSubject(null); }}
+            onClick={() => { setTier(t); setSelectedSubject(null); }}
             style={{
               fontSize: 14,
               fontWeight: 700,
@@ -143,30 +221,16 @@ function CurriculumInner() {
         ))}
       </div>
 
-      {/* Department selector (senior only) */}
-      {tier === "senior" && (
-        <div style={{ marginBottom: 12 }}>
-          <label style={{ fontSize: 13, fontWeight: 700, marginBottom: 6, display: "block" }}>Department</label>
-          <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-            {DEPARTMENT_NAMES.map((d) => (
-              <button
-                key={d}
-                onClick={() => { setDepartment(d); setSelectedSubject(null); }}
-                style={{
-                  fontSize: 13,
-                  fontWeight: 700,
-                  padding: "8px 14px",
-                  borderRadius: 999,
-                  cursor: "pointer",
-                  background: department === d ? "#0F766E" : "#fff",
-                  color: department === d ? "#fff" : "#1E242E",
-                  border: department === d ? "none" : "1px solid #CBD5E1"
-                }}
-              >
-                {d}
-              </button>
-            ))}
-          </div>
+      {!studentIsJunior && tier === "senior" && userDepartment && (
+        <div style={{ background: "#F0F9FF", border: "1px solid #BAE6FD", borderRadius: 10, padding: 10, marginBottom: 16, fontSize: 13, color: "#0369A1" }}>
+          <strong style={{ display: "block", fontSize: 12, marginBottom: 4, color: "#0c4a6e" }}>📚 General + {userDepartment} department</strong>
+          General subjects are open to every senior student. Your {userDepartment} department is unlocked. Other departments are visible but locked so you stay focused.
+        </div>
+      )}
+      {studentIsJunior && tier === "jss" && (
+        <div style={{ background: "#F0F9FF", border: "1px solid #BAE6FD", borderRadius: 10, padding: 10, marginBottom: 16, fontSize: 13, color: "#0369A1" }}>
+          <strong style={{ display: "block", fontSize: 12, marginBottom: 4, color: "#0c4a6e" }}>📚 Junior Secondary</strong>
+          All your JSS subjects are open. Senior subjects stay visible but locked until you move up.
         </div>
       )}
 
@@ -180,7 +244,7 @@ function CurriculumInner() {
               onClick={() => setSelectedSubject(null)}
               style={{ display: "flex", alignItems: "center", gap: 6, background: "transparent", border: 0, color: "#0F766E", fontWeight: 700, fontSize: 14, cursor: "pointer", marginBottom: 12 }}
             >
-              ← {selectedSubject.name}
+              ← Back to subjects
             </button>
             <h2 style={{ fontSize: 20, color: "#1E242E", margin: "0 0 12px" }}>{selectedSubject.name}</h2>
             <p style={{ fontSize: 13, color: "#5F6E7F" }}>
@@ -273,41 +337,48 @@ function CurriculumInner() {
                 </div>
               );
             })}
-            {selectedSubject.topics.length === 0 && <p style={{ fontSize: 14, color: "#5F6E7F" }}>No topics available for this subject.</p>}
+            {selectedSubject.topics.length === 0 && <p style={{ fontSize: 14, color: "#5F6E7F" }}>No topics available for this subject yet.</p>}
           </div>
         </div>
+      ) : tier === "jss" ? (
+        // ---------- Junior subject grid ----------
+        <>
+          {section("Junior Secondary School", studentIsJunior ? "All JSS subjects are open." : "Visible but locked — you are on the senior track.", [...JSS], "JSS")}
+          {!studentIsJunior && (
+            <p style={{ fontSize: 13, color: "#5F6E7F" }}>
+              Switch to the Senior Secondary tab to open your subjects.
+            </p>
+          )}
+        </>
       ) : (
-        // ---------- Subject grid ----------
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(200px, 1fr))", gap: 12 }}>
-          {allTierSubjects.length === 0 && <p style={{ fontSize: 14, color: "#5F6E7F" }}>No subjects available.</p>}
-          {allTierSubjects.map((s) => {
-            const isLocked = (userDepartment && tier === "senior" && !allowedSubjects.includes(s.name)) ||
-                             (level === "JUNIOR" && s.level === "SSS") ||
-                             (level === "SENIOR" && s.level === "JSS");
-            const freeCount = unlimited ? s.topics.length : s.topics.filter((t) => !t.locked).length;
-            const lockedCount = s.topics.length - freeCount;
+        // ---------- Senior: General + department sections ----------
+        <>
+          {section(
+            "General Subjects",
+            "Open to every senior secondary student.",
+            [...GENERAL],
+            "SSS"
+          )}
+          {DEPARTMENT_NAMES.map((dept) => {
+            const names = (DEPARTMENTS[dept as keyof typeof DEPARTMENTS] ?? []).filter((n) => !GENERAL.includes(n));
+            const isOwn = userDepartment === dept && !studentIsJunior;
             return (
-              <div key={s.id} style={{ background: isLocked ? "#F8FAFC" : "#fff", border: "1px solid #E2E8F0", borderRadius: 12, padding: 16, cursor: isLocked ? "not-allowed" : "pointer", transition: "all 0.2s ease", opacity: isLocked ? 0.6 : 1 }} onMouseEnter={(e) => { if (!isLocked) (e.currentTarget as HTMLElement).style.boxShadow = "0 4px 14px -4px rgb(30 36 46 / 0.35)"; }} onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.boxShadow = "none"; }} onClick={() => selectSubject(s)}>
-                <div style={{ fontSize: 11, fontWeight: 800, color: isLocked ? "#94A3B8" : "#0F766E", textTransform: "uppercase", marginBottom: 6 }}>{s.level}</div>
-                <div style={{ fontSize: 17, fontWeight: 800, color: isLocked ? "#94A3B8" : "#1E242E", marginBottom: 6 }}>
-                  {s.name} {isLocked && "🔒"}
-                </div>
-                <div style={{ fontSize: 12, color: "#5F6E7F" }}>
-                  {s.topics.length} topics
-                  {lockedCount > 0 && <span> • {freeCount} free • 🔒 {lockedCount}</span>}
-                </div>
-                <div style={{ fontSize: 11, color: "#5F6E7F", marginTop: 4 }}>{s.exams.join(", ")}</div>
-                {isLocked && (
-                  <div style={{ fontSize: 11, fontWeight: 700, color: "#DC2626", marginTop: 8 }}>
-                    {(level === "JUNIOR" && s.level === "SSS") || (level === "SENIOR" && s.level === "JSS")
-                      ? "Not for your level"
-                      : "Not in your department"}
-                  </div>
+              <div key={dept}>
+                {section(
+                  `${dept} Department`,
+                  isOwn ? "Your department — fully unlocked." : studentIsJunior ? "Visible but locked — you are on the junior track." : "Visible but locked — not your department.",
+                  names,
+                  "SSS"
                 )}
               </div>
             );
           })}
-        </div>
+          {!studentIsJunior && userDepartment && (
+            <p style={{ fontSize: 13, color: "#5F6E7F", marginTop: 4 }}>
+              Your open subjects: General + {userDepartment}. You are seeing {SSS.length} senior subjects in total.
+            </p>
+          )}
+        </>
       )}
     </main>
   );

@@ -52,13 +52,21 @@ export async function getWallet(db: Db, userId: string): Promise<Wallet | null> 
   if (personal.plan === "UNLIMITED") return { ...personal, source: "personal" };
 
   // Personal side is free → does the school door open? (indexed lookup, one row)
+  // A school-code student is linked through school_students; older linked
+  // accounts use school_members. Either link grants the school subscription.
   const school = (await db
     .prepare(
       `SELECT s.expires_at AS "expiresAt", s.active
-       FROM school_members sm JOIN schools s ON s.id = sm.school_id
-       WHERE sm.user_id = ?`
+       FROM schools s
+       WHERE s.id IN (
+         SELECT school_id FROM school_members WHERE user_id = ?
+         UNION
+         SELECT school_id FROM school_students WHERE user_id = ?
+       )
+       ORDER BY s.active DESC
+       LIMIT 1`
     )
-    .get(userId)) as { expiresAt: string | null; active: number } | undefined;
+    .get(userId, userId)) as { expiresAt: string | null; active: number } | undefined;
   if (school && schoolIsActive({ active: Number(school.active), expiresAt: school.expiresAt })) {
     return { creditsLeft: 9999, plan: "UNLIMITED", paidUntil: school.expiresAt, source: "school" };
   }

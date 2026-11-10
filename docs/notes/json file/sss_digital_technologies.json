@@ -1,0 +1,26 @@
+{
+  "level": "senior_secondary",
+  "subject": "Digital Technologies",
+  "topics": [
+    {
+      "topic": "Computer Fundamentals",
+      "content": "**Computer:** An electronic device that accepts data, processes it according to instructions, stores the result and produces information.\n\n**Parts of a computer system:**\n- **Hardware:** physical components — input devices (keyboard, mouse, scanner), processing unit (CPU), output devices (monitor, printer), storage devices (hard disk, flash drive).\n- **Software:** programs — system software (operating system, utilities) and application software (word processor, spreadsheet, browser).\n- **Peopleware:** the users who operate the system.\n\n**Data vs information:** Data is raw facts; information is processed data that is meaningful.\n\n**CPU:** The central processing unit executes instructions. It has the control unit, arithmetic logic unit and registers.\n\n**Memory:** RAM is temporary and lost when power goes off; ROM is permanent and holds start-up instructions.\n\n**Computer care:** Keep devices clean and dry, use antivirus software, back up files, and shut down properly."
+    },
+    {
+      "topic": "Word Processing",
+      "content": "**Word processing** is the use of software to create, edit, format, save and print text documents.\n\n**Common word processors:** Microsoft Word, Google Docs, LibreOffice Writer and WPS Writer.\n\n**Basic features:**\n- Typing and editing text\n- Font type, size and colour\n- Bold, italic and underline\n- Alignment: left, centre, right, justify\n- Bulleted and numbered lists\n- Tables and images\n- Spelling and grammar check\n- Find and replace\n- Page setup and printing\n\n**Saving and opening:** Use Save or Save As to store a document, and Open to retrieve it. Choose a meaningful file name and location.\n\n**Keyboard shortcuts:** Ctrl+C copy, Ctrl+V paste, Ctrl+X cut, Ctrl+Z undo, Ctrl+S save, Ctrl+P print.\n\n**Good practice:** Use headings, short paragraphs, consistent formatting and proofreading before printing or submitting."
+    },
+    {
+      "topic": "Spreadsheets",
+      "content": "**Spreadsheet:** Software that arranges data in rows and columns and performs calculations automatically.\n\n**Common examples:** Microsoft Excel, Google Sheets and LibreOffice Calc.\n\n**Parts of a spreadsheet:**\n- **Cell:** intersection of a row and a column, identified by a reference such as A1.\n- **Row:** horizontal line of cells numbered 1, 2, 3…\n- **Column:** vertical line of cells labelled A, B, C…\n- **Worksheet:** a single page of cells.\n- **Workbook:** a file containing one or more worksheets.\n\n**Data types:** text, numbers, dates, currency and formulas.\n\n**Common formulas:**\n- =SUM(A1:A10) adds a range\n- =AVERAGE(B1:B10) finds the mean\n- =MAX(C1:C10) and =MIN(C1:C10)\n- =IF(A1>=50,\"Pass\",\"Fail\")\n\n**Charts:** Column, bar, line and pie charts turn numbers into pictures for easy comparison.\n\n**Uses:** budgeting, result analysis, inventory, timetables and record keeping."
+    },
+    {
+      "topic": "Internet and Email",
+      "content": "**Internet:** A global network of connected computers that share information.\n\n**Uses:** research, communication, online learning, e-commerce, banking, entertainment and social networking.\n\n**Key terms:**\n- **Website:** a collection of related web pages.\n- **Web browser:** software for viewing web pages, e.g. Chrome, Firefox, Edge.\n- **URL:** the address of a web page.\n- **Search engine:** a tool for finding information online, e.g. Google, Bing.\n- **Download/upload:** copying files from the internet to your device, or from your device to the internet.\n\n**Email:** Electronic mail used to send messages and files over the internet.\n\n**Parts of an email address:** username@domain, e.g. student@example.com.\n\n**Email fields:** To, Cc, Bcc, Subject, Body and Attachment.\n\n**Email etiquette:** Use a clear subject, be polite and brief, check attachments, and avoid forwarding chain letters or scams.\n\n**Online safety:** Use strong passwords, do not share personal details, avoid suspicious links, and log out on shared devices."
+    },
+    {
+      "topic": "Programming Basics",
+      "content": "**Programming** is the process of writing instructions that a computer can execute.\n\n**Algorithm:** A step-by-step procedure for solving a problem. Example: to find the average of three numbers, add them and divide by three.\n\n**Flowchart symbols:**\n- Oval — start/end\n- Parallelogram — input/output\n- Rectangle — process\n- Diamond — decision\n- Arrow — direction of flow\n\n**Programming languages:** Python, Java, JavaScript, C, C++ and Scratch (visual).\n\n**Basic concepts:**\n- **Variable:** a named store for a value, e.g. score = 10.\n- **Data types:** integer, float, string and Boolean.\n- **Input and output:** receiving data and displaying results.\n- **Condition:** if/else decisions.\n- **Loop:** repeating steps, e.g. for and while.\n- **Function:** a reusable block of code.\n\n**Example (Python):**\n```\nname = input(\"Enter your name: \")\nprint(\"Hello\", name)\n```\n\n**Good practice:** Plan first, use meaningful names, test with small inputs, and debug errors one at a time."
+    }
+  ]
+}

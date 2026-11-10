@@ -175,7 +175,7 @@ export default function SchoolClasses() {
       <div style={card}>
         <h2 style={{ fontSize: 16, margin: "0 0 12px", color: "#1E242E" }}>Departments</h2>
         <p style={{ fontSize: 13, color: "#5F6E7F", margin: 0 }}>
-          Department management comes from your subject configuration. Subjects available: English, Mathematics, Physics, Chemistry, Biology, Commerce, Economics, Government, Literature in English.
+          Department management comes from your subject configuration. General subjects: English Studies, Mathematics, Physical Health Education, Economics, Christian Religious Studies, Civic Education, Geography, Digital Technologies. Science: Physics, Chemistry, Biology. Art: Literature in English, Government. Commercial: Commerce, Accounting, Marketing.
         </p>
       </div>
     </main>

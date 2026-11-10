@@ -1,0 +1,22 @@
+{
+  "level": "junior_secondary",
+  "subject": "Digital Technologies",
+  "topics": [
+    {
+      "topic": "Computer Fundamentals",
+      "content": "**Computer:** An electronic machine that accepts data, processes it and gives out information.\n\n**Main parts:**\n- **Input devices:** keyboard, mouse, scanner, microphone.\n- **Processing unit:** the CPU, which carries out instructions.\n- **Output devices:** monitor, printer, speaker.\n- **Storage devices:** hard disk, flash drive, memory card.\n\n**Hardware and software:** Hardware is the physical part you can touch. Software is the set of instructions that tells the computer what to do.\n\n**Uses of computers:** typing documents, calculations, drawing, communication, learning and entertainment.\n\n**Care of the computer:** Keep it away from water and dust, use a stabiliser, shut down properly, and do not eat near the keyboard."
+    },
+    {
+      "topic": "Word Processing",
+      "content": "**Word processing** means using a computer program to type, edit and print text.\n\n**Examples:** Microsoft Word, Google Docs and WPS Writer.\n\n**Things you can do:**\n- Type and correct text\n- Change font, size and colour\n- Make text bold, italic or underlined\n- Align text left, centre, right or justify\n- Add tables and pictures\n- Check spelling\n- Save and print\n\n**Saving work:** Click File → Save, choose a folder and give the document a clear name.\n\n**Useful shortcuts:** Ctrl+C copy, Ctrl+V paste, Ctrl+X cut, Ctrl+S save, Ctrl+P print, Ctrl+Z undo.\n\n**Good habits:** Sit upright, keep the keyboard clean, save often and proofread before printing."
+    },
+    {
+      "topic": "Internet and Email",
+      "content": "**Internet:** A network that connects computers all over the world so they can share information.\n\n**Things you can do online:** search for information, send messages, attend online classes, watch educational videos and buy or sell goods.\n\n**Browser:** Software used to open websites, such as Chrome, Firefox or Edge.\n\n**Search engine:** A website that helps you find information, such as Google or Bing.\n\n**Email:** A message sent electronically from one person to another.\n\n**Email address example:** student@example.com — the part before @ is the username, and the part after @ is the domain.\n\n**Email parts:** To, Subject, Message and Attachment.\n\n**Online safety:** Never share your password, do not open strange links, and tell a trusted adult if something online makes you uncomfortable."
+    },
+    {
+      "topic": "Spreadsheets and Calculations",
+      "content": "**Spreadsheet:** A program that keeps data in rows and columns and can calculate totals and averages.\n\n**Examples:** Microsoft Excel and Google Sheets.\n\n**Cell:** The box where a row and a column meet, such as A1.\n\n**Rows and columns:** Rows are horizontal and numbered; columns are vertical and lettered.\n\n**Simple formulas:**\n- =SUM(A1:A5) adds the numbers\n- =AVERAGE(A1:A5) finds the average\n- =MAX(A1:A5) finds the largest\n- =MIN(A1:A5) finds the smallest\n\n**Every formula begins with =**\n\n**Uses:** keeping a class mark list, calculating totals in a shop, and drawing simple charts.\n\n**Good practice:** Label your columns, check your formula range and save your work regularly."
+    }
+  ]
+}

@@ -14,7 +14,7 @@ export default function AdminQuestions() {
   const [importBusy, setImportBusy] = useState(false);
   const [delBusy, setDelBusy] = useState<string | null>(null);
   const [edit, setEdit] = useState<Q | null>(null);
-  const [form, setForm] = useState({ exam: "JAMB", subject: "English", topic: "", type: "MCQ", stem: "", options: "", answer: "", rubric: "" });
+  const [form, setForm] = useState({ exam: "JAMB", subject: "English Studies", topic: "", type: "MCQ", stem: "", options: "", answer: "", rubric: "" });
   const aid = () => localStorage.getItem("edupal_admin") ?? "";
 
   function load() {
@@ -36,7 +36,7 @@ export default function AdminQuestions() {
       if (!res.ok) return setMsg(d.error || "Failed.");
       setMsg(edit ? "Updated." : "Added.");
       setEdit(null);
-      setForm({ exam: "JAMB", subject: "English", topic: "", type: "MCQ", stem: "", options: "", answer: "", rubric: "" });
+      setForm({ exam: "JAMB", subject: "English Studies", topic: "", type: "MCQ", stem: "", options: "", answer: "", rubric: "" });
       load();
     } finally {
       setSaveBusy(false);
@@ -94,7 +94,7 @@ export default function AdminQuestions() {
         </div>
         <div style={{ display: "flex", gap: 8, marginTop: 8 }}>
           <AdminButton onClick={save} busy={saveBusy}>{edit ? "Save" : "Add question"}</AdminButton>
-          {edit && <AdminButton variant="ghost" onClick={() => { setEdit(null); setForm({ exam: "JAMB", subject: "English", topic: "", type: "MCQ", stem: "", options: "", answer: "", rubric: "" }); }}>Cancel</AdminButton>}
+          {edit && <AdminButton variant="ghost" onClick={() => { setEdit(null); setForm({ exam: "JAMB", subject: "English Studies", topic: "", type: "MCQ", stem: "", options: "", answer: "", rubric: "" }); }}>Cancel</AdminButton>}
         </div>
         {msg && <p style={{ fontSize: 13 }}>{msg}</p>}
       </div>

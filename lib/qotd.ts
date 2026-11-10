@@ -24,7 +24,7 @@ export async function todayQuestion(db: Db, subjects?: string[]) {
 export async function personalizedQuestion(db: Db, userId: string) {
   const prof = await db.prepare("SELECT subjects FROM profiles WHERE user_id = ?").get(userId) as { subjects: string | null } | undefined;
   const subjects = String(prof?.subjects ?? "").split(",").map((s) => s.trim()).filter(Boolean);
-  return (subjects.length ? await todayQuestion(db, subjects) : null) ?? await todayQuestion(db, ["English"]);
+  return (subjects.length ? await todayQuestion(db, subjects) : null) ?? await todayQuestion(db, ["English Studies"]);
 }
 
 export async function qotdDone(db: Db, userId: string, questionId: string): Promise<boolean> {

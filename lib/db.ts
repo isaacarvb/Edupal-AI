@@ -20,6 +20,7 @@ export let dbModeReason: string = "";
 
 import { randomUUID } from "node:crypto";
 import { ensureSeeded } from "./seed";
+import { canonicalSubject } from "./syllabus";
 
 export function uid(): string {
   return randomUUID();
@@ -88,7 +89,56 @@ async function sqliteMigrate(): Promise<void> {
   h.exec("UPDATE profiles SET subjects = REPLACE(subjects, 'Citizenship Education', 'Social and Citizenship Education') WHERE subjects LIKE '%Citizenship Education%' AND subjects NOT LIKE '%Social and Citizenship Education%'");
   h.exec("UPDATE profiles SET subjects = REPLACE(subjects, 'Intermediate Science', 'Intermediate Science (Basic Science and Technology)') WHERE subjects LIKE '%Intermediate Science%' AND subjects NOT LIKE '%Intermediate Science (%'");
   h.exec("UPDATE profiles SET subjects = REPLACE(subjects, 'Integrated Science', 'Intermediate Science (Basic Science and Technology)') WHERE subjects LIKE '%Integrated Science%'");
+  // ---- Curriculum restructure: one canonical name per subject, Art (not Arts) ----
+  const RENAMES: { to: string; from: string[] }[] = [
+    { to: "English Studies", from: ["English", "English Language"] },
+    { to: "Social and Citizenship Studies", from: ["Social and Citizenship Education", "Citizenship Education"] },
+    { to: "Intermediate Science", from: ["Intermediate Science (Basic Science and Technology)", "Integrated Science"] },
+    { to: "Digital Technologies", from: ["Digital Technologies (Computer Studies/ICT)", "Computer Studies", "ICT"] },
+    { to: "Christian Religious Studies", from: ["Christian Religious Knowledge", "CRK", "CRS"] }
+  ];
+  for (const { to, from } of RENAMES) {
+    for (const oldName of from) {
+      const old = oldName.replace(/'/g, "''");
+      const now = to.replace(/'/g, "''");
+      // Only touch tables that actually exist with a subject column. Older
+      // databases may have been created before some of these tables/columns.
+      for (const t of ["questions", "topic_mastery", "lesson_notes", "assignments", "school_questions", "school_teachers"]) {
+        if (cols(t).has("subject")) h.exec(`UPDATE ${t} SET subject = '${now}' WHERE subject = '${old}'`);
+      }
+      h.exec(`UPDATE profiles SET subjects = TRIM(REPLACE(','||subjects||',', ',${old},', ',${now},'), ',') WHERE ','||subjects||',' LIKE '%,${old},%'`);
+    }
+  }
+  h.exec("UPDATE profiles SET department = 'Art' WHERE department = 'Arts'");
+  h.exec("UPDATE school_students SET department = 'Art' WHERE department = 'Arts'");
+  // Fresh databases add school_teachers.department later in this migration,
+  // so only rewrite it when the column already exists.
+  if (cols("school_teachers").has("department")) {
+    h.exec("UPDATE school_teachers SET department = 'Art' WHERE department = 'Arts'");
+  }
   h.exec("CREATE TABLE IF NOT EXISTS site_settings (key TEXT PRIMARY KEY, value TEXT NOT NULL DEFAULT '')");
+  // Keep saved notes-access overrides pointing at the new subject names.
+  try {
+    const rows = h.prepare("SELECT key, value FROM site_settings WHERE key = 'notes_access'").all() as { key: string; value: string }[];
+    for (const row of rows) {
+      const map = JSON.parse(row.value || "{}") as Record<string, string>;
+      let changed = false;
+      const next: Record<string, string> = {};
+      for (const [k, v] of Object.entries(map)) {
+        const parts = k.split("|");
+        if (parts.length >= 2) {
+          const canon = canonicalSubject(parts[1]);
+          if (canon !== parts[1]) {
+            parts[1] = canon;
+            changed = true;
+          }
+        }
+        next[parts.join("|")] = v;
+      }
+      if (changed) h.exec(`UPDATE site_settings SET value = '${JSON.stringify(next).replace(/'/g, "''")}' WHERE key = 'notes_access'`);
+    }
+  } catch { /* ignore malformed settings */ }
+
   h.exec("CREATE TABLE IF NOT EXISTS admin_audit (id TEXT PRIMARY KEY, admin_id TEXT, action TEXT NOT NULL, target TEXT NOT NULL DEFAULT '', created_at TEXT NOT NULL DEFAULT (datetime('now')))");
   h.exec("CREATE TABLE IF NOT EXISTS transactions (id TEXT PRIMARY KEY, user_id TEXT REFERENCES users(id) ON DELETE SET NULL, email TEXT NOT NULL DEFAULT '', reference TEXT UNIQUE, amount_kobo INTEGER NOT NULL DEFAULT 0, plan TEXT NOT NULL DEFAULT 'UNLIMITED', status TEXT NOT NULL DEFAULT 'pending', channel TEXT NOT NULL DEFAULT 'paystack', promo_code TEXT NOT NULL DEFAULT '', created_at TEXT NOT NULL DEFAULT (datetime('now')))");
   h.exec("CREATE INDEX IF NOT EXISTS idx_tx_status_day ON transactions(status, created_at)");
@@ -279,6 +329,29 @@ async function pgMigrate(): Promise<void> {
       await db.prepare("UPDATE profiles SET subjects = REPLACE(subjects, 'Citizenship Education', 'Social and Citizenship Education') WHERE subjects LIKE '%Citizenship Education%' AND subjects NOT LIKE '%Social and Citizenship Education%'").run();
       await db.prepare("UPDATE profiles SET subjects = REPLACE(subjects, 'Intermediate Science', 'Intermediate Science (Basic Science and Technology)') WHERE subjects LIKE '%Intermediate Science%' AND subjects NOT LIKE '%Intermediate Science (%'").run();
       await db.prepare("UPDATE profiles SET subjects = REPLACE(subjects, 'Integrated Science', 'Intermediate Science (Basic Science and Technology)') WHERE subjects LIKE '%Integrated Science%'").run();
+      // ---- Curriculum restructure (canonical subject names, Art not Arts) ----
+      // Runs after every table/column exists, further down this migration.
+      // Keep saved notes-access overrides pointing at the new subject names.
+      try {
+        const rows = (await db.prepare("SELECT value FROM site_settings WHERE key = 'notes_access'").all()) as { value: string }[];
+        for (const row of rows) {
+          const map = JSON.parse(row.value || "{}") as Record<string, string>;
+          let changed = false;
+          const next: Record<string, string> = {};
+          for (const [k, v] of Object.entries(map)) {
+            const parts = k.split("|");
+            if (parts.length >= 2) {
+              const canon = canonicalSubject(parts[1]);
+              if (canon !== parts[1]) {
+                parts[1] = canon;
+                changed = true;
+              }
+            }
+            next[parts.join("|")] = v;
+          }
+          if (changed) await db.prepare("UPDATE site_settings SET value = ? WHERE key = 'notes_access'").run(JSON.stringify(next));
+        }
+      } catch { /* ignore malformed settings */ }
       // ---- Stage C migrations ----
       // Add missing columns to existing questions table (PostgreSQL)
       const hasQCol = async (col: string) =>
@@ -331,6 +404,7 @@ async function pgMigrate(): Promise<void> {
       if (!(await hasStCol2("user_id"))) await db.prepare("ALTER TABLE school_teachers ADD COLUMN user_id TEXT REFERENCES users(id) ON DELETE SET NULL").run();
       if (!(await hasStCol2("class_name"))) await db.prepare("ALTER TABLE school_teachers ADD COLUMN class_name TEXT NOT NULL DEFAULT ''").run();
       if (!(await hasStCol2("subject"))) await db.prepare("ALTER TABLE school_teachers ADD COLUMN subject TEXT NOT NULL DEFAULT ''").run();
+      if (!(await hasStCol2("department"))) await db.prepare("ALTER TABLE school_teachers ADD COLUMN department TEXT").run();
       await db.prepare("CREATE TABLE IF NOT EXISTS lesson_notes (id TEXT PRIMARY KEY, school_id TEXT NOT NULL REFERENCES schools(id) ON DELETE CASCADE, teacher_id TEXT NOT NULL REFERENCES school_teachers(id) ON DELETE CASCADE, teacher_name TEXT NOT NULL DEFAULT '', class_name TEXT NOT NULL DEFAULT '', subject TEXT NOT NULL, topic TEXT NOT NULL, body TEXT NOT NULL DEFAULT '', attachment_url TEXT, attachment_name TEXT, status TEXT NOT NULL DEFAULT 'pending', reviewed_by TEXT, reviewed_at TEXT, created_at TEXT NOT NULL DEFAULT (TO_CHAR(NOW() AT TIME ZONE 'UTC', 'YYYY-MM-DD\"T\"HH24:MI:SS.MS\"Z\"')))").run();
       await db.prepare("CREATE TABLE IF NOT EXISTS school_announcements (id TEXT PRIMARY KEY, school_id TEXT NOT NULL REFERENCES schools(id) ON DELETE CASCADE, title TEXT NOT NULL DEFAULT '', body TEXT NOT NULL DEFAULT '', class_name TEXT, created_at TEXT NOT NULL DEFAULT (TO_CHAR(NOW() AT TIME ZONE 'UTC', 'YYYY-MM-DD\"T\"HH24:MI:SS.MS\"Z\"')))").run();
       await db.prepare("CREATE TABLE IF NOT EXISTS mock_exams (id TEXT PRIMARY KEY, school_id TEXT NOT NULL REFERENCES schools(id) ON DELETE CASCADE, title TEXT NOT NULL, subjects TEXT NOT NULL DEFAULT '', class_name TEXT NOT NULL DEFAULT '', duration_minutes INTEGER NOT NULL DEFAULT 30, scheduled_at TEXT, status TEXT NOT NULL DEFAULT 'scheduled', created_at TEXT NOT NULL DEFAULT (TO_CHAR(NOW() AT TIME ZONE 'UTC', 'YYYY-MM-DD\"T\"HH24:MI:SS.MS\"Z\"')))").run();
@@ -356,6 +430,29 @@ async function pgMigrate(): Promise<void> {
       if (!(await hasUCol("locked_until"))) await db.prepare("ALTER TABLE users ADD COLUMN locked_until TEXT").run();
       if (!(await hasUCol("two_factor_enabled"))) await db.prepare("ALTER TABLE users ADD COLUMN two_factor_enabled INTEGER NOT NULL DEFAULT 0").run();
       if (!(await hasUCol("two_factor_secret"))) await db.prepare("ALTER TABLE users ADD COLUMN two_factor_secret TEXT").run();
+      // ---- Curriculum restructure: one canonical name per subject, Art (not Arts) ----
+      // Placed last so every table/column above already exists.
+      const pgRenames: { to: string; from: string[] }[] = [
+        { to: "English Studies", from: ["English", "English Language"] },
+        { to: "Social and Citizenship Studies", from: ["Social and Citizenship Education", "Citizenship Education"] },
+        { to: "Intermediate Science", from: ["Intermediate Science (Basic Science and Technology)", "Integrated Science"] },
+        { to: "Digital Technologies", from: ["Digital Technologies (Computer Studies/ICT)", "Computer Studies", "ICT"] },
+        { to: "Christian Religious Studies", from: ["Christian Religious Knowledge", "CRK", "CRS"] }
+      ];
+      for (const { to, from } of pgRenames) {
+        for (const oldName of from) {
+          await db.prepare("UPDATE questions SET subject = ? WHERE subject = ?").run(to, oldName);
+          await db.prepare("UPDATE topic_mastery SET subject = ? WHERE subject = ?").run(to, oldName);
+          await db.prepare("UPDATE lesson_notes SET subject = ? WHERE subject = ?").run(to, oldName);
+          await db.prepare("UPDATE assignments SET subject = ? WHERE subject = ?").run(to, oldName);
+          await db.prepare("UPDATE school_questions SET subject = ? WHERE subject = ?").run(to, oldName);
+          await db.prepare("UPDATE school_teachers SET subject = ? WHERE subject = ?").run(to, oldName);
+          await db.prepare("UPDATE profiles SET subjects = btrim(REPLACE(',' || subjects || ',', ?, ?), ',') WHERE ',' || subjects || ',' LIKE ?").run(`,${oldName},`, `,${to},`, `%,${oldName},%`);
+        }
+      }
+      await db.prepare("UPDATE profiles SET department = 'Art' WHERE department = 'Arts'").run();
+      await db.prepare("UPDATE school_students SET department = 'Art' WHERE department = 'Arts'").run();
+      await db.prepare("UPDATE school_teachers SET department = 'Art' WHERE department = 'Arts'").run();
       return; // success
     } catch (e) {
       lastError = e;

@@ -20,10 +20,13 @@ export async function GET(req: Request) {
     return NextResponse.json({ locked: true, reason: "countdown", daysLeft, exam: profile?.exam });
   }
 
+  // Syllabus helpers (dynamic import keeps the bundle small).
+  const { COMMON_SUBJECTS, DEPARTMENTS: DEPT_MAP, JSS_SUBJECTS, canonicalSubject, canonicalDepartment } = await import("@/lib/syllabus");
+
   // Evidence pack: predicted-repeat topics with bank depth + cohort miss rates.
   // Filtered by department for senior students.
   const examName = profile?.exam ?? "JAMB";
-  const dept = profile?.department ?? "";
+  const dept = profile?.department ? canonicalDepartment(profile.department) : "";
   const topics = await db
     .prepare(
       `SELECT q.subject AS subject, q.topic AS topic,
@@ -38,10 +41,13 @@ export async function GET(req: Request) {
     )
     .all(examName) as { subject: string; topic: string; flagged: number; bank: number; cohortAcc: number | null }[];
 
-  // Filter by department if student has one
-  const { COMMON_SUBJECTS, DEPARTMENTS: DEPT_MAP } = await import("@/lib/syllabus");
-  const allowedSubjects = dept ? [...COMMON_SUBJECTS, ...(DEPT_MAP[dept as keyof typeof DEPT_MAP] || [])] : topics.map((t) => t.subject);
-  const filteredTopics = topics.filter((t) => allowedSubjects.includes(t.subject));
+  // Filter by department for senior students; JSS students get the junior list.
+  const allowedSubjects = profile?.exam === "Others"
+    ? [...JSS_SUBJECTS]
+    : dept
+      ? [...COMMON_SUBJECTS, ...(DEPT_MAP[dept as keyof typeof DEPT_MAP] || [])]
+      : topics.map((t) => t.subject);
+  const filteredTopics = topics.filter((t) => allowedSubjects.includes(canonicalSubject(t.subject)));
 
   const hot = filteredTopics.filter((t) => t.flagged > 0).slice(0, 8);
   const picks = (hot.length ? hot : filteredTopics.slice(0, 8)).map((t) => ({ subject: t.subject, topic: t.topic }));

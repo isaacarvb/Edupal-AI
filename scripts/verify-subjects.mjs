@@ -15,24 +15,33 @@ const ROOT = process.cwd();
 
 // Canonical subject mapping (mirrors scripts/import-questions.mjs)
 const CANON_SUBJECT = {
-  "english language": "English",
-  english: "English",
+  "english language": "English Studies",
+  english: "English Studies",
+  "english studies": "English Studies",
   mathematics: "Mathematics",
+  maths: "Mathematics",
   "physical & health education": "Physical Health Education",
   "physical health education": "Physical Health Education",
   "physical and health education": "Physical Health Education",
-  "digital technologies": "Digital Technologies (Computer Studies/ICT)",
-  "digital technologies (computer studies/ict)": "Digital Technologies (Computer Studies/ICT)",
+  "digital technologies": "Digital Technologies",
+  "digital technologies (computer studies/ict)": "Digital Technologies",
+  "computer studies": "Digital Technologies",
+  "computer studies/ict": "Digital Technologies",
+  ict: "Digital Technologies",
   "business studies": "Business Studies",
-  "basic science & technology": "Intermediate Science (Basic Science and Technology)",
-  "basic science and technology": "Intermediate Science (Basic Science and Technology)",
-  "intermediate science": "Intermediate Science (Basic Science and Technology)",
-  "integrated science": "Intermediate Science (Basic Science and Technology)",
-  "social studies": "Social and Citizenship Education",
-  "social & citizenship education": "Social and Citizenship Education",
-  "social and citizenship education": "Social and Citizenship Education",
+  "basic science & technology": "Intermediate Science",
+  "basic science and technology": "Intermediate Science",
+  "intermediate science": "Intermediate Science",
+  "integrated science": "Intermediate Science",
+  "social studies": "Social and Citizenship Studies",
+  "social & citizenship education": "Social and Citizenship Studies",
+  "social and citizenship education": "Social and Citizenship Studies",
+  "social and citizenship studies": "Social and Citizenship Studies",
+  "citizenship education": "Social and Citizenship Studies",
   "nigerian history": "Nigerian History",
+  history: "Nigerian History",
   "literature in english": "Literature in English",
+  literature: "Literature in English",
   physics: "Physics",
   chemistry: "Chemistry",
   biology: "Biology",
@@ -41,26 +50,32 @@ const CANON_SUBJECT = {
   marketing: "Marketing",
   economics: "Economics",
   government: "Government",
-  "citizenship education": "Social and Citizenship Education",
+  geography: "Geography",
+  "christian religious studies": "Christian Religious Studies",
+  "christian religious knowledge": "Christian Religious Studies",
+  crk: "Christian Religious Studies",
+  crs: "Christian Religious Studies",
+  "civic education": "Civic Education",
+  civics: "Civic Education",
 };
 
 // Canonical subject lists (from lib/syllabus.ts)
 const SSS_SUBJECTS = [
-  "English", "Mathematics", "Physical Health Education", "Physics", "Chemistry",
-  "Biology", "Commerce", "Accounting", "Marketing", "Economics", "Government",
-  "Literature in English",
+  "English Studies", "Mathematics", "Physical Health Education", "Economics",
+  "Christian Religious Studies", "Civic Education", "Geography", "Digital Technologies",
+  "Physics", "Chemistry", "Biology", "Literature in English", "Government",
+  "Commerce", "Accounting", "Marketing",
 ];
 const JSS_SUBJECTS = [
-  "Mathematics", "English", "Physical Health Education",
-  "Intermediate Science (Basic Science and Technology)",
-  "Social and Citizenship Education", "Business Studies", "Nigerian History",
-  "Digital Technologies (Computer Studies/ICT)",
+  "Mathematics", "English Studies", "Social and Citizenship Studies", "Nigerian History",
+  "Intermediate Science", "Digital Technologies", "Business Studies",
+  "Physical Health Education", "Christian Religious Studies",
 ];
 const ALL_SUBJECTS = new Set([...SSS_SUBJECTS, ...JSS_SUBJECTS]);
 
 // SYLLABUS topic lists (from lib/syllabus.ts)
 const SYLLABUS = {
-  English: ["Comprehension", "Synonyms", "Antonyms", "Tenses", "Lexis", "Idioms"],
+  "English Studies": ["Comprehension", "Synonyms", "Antonyms", "Tenses", "Lexis", "Idioms"],
   Mathematics: ["Quadratic equations", "Linear equations", "Percentages", "Geometry"],
   Physics: ["Motion", "Waves", "Electricity"],
   Chemistry: ["Atomic structure", "Periodic table", "Acids and bases"],
@@ -69,9 +84,13 @@ const SYLLABUS = {
   Economics: ["Demand and supply", "Scale of preference", "Inflation"],
   Government: ["Democracy", "Federalism"],
   "Literature in English": ["Prose", "Drama", "Poetry"],
-  Accounting: [],
-  Marketing: [],
-  "Physical Health Education": [],
+  Accounting: ["Principles of Accounting", "Double Entry", "Trial Balance"],
+  Marketing: ["Marketing Concepts", "Marketing Mix", "Consumer Behaviour"],
+  "Physical Health Education": ["Fitness", "Safety", "Nutrition"],
+  "Christian Religious Studies": ["Creation and the Fall", "The Life of Jesus", "Christian Values and Ethics", "The Early Church"],
+  "Civic Education": ["Citizenship", "Human Rights", "Democracy and Elections", "Rule of Law", "National Values"],
+  Geography: ["The Earth and Its Structure", "Map Reading", "Weather and Climate", "Population", "Regional Geography of Nigeria"],
+  "Digital Technologies": ["Computer Fundamentals", "Word Processing", "Spreadsheets", "Internet and Email", "Programming Basics"],
 };
 
 function parseCSVLine(line) {

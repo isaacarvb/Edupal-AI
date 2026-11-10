@@ -3,7 +3,7 @@ import { Suspense, useCallback, useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useHiddenSubjects } from "@/components/useHiddenSubjects";
 import FocusSounds from "@/components/FocusSounds";
-import { JSS_SUBJECTS, DEPARTMENTS, COMMON_SUBJECTS, shortSubject } from "@/lib/syllabus";
+import { JSS_SUBJECTS, SSS_SUBJECTS, DEPARTMENTS, COMMON_SUBJECTS, canonicalDepartment, shortSubject } from "@/lib/syllabus";
 
 type Q = { id: string; subject: string; topic: string; type: string; stem: string; optionsJson: string; predictedRepeat: number; difficulty: string };
 type Theory = { score: number; maxScore: number; hits: string[]; misses: string[]; tips: string[]; modelAnswer: string };
@@ -17,7 +17,7 @@ function PracticeInner() {
   const userId = params.get("userId") ?? "";
   const subjectParam = params.get("subject");
   const topicParam = params.get("topic");
-  const subject = subjectParam ?? "English";
+  const subject = subjectParam ?? "English Studies";
   const qotdMode = params.get("qotd") === "1";
   const [isQotd, setIsQotd] = useState(false);
   const [q, setQ] = useState<Q | null>(null);
@@ -36,6 +36,7 @@ function PracticeInner() {
   const [department, setDepartment] = useState("");
   const [plan, setPlan] = useState("FREE");
   const [level, setLevel] = useState("SECONDARY");
+  const [exam, setExam] = useState("");
   const [ready, setReady] = useState(false);
   const [alt, setAlt] = useState<null | { explanation: string; engine: string }>(null);
   const [altBusy, setAltBusy] = useState(false);
@@ -92,9 +93,10 @@ function PracticeInner() {
         .then((r) => r.json())
         .then((d) => {
           setSwitcher(d.subjectLimits ?? []);
-          setDepartment(d.profile?.department ?? "");
+          setDepartment(canonicalDepartment(String(d.profile?.department ?? "")));
           setPlan(d.profile?.plan ?? "FREE");
           setLevel(d.profile?.level ?? "SECONDARY");
+          setExam(d.profile?.exam ?? "");
         })
         .catch(() => setDepartment(""))
         .finally(() => setReady(true));
@@ -239,35 +241,32 @@ function PracticeInner() {
 
   if (!userId) return <main style={{ padding: 20 }}>Missing user. Start from <a href="/onboarding">onboarding</a>.</main>;
 
-  // Hub lists every subject that actually has questions (profile list can lag behind).
-  const allowedSubjects = department
-    ? [...COMMON_SUBJECTS, ...DEPARTMENTS[department as keyof typeof DEPARTMENTS]]
-    : [...JSS_SUBJECTS];
-  // Junior students (onboarding sets department to "") practice the junior list.
-  const isJunior = level === "JUNIOR";
+  // Junior students (exam "Others", level JUNIOR, or no department) practise the junior list.
+  const isJunior = level === "JUNIOR" || exam === "Others" || (!department && exam !== "WAEC" && exam !== "JAMB");
+  // Hub lists every subject in the student's tier. Seniors get General + their
+  // department; juniors get the full JSS list.
+  const allowedSubjects = isJunior
+    ? [...JSS_SUBJECTS]
+    : department
+      ? [...COMMON_SUBJECTS, ...DEPARTMENTS[department as keyof typeof DEPARTMENTS]]
+      : [...SSS_SUBJECTS];
   const cardPool = bank.length
     ? bank.map((b) => ({ subject: b.subject, left: switcher.find((s) => s.subject === b.subject)?.left ?? 10, n: b.n }))
     : switcher.map((s) => ({ ...s, n: 0 }));
-  const cardsIn = (list: readonly string[]) => cardPool.filter((s) => !hidden.includes(s.subject) && list.includes(s.subject));
-  const hubSubjects = cardsIn(allowedSubjects);
 
   // No subject chosen → subject picker hub (the Practice section, tiered).
   if (!subjectParam) {
     const jss = [...JSS_SUBJECTS];
-    // Junior students (department "") practice the junior list; senior
-    // students see their department plus a peek at the junior tier.
-    const juniorCardsAll = cardsIn(jss);
-    const seniorCards = isJunior ? [] : hubSubjects;
-    // For senior students, show ALL JSS subjects (including common ones) but locked
-    const juniorCards = isJunior ? hubSubjects : juniorCardsAll;
-    const juniorSoon = jss.filter((x) => !juniorCards.some((c) => c.subject === x) && !seniorCards.some((h) => h.subject === x));
+    const allSSS = [...SSS_SUBJECTS];
 
-    // Get all SSS subjects for department filtering
-    const allSSS = ["English", "Mathematics", "Physical Health Education", "Physics", "Chemistry", "Biology", "Commerce", "Accounting", "Marketing", "Economics", "Government", "Literature in English"];
-    
-    // For senior students with department, show all SSS subjects with locked ones for other departments
-    const allSeniorCards = isJunior ? [] : allSSS.map((subject) => {
-      const isAllowed = allowedSubjects.includes(subject);
+    // Show every subject in both tiers. Only the student's own tier and
+    // department subjects are open; everything else stays visible but locked.
+    const allJuniorCards = jss.map((subject) => {
+      const card = cardPool.find((c) => c.subject === subject);
+      return { subject, left: card?.left ?? 10, n: card?.n ?? 0, locked: !isJunior };
+    });
+    const allSeniorCards = allSSS.map((subject) => {
+      const isAllowed = !isJunior && allowedSubjects.includes(subject);
       const card = cardPool.find((c) => c.subject === subject);
       return {
         subject,
@@ -277,8 +276,8 @@ function PracticeInner() {
       };
     });
 
-    // For senior students, JSS subjects are locked (tier locking)
-    const juniorCardsWithLock = isJunior ? juniorCards : juniorCards.map((c) => ({ ...c, locked: true }));
+    const juniorCards = allJuniorCards;
+    const juniorCardsWithLock = allJuniorCards;
 
     const subjectCard = (s: { subject: string; left: number; n: number; locked?: boolean }) => {
       if (s.locked) {
@@ -312,7 +311,7 @@ function PracticeInner() {
         {department && (
           <div style={{ background: "#F0F9FF", border: "1px solid #BAE6FD", borderRadius: 10, padding: 10, marginBottom: 12, fontSize: 13, color: "#0369A1" }}>
             <strong style={{ display: "block", fontSize: 12, marginBottom: 4, color: "#0c4a6e" }}>📚 {department} department focus</strong>
-            You're seeing {department} subjects highlighted. English, Mathematics and Physical Health Education are included for everyone. Other subjects are visible but locked so you stay focused on your department.
+            You're seeing {department} subjects highlighted. English Studies, Mathematics, Physical Health Education and the other General subjects are included for everyone. Other subjects are visible but locked so you stay focused on your department.
           </div>
         )}
         <p style={{ fontSize: 14, color: "#5F6E7F" }}>Choose a subject to start. Budgets reset daily at midnight.</p>
@@ -343,11 +342,6 @@ function PracticeInner() {
                   {juniorCardsWithLock.length === 0 && <p style={{ fontSize: 14, color: "#5F6E7F" }}>Loading subjects…</p>}
                   {juniorCardsWithLock.map(subjectCard)}
                 </div>
-                {juniorSoon.length > 0 && (
-                  <div style={{ fontSize: 13, color: "#5F6E7F", marginBottom: 12 }}>
-                    Coming soon: {juniorSoon.map(shortSubject).join(" • ")}
-                  </div>
-                )}
               </div>
             )}
           </>
@@ -362,14 +356,9 @@ function PracticeInner() {
             {seniorOpen && (
               <div>
                 <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))", gap: 12, marginBottom: 12 }}>
-                  {hubSubjects.length === 0 && <p>Loading subjects…</p>}
+                  {allJuniorCards.length === 0 && <p>Loading subjects…</p>}
                   {juniorCards.map(subjectCard)}
                 </div>
-                {juniorSoon.length > 0 && (
-                  <div style={{ fontSize: 13, color: "#5F6E7F", marginBottom: 12 }}>
-                    Coming soon: {juniorSoon.map(shortSubject).join(" • ")}
-                  </div>
-                )}
               </div>
             )}
             <button onClick={() => setJuniorOpen((o) => !o)}
@@ -391,17 +380,20 @@ function PracticeInner() {
       </main>
     );
   }
-  // Block access to subjects outside the user's department.
-  if (subjectParam && department && !allowedSubjects.includes(subjectParam)) {
+  // Block access to subjects outside the student's tier or department.
+  const subjectOutsidePlan = isJunior
+    ? !(JSS_SUBJECTS as readonly string[]).includes(subjectParam ?? "")
+    : !!department && !allowedSubjects.includes(subjectParam ?? "");
+  if (subjectParam && subjectOutsidePlan) {
     return (
       <main style={{ maxWidth: 640, margin: "0 auto", padding: 20, color: "#333A45", textAlign: "center" }}>
         <div style={{ fontSize: 48 }}>🚫</div>
-        <h1 style={{ color: "#1E242E" }}>Not in your department</h1>
+        <h1 style={{ color: "#1E242E" }}>{isJunior ? "Not for your level" : "Not in your department"}</h1>
         <p style={{ fontSize: 16, margin: "12px 0" }}>
-          <strong>{subjectParam}</strong> is not part of your {department} department study plan.
+          <strong>{subjectParam}</strong> is not part of your {isJunior ? "junior secondary" : `${department} department`} study plan.
         </p>
         <p style={{ fontSize: 14, color: "#5F6E7F" }}>
-          You can only practise your department's subjects ({allowedSubjects.join(", ")}). Other subjects exist but stay hidden so you stay focused.
+          You can only practise these subjects: {allowedSubjects.join(", ")}. Other subjects are visible but locked so you stay focused.
         </p>
         <a href={`/practice?userId=${userId}`} style={{ display: "inline-block", background: "#0F766E", color: "#fff", borderRadius: 10, padding: "12px 28px", fontWeight: 800, textDecoration: "none", marginTop: 12 }}>Back to subject picker</a>
       </main>
@@ -413,7 +405,7 @@ function PracticeInner() {
         <h1 style={{ color: "#1E242E" }}>Done with {subject} for now</h1>
         <p>You've answered the available {subject} questions. Pick another subject to keep going:</p>
         <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginBottom: 12 }}>
-          {(switcher.length ? switcher : [{ subject: "English", left: 10 }]).filter((s) => s.subject !== subject).map((s) => (
+          {(switcher.length ? switcher : [{ subject: "English Studies", left: 10 }]).filter((s) => s.subject !== subject).map((s) => (
             <a key={s.subject} href={`/practice?userId=${userId}&subject=${encodeURIComponent(s.subject)}`}
               style={{ fontSize: 13, fontWeight: 700, padding: "10px 14px", borderRadius: 999, textDecoration: "none", background: "#0F766E", color: "#fff" }}>
               {s.subject}{s.left !== undefined ? ` • ${s.left}` : ""}

@@ -17,7 +17,7 @@ function OnboardingInner() {
   const [startDate, setStartDate] = useState("");
   const [endDate, setEndDate] = useState("");
   const [notConfirmed, setNotConfirmed] = useState(false);
-  const [subjects, setSubjects] = useState<string[]>(["English"]);
+  const [subjects, setSubjects] = useState<string[]>(["English Studies"]);
   const [language, setLanguage] = useState("SIMPLE");
   const [err, setErr] = useState("");
   const [busy, setBusy] = useState(false);
@@ -26,6 +26,16 @@ function OnboardingInner() {
   const isJss = exam === "Others";
   const deptSubjects = isJss ? [...JSS_SUBJECTS] : [...DEPARTMENTS[department as keyof typeof DEPARTMENTS]];
   const visibleSubjects = deptSubjects.filter((s) => !hidden.includes(s));
+
+  // If the exam or department changes, drop any subject that no longer belongs
+  // to the new plan so the form can never submit a mismatched subject.
+  useEffect(() => {
+    setSubjects((cur) => {
+      const keep = cur.filter((s) => deptSubjects.includes(s));
+      return keep.length ? keep : [deptSubjects[0] ?? "English Studies"];
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [exam, department]);
 
   useEffect(() => {
     setUserId(params.get("userId") ?? localStorage.getItem("edupal_user") ?? "");
@@ -91,7 +101,7 @@ function OnboardingInner() {
         {!isJss && (
           <div style={{ background: "#F0F9FF", border: "1px solid #BAE6FD", borderRadius: 10, padding: 10, marginBottom: 12, fontSize: 13, color: "#0369A1" }}>
             <strong style={{ display: "block", fontSize: 12, marginBottom: 4, color: "#0c4a6e" }}>📚 Your department shapes your study</strong>
-            Choose {department === "Science" ? "science subjects (Physics, Chemistry, Biology)" : department === "Commercial" ? "commercial subjects (Commerce, Accounting, Marketing, Economics)" : "arts subjects (Literature in English, Government)"}. English, Mathematics and Physical Health Education are included for everyone. Other subjects exist but stay hidden so you stay focused on your department.
+            Choose {department === "Science" ? "science subjects (Physics, Chemistry, Biology)" : department === "Commercial" ? "commercial subjects (Commerce, Accounting, Marketing)" : "art subjects (Literature in English, Government)"}. General subjects (English Studies, Mathematics, Physical Health Education, Economics, Christian Religious Studies, Civic Education, Geography, Digital Technologies) are included for everyone. Other subjects exist but stay hidden so you stay focused on your department.
           </div>
         )}
         <div style={{ display: "flex", gap: 12, flexWrap: "wrap" }}>

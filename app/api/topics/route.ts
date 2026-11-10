@@ -33,7 +33,7 @@ export async function GET(req: Request) {
     paidUntil: typeof profile.paidUntil === "string" ? profile.paidUntil : null,
     base: new URL(req.url).origin
   });
-  const subjectList = String((profile as Record<string, unknown>).subjects ?? "English").split(",").map((s) => s.trim()).filter(Boolean);
+  const subjectList = String((profile as Record<string, unknown>).subjects ?? "English Studies").split(",").map((s) => s.trim()).filter(Boolean);
   const limits = await subjectLimits(db, userId, subjectList, plan);
   const exhaustedAll = plan === "FREE" && limits.length > 0 && limits.every((l) => l.left <= 0);
   const topics = await db

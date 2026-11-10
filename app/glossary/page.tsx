@@ -1,24 +1,28 @@
 "use client";
 import { Suspense, useEffect, useState } from "react";
 import { useSearchParams } from "next/navigation";
-import { SUBJECTS, DEPARTMENTS, COMMON_SUBJECTS, JSS_SUBJECTS } from "@/lib/syllabus";
+import { SUBJECTS, DEPARTMENTS, COMMON_SUBJECTS, JSS_SUBJECTS, canonicalDepartment } from "@/lib/syllabus";
 import { useHiddenSubjects } from "@/components/useHiddenSubjects";
 
 function GlossaryInner() {
   const params = useSearchParams();
-  const [subject, setSubject] = useState(params.get("subject") ?? "English");
+  const [subject, setSubject] = useState(params.get("subject") ?? "English Studies");
   const [topics, setTopics] = useState<string[]>([]);
   const [open, setOpen] = useState<string | null>(null);
   const [terms, setTerms] = useState<Record<string, { term: string; definition: string }[]>>({});
   const hidden = useHiddenSubjects();
   const [department, setDepartment] = useState("");
+  const [exam, setExam] = useState("");
 
   useEffect(() => {
     const id = params.get("userId") ?? localStorage.getItem("edupal_user") ?? "";
     if (id) {
       fetch(`/api/topics?userId=${id}`)
         .then((r) => r.json())
-        .then((d) => setDepartment(d.profile?.department ?? ""));
+        .then((d) => {
+          setDepartment(d.profile?.department ? canonicalDepartment(String(d.profile.department)) : "");
+          setExam(d.profile?.exam ?? "");
+        });
     }
   }, [params]);
 
@@ -32,10 +36,14 @@ function GlossaryInner() {
       });
   }, [subject]);
 
-  const allowedSubjects = department
-    ? [...COMMON_SUBJECTS, ...DEPARTMENTS[department as keyof typeof DEPARTMENTS]]
-    : [...JSS_SUBJECTS];
-  const visibleSubjects = SUBJECTS.filter((s) => !hidden.includes(s) && allowedSubjects.includes(s));
+  const isJunior = exam === "Others" || (!department && exam !== "WAEC" && exam !== "JAMB");
+  const allowedSubjects = isJunior
+    ? [...JSS_SUBJECTS]
+    : department
+      ? [...COMMON_SUBJECTS, ...DEPARTMENTS[department as keyof typeof DEPARTMENTS]]
+      : [...SUBJECTS];
+  const subjectPool = isJunior ? [...JSS_SUBJECTS] : [...SUBJECTS];
+  const visibleSubjects = subjectPool.filter((s) => !hidden.includes(s) && allowedSubjects.includes(s));
 
   async function toggle(topic: string) {
     if (open === topic) return setOpen(null);
@@ -52,7 +60,7 @@ function GlossaryInner() {
       {department && (
         <div style={{ background: "#F0F9FF", border: "1px solid #BAE6FD", borderRadius: 10, padding: 10, marginBottom: 12, fontSize: 13, color: "#0369A1" }}>
           <strong style={{ display: "block", fontSize: 12, marginBottom: 4, color: "#0c4a6e" }}>📚 {department} department focus</strong>
-          You're seeing {department} subjects only. English, Mathematics and Physical Health Education are included for everyone. Other subjects exist but stay hidden so you stay focused on your department.
+          You're seeing {department} subjects only. English Studies, Mathematics, Physical Health Education and the other General subjects are included for everyone. Other subjects exist but stay hidden so you stay focused on your department.
         </div>
       )}
       <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginBottom: 12 }}>

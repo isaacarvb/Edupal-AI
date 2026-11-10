@@ -68,7 +68,7 @@ function TopicsInner() {
         </div>
       )}
       <h2 style={{ color: "#1E242E", fontSize: 18 }}>All topics, weakest first</h2>
-      {topics.length === 0 && <p>No practice yet. <a href={`/practice?userId=${userId}&subject=English`} style={{ color: "#0F766E", fontWeight: 700 }}>Start practicing</a></p>}
+      {topics.length === 0 && <p>No practice yet. <a href={`/practice?userId=${userId}&subject=${encodeURIComponent("English Studies")}`} style={{ color: "#0F766E", fontWeight: 700 }}>Start practicing</a></p>}
       <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: 12 }}>
         {topics.map((t) => (
           <div key={`${t.subject}-${t.topic}`} style={{ ...card, margin: 0 }}>

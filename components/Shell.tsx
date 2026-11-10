@@ -64,6 +64,22 @@ export default function Shell({ children }: { children: React.ReactNode }) {
     setUserId(id);
     setRole(localStorage.getItem("edupal_role"));
     setOpen(false);
+    // School-code sessions last 2 hours. Progress is saved server-side, so when
+    // time is up we clear the local ticket and send the student back to the
+    // code page to start a fresh session.
+    try {
+      const raw = localStorage.getItem("edupal_school_session");
+      if (raw) {
+        const sess = JSON.parse(raw) as { expiresAt?: number };
+        if (!sess.expiresAt || sess.expiresAt <= Date.now()) {
+          localStorage.removeItem("edupal_school_session");
+          localStorage.removeItem("edupal_user");
+          localStorage.removeItem("edupal_role");
+          window.location.href = "/school-session";
+          return;
+        }
+      }
+    } catch { /* malformed ticket — ignore */ }
     if (id && env === "individual") {
       fetch(`/api/topics?userId=${id}`)
         .then((r) => (r.ok ? r.json() : null))
@@ -134,6 +150,7 @@ export default function Shell({ children }: { children: React.ReactNode }) {
     localStorage.removeItem("edupal_user");
     localStorage.removeItem("edupal_role");
     localStorage.removeItem("edupal_school_staff");
+    localStorage.removeItem("edupal_school_session");
     await signOut({ redirect: false });
     window.location.href = "/login";
   }

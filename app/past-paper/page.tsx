@@ -1,7 +1,7 @@
 "use client";
 import { Suspense, useEffect, useRef, useState } from "react";
 import { useSearchParams } from "next/navigation";
-import { SSS_SUBJECTS, DEPARTMENTS, COMMON_SUBJECTS } from "@/lib/syllabus";
+import { JSS_SUBJECTS, SSS_SUBJECTS, DEPARTMENTS, COMMON_SUBJECTS, canonicalDepartment } from "@/lib/syllabus";
 
 type Q = { id: string; subject: string; topic: string; type: string; stem: string; optionsJson: string };
 type Result = { score: number; total: number; pct: number; topics: { topic: string; subject: string; correct: number; total: number; pct: number }[] };
@@ -10,7 +10,7 @@ function PaperInner() {
   const params = useSearchParams();
   const [userId, setUserId] = useState("");
   const [exam, setExam] = useState("WAEC");
-  const [subject, setSubject] = useState("English");
+  const [subject, setSubject] = useState("English Studies");
   const [qs, setQs] = useState<Q[]>([]);
   const [answers, setAnswers] = useState<Record<string, string>>({});
   const [secs, setSecs] = useState(0);
@@ -18,6 +18,7 @@ function PaperInner() {
   const [err, setErr] = useState("");
   const [busy, setBusy] = useState(false);
   const [department, setDepartment] = useState("");
+  const [profileExam, setProfileExam] = useState("");
   const submitted = useRef(false);
 
   useEffect(() => {
@@ -29,13 +30,20 @@ function PaperInner() {
     if (id) {
       fetch(`/api/topics?userId=${id}`)
         .then((r) => r.json())
-        .then((d) => setDepartment(d.profile?.department ?? ""));
+        .then((d) => {
+          setDepartment(d.profile?.department ? canonicalDepartment(String(d.profile.department)) : "");
+          setProfileExam(d.profile?.exam ?? "");
+          if (d.profile?.exam) setExam(d.profile.exam === "Others" ? "Others" : d.profile.exam);
+        });
     }
   }, [params]);
 
-  const allowedPaperSubjects = department
-    ? [...COMMON_SUBJECTS, ...DEPARTMENTS[department as keyof typeof DEPARTMENTS]]
-    : [...SSS_SUBJECTS];
+  const isJunior = profileExam === "Others" || (!department && profileExam !== "WAEC" && profileExam !== "JAMB");
+  const allowedPaperSubjects = isJunior
+    ? [...JSS_SUBJECTS]
+    : department
+      ? [...COMMON_SUBJECTS, ...DEPARTMENTS[department as keyof typeof DEPARTMENTS]]
+      : [...SSS_SUBJECTS];
 
   useEffect(() => {
     if (secs <= 0 || result) return;

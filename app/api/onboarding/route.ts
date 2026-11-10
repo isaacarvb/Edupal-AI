@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { getDb } from "@/lib/db";
-import { JSS_SUBJECTS, DEPARTMENTS, DEPARTMENT_NAMES } from "@/lib/syllabus";
+import { JSS_SUBJECTS, DEPARTMENTS, DEPARTMENT_NAMES, canonicalDepartment } from "@/lib/syllabus";
 
 // Step 2 of onboarding: save/refresh the study plan for an existing account.
 // Dates are optional (timetable may not be out): pass datesConfirmed: false to skip them.
@@ -27,9 +27,9 @@ export async function POST(req: Request) {
     }
   }
   const isJss = exam === "Others";
-  const dept = isJss ? "" : String(department ?? "");
+  const dept = isJss ? "" : canonicalDepartment(String(department ?? ""));
   if (!isJss && !DEPARTMENT_NAMES.includes(dept)) {
-    return NextResponse.json({ error: "department must be Science, Commercial or Arts" }, { status: 400 });
+    return NextResponse.json({ error: "department must be Science, Commercial or Art" }, { status: 400 });
   }
   const allowed = isJss ? [...JSS_SUBJECTS] : [...DEPARTMENTS[dept as keyof typeof DEPARTMENTS]];
   const bad = (subjects as string[]).filter((s) => !allowed.includes(s));

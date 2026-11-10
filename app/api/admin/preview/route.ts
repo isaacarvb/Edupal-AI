@@ -22,7 +22,7 @@ export async function GET(req: Request) {
     );
     await db.prepare("INSERT INTO wallets (user_id, credits_left, reset_at, plan, paid_until) VALUES (?, 9999, ?, 'UNLIMITED', ?)").run(id, now, grantUntil);
     await db.prepare("INSERT INTO streaks (user_id) VALUES (?)").run(id);
-    await db.prepare("INSERT INTO profiles (user_id, exam, subjects) VALUES (?, 'JAMB', 'English,Mathematics')").run(id);
+    await db.prepare("INSERT INTO profiles (user_id, exam, subjects) VALUES (?, 'JAMB', 'English Studies,Mathematics')").run(id);
     row = { id };
   } else {
     // Preview always sees everything (paywalled features included).

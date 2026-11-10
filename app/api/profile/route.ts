@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { getDb } from "@/lib/db";
 import { hashPassword, verifyPassword } from "@/lib/password";
+import { canonicalDepartment, DEPARTMENT_NAMES } from "@/lib/syllabus";
 
 // Profile self-service: avatar (small data URL, local disk), language, password change.
 export async function GET(req: Request) {
@@ -59,9 +60,9 @@ export async function POST(req: Request) {
     if (confirmed && start && end && end < start) {
       return NextResponse.json({ error: "end date cannot be before start date" }, { status: 400 });
     }
-    const dept = department === undefined ? cur?.department ?? "" : String(department);
-    if (cur?.exam && cur.exam !== "Others" && dept && !["Science", "Commercial", "Arts"].includes(dept)) {
-      return NextResponse.json({ error: "department must be Science, Commercial or Arts" }, { status: 400 });
+    const dept = department === undefined ? cur?.department ?? "" : canonicalDepartment(String(department));
+    if (cur?.exam && cur.exam !== "Others" && dept && !DEPARTMENT_NAMES.includes(dept)) {
+      return NextResponse.json({ error: "department must be Science, Commercial or Art" }, { status: 400 });
     }
     await db.prepare(
       "UPDATE profiles SET exam_start = ?, exam_end = ?, exam_date = ?, dates_confirmed = ?, department = COALESCE(NULLIF(?, ''), department) WHERE user_id = ?"

@@ -91,7 +91,7 @@ export default function SchoolMockExams() {
         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
           <input value={title} onChange={(e) => setTitle(e.target.value)} placeholder="Title (e.g. Midterm Mock)"
             style={{ height: 44, borderRadius: 10, border: "1px solid #CBD5E1", padding: "0 12px", gridColumn: "1 / -1" }} />
-          <input value={subjects} onChange={(e) => setSubjects(e.target.value)} placeholder="Subjects (comma-separated, e.g. Mathematics, English)"
+          <input value={subjects} onChange={(e) => setSubjects(e.target.value)} placeholder="Subjects (comma-separated, e.g. Mathematics, English Studies)"
             style={{ height: 44, borderRadius: 10, border: "1px solid #CBD5E1", padding: "0 12px" }} />
           <input value={className} onChange={(e) => setClassName(e.target.value)} placeholder="Class (e.g. SS2A)"
             style={{ height: 44, borderRadius: 10, border: "1px solid #CBD5E1", padding: "0 12px" }} />

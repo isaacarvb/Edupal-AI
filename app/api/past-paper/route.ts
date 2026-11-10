@@ -9,7 +9,7 @@ export async function GET(req: Request) {
   const { searchParams } = new URL(req.url);
   const userId = searchParams.get("userId");
   const exam = searchParams.get("exam") ?? "WAEC";
-  const subject = searchParams.get("subject") ?? "English";
+  const subject = searchParams.get("subject") ?? "English Studies";
   if (!userId) return NextResponse.json({ error: "userId required" }, { status: 400 });
   const db = await getDb();
   const wallet = await getWallet(db, userId);

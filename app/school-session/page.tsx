@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { isJuniorClass, isSeniorClass } from "@/lib/syllabus";
 
 export default function SchoolSession() {
   const [step, setStep] = useState<"code" | "name" | "done">("code");
@@ -36,8 +37,9 @@ export default function SchoolSession() {
   const enterSession = async () => {
     if (!studentName.trim()) return setMsg("Enter your name.");
     if (!className.trim()) return setMsg("Enter your class.");
-    // Department is required for SSS students
-    const isSSS = className.toLowerCase().includes("ss") || className.toLowerCase().includes("sss");
+    // Department is required for SSS students only. isSeniorClass/isJuniorClass
+    // avoid the old "JSS2 contains ss" mistake.
+    const isSSS = isSeniorClass(className) || (!isJuniorClass(className) && !!department.trim());
     if (isSSS && !department.trim()) return setMsg("Department is required for senior secondary students.");
     setMsg("");
     setBusy(true);
@@ -56,12 +58,14 @@ export default function SchoolSession() {
         schoolName: school!.name,
         studentName: studentName.trim(),
         className: className.trim(),
-        department: department.trim(),
+        department: d.department ?? department.trim(),
         sessionId: d.sessionId,
+        userId: d.userId,
         expiresAt
       }));
-      // Also store as edupal_user for compatibility with existing pages
-      localStorage.setItem("edupal_user", d.sessionId);
+      // The real linked account powers every profile/practice API, exactly as
+      // it does for a self-signup student.
+      localStorage.setItem("edupal_user", d.userId ?? d.sessionId);
       localStorage.setItem("edupal_role", "SCHOOL_STUDENT");
       setMsg("Session started! Redirecting…");
       setStep("done");
@@ -106,8 +110,13 @@ export default function SchoolSession() {
             style={{ width: "100%", height: 48, borderRadius: 10, border: "1px solid #CBD5E1", padding: "0 16px", fontSize: 16, marginBottom: 12 }} />
           <input value={className} onChange={(e) => setClassName(e.target.value)} placeholder="Your class (e.g. SS2A)"
             style={{ width: "100%", height: 48, borderRadius: 10, border: "1px solid #CBD5E1", padding: "0 16px", fontSize: 16, marginBottom: 12 }} />
-          <input value={department} onChange={(e) => setDepartment(e.target.value)} placeholder="Department (required for SSS, optional for JSS)"
-            style={{ width: "100%", height: 48, borderRadius: 10, border: "1px solid #CBD5E1", padding: "0 16px", fontSize: 16, marginBottom: 12 }} />
+          <select value={department} onChange={(e) => setDepartment(e.target.value)}
+            style={{ width: "100%", height: 48, borderRadius: 10, border: "1px solid #CBD5E1", padding: "0 16px", fontSize: 16, marginBottom: 12, background: "#fff", color: department ? "#333A45" : "#5F6E7F" }}>
+            <option value="">Department (SSS only — leave blank for JSS)</option>
+            <option value="Science">Science</option>
+            <option value="Art">Art</option>
+            <option value="Commercial">Commercial</option>
+          </select>
           {msg && <p style={{ fontSize: 13, color: "#DC2626", marginBottom: 12 }}>{msg}</p>}
           <button onClick={enterSession} disabled={busy}
             style={{ width: "100%", height: 48, borderRadius: 10, border: 0, background: busy ? "#9CA3AF" : "#0F766E", color: "#fff", fontWeight: 800, fontSize: 16, cursor: busy ? "not-allowed" : "pointer" }}>
