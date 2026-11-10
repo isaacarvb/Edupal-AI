@@ -11,6 +11,7 @@ import {
   isSeniorClass
 } from "@/lib/syllabus";
 import { normalizeClass } from "@/lib/csv";
+import { getClassNotes } from "@/lib/class-notes";
 
 // School Curriculum API.
 //
@@ -19,9 +20,29 @@ import { normalizeClass } from "@/lib/csv";
 // GET ?className=JSS1&subject=Mathematics
 //   → the full topic-by-topic notes for that subject in that class.
 //
-// Topics tagged with a class are shown only in that class. Untagged topics
-// (the general MD notes) are shown in every class until class-specific notes
-// are imported, so no class ever looks empty by accident.
+// Notes pasted into docs/<CLASS>/ are the primary source. If a subject has a
+// class-specific document, only that document's topics are shown for the
+// class. If it does not, the general curriculum notes (MD/NERDC) are used so
+// no class looks empty while documents are still being added.
+
+type ClassTopic = { id: string; name: string; notes: string[] };
+
+function classTopicToCurriculum(t: ClassTopic, subject: string, level: "JSS" | "SSS", className: string): CurriculumTopic {
+  return {
+    id: t.id,
+    name: t.name,
+    class: className,
+    subject,
+    level,
+    exams: [],
+    subjectId: "",
+    learningObjectives: [],
+    notes: t.notes,
+    activities: [],
+    examFocus: [],
+    source: "md"
+  };
+}
 
 function subjectByName(subjects: CurriculumSubject[], name: string, level: "JSS" | "SSS") {
   const want = canonicalSubject(name).toLowerCase();
@@ -31,23 +52,13 @@ function subjectByName(subjects: CurriculumSubject[], name: string, level: "JSS"
   );
 }
 
-function topicsForClass(subject: CurriculumSubject | undefined, className: string): CurriculumTopic[] {
+function generalTopicsForClass(subject: CurriculumSubject | undefined, className: string): CurriculumTopic[] {
   if (!subject) return [];
   const wanted = normalizeClass(className).toLowerCase();
   return subject.topics.filter((t) => {
     const topicClass = normalizeClass(t.class || "").toLowerCase();
     return !topicClass || topicClass === wanted;
   });
-}
-
-function section(title: string, names: readonly string[], subjects: CurriculumSubject[], level: "JSS" | "SSS", className: string) {
-  return {
-    title,
-    subjects: names.map((name) => ({
-      name: canonicalSubject(name),
-      topicCount: topicsForClass(subjectByName(subjects, name, level), className).length
-    }))
-  };
 }
 
 export async function GET(req: Request) {
@@ -66,18 +77,32 @@ export async function GET(req: Request) {
     }
 
     const level: "JSS" | "SSS" = junior ? "JSS" : "SSS";
-    const subjects = getCurriculumSubjects();
+    const general = getCurriculumSubjects();
+
+    // Class-specific documents win over the general curriculum.
+    const classNotes = getClassNotes(className);
+    const notesBySubject = new Map(classNotes.map((n) => [canonicalSubject(n.name).toLowerCase(), n]));
+
+    function topicsFor(name: string): CurriculumTopic[] {
+      const canon = canonicalSubject(name);
+      const notes = notesBySubject.get(canon.toLowerCase());
+      if (notes && notes.topics.length > 0) {
+        return notes.topics.map((t) => classTopicToCurriculum(t, canon, level, className));
+      }
+      return generalTopicsForClass(subjectByName(general, name, level), className);
+    }
 
     // Full topic view for one subject.
     if (subjectName) {
-      const found = subjectByName(subjects, subjectName, level);
-      const topics = topicsForClass(found, className);
+      const canon = canonicalSubject(subjectName);
+      const topics = topicsFor(canon);
       return NextResponse.json({
         ok: true,
         className,
         level,
+        source: notesBySubject.has(canon.toLowerCase()) ? "class" : "general",
         subject: {
-          name: canonicalSubject(subjectName),
+          name: canon,
           topics: topics.map((t) => ({
             id: t.id,
             name: t.name,
@@ -92,19 +117,31 @@ export async function GET(req: Request) {
     }
 
     // Class overview: subject names + counts only.
+    const fixed = junior ? [...JSS_SUBJECTS] : [...GENERAL_SUBJECTS, ...SCIENCE_SUBJECTS, ...ART_SUBJECTS, ...COMMERCIAL_SUBJECTS];
+    const fixedKeys = new Set(fixed.map((s) => canonicalSubject(s).toLowerCase()));
+    const extra = classNotes
+      .map((n) => canonicalSubject(n.name))
+      .filter((n) => !fixedKeys.has(n.toLowerCase()))
+      .sort((a, b) => a.localeCompare(b));
+
+    const summary = (names: string[]) =>
+      names.map((name) => ({ name: canonicalSubject(name), topicCount: topicsFor(name).length }));
+
     const sections = junior
-      ? [section("Subjects", JSS_SUBJECTS, subjects, "JSS", className)]
+      ? [{ title: "Subjects", subjects: summary([...fixed, ...extra]) }]
       : [
-          section("General", GENERAL_SUBJECTS, subjects, "SSS", className),
-          section("Science", SCIENCE_SUBJECTS, subjects, "SSS", className),
-          section("Art", ART_SUBJECTS, subjects, "SSS", className),
-          section("Commercial", COMMERCIAL_SUBJECTS, subjects, "SSS", className)
+          { title: "General", subjects: summary([...GENERAL_SUBJECTS]) },
+          { title: "Science", subjects: summary([...SCIENCE_SUBJECTS]) },
+          { title: "Art", subjects: summary([...ART_SUBJECTS]) },
+          { title: "Commercial", subjects: summary([...COMMERCIAL_SUBJECTS]) },
+          ...(extra.length > 0 ? [{ title: "Other", subjects: summary(extra) }] : [])
         ];
 
     return NextResponse.json({
       ok: true,
       className,
       level,
+      hasClassNotes: classNotes.length > 0,
       sections: sections.filter((s) => s.subjects.length > 0)
     });
   } catch (e) {

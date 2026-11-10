@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 
 // Routes that are allowed for school admins (auth checked in page components)
-const SCHOOL_ADMIN_ROUTES = ["/school/dashboard", "/school/subscription", "/school/analytics", "/school/students", "/school/teachers", "/school/lesson-notes", "/school/announcements", "/school/mock-exams", "/school/questions", "/school/settings"];
+const SCHOOL_ADMIN_ROUTES = ["/school/dashboard", "/school/subscription", "/school/analytics", "/school/students", "/school/teachers", "/school/lesson-notes", "/school/curriculum", "/school/announcements", "/school/mock-exams", "/school/questions", "/school/settings"];
 // Public routes that don't need auth
 const PUBLIC_ROUTES = ["/school-session", "/school-register", "/school-login"];
 
@@ -26,12 +26,8 @@ export function middleware(req: NextRequest) {
     return NextResponse.redirect(dashboardUrl);
   }
 
-  // Redirect all /teacher/* routes to student dashboard
-  if (pathname.startsWith("/teacher")) {
-    const dashboardUrl = new URL("/dashboard", req.url);
-    dashboardUrl.searchParams.set("notice", "school_portal_suspended");
-    return NextResponse.redirect(dashboardUrl);
-  }
+  // Teacher routes are protected inside each page (role check + teacher API),
+  // so the teacher workspace (including Curriculum) is available again.
 
   return NextResponse.next();
 }
