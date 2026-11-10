@@ -14,14 +14,13 @@ const PLANS: Record<string, { plan: string; credits: number }> = {
 // Access types: PILOT_3DAY / TRIAL (custom days), FREE_FULL (no expiry),
 // UNLIMITED (custom days). Mirrors the Users "Give free access" flow.
 export async function POST(req: Request) {
+  const { adminId, email, accessType, days, startAt } = await req.json();
   try {
-    const admin = await requireAdmin(adminIdFrom(req));
+    const admin = await requireAdmin(adminId ?? adminIdFrom(req));
     requireRole(admin, ["SUPER_ADMIN", "ADMIN"]);
   } catch {
     return NextResponse.json({ error: "forbidden" }, { status: 403 });
   }
-
-  const { adminId, email, accessType, days, startAt } = await req.json();
   const db = await getDb();
   const cleanEmail = String(email ?? "").trim().toLowerCase();
 
