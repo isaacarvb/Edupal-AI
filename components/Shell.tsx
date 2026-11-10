@@ -75,7 +75,7 @@ export default function Shell({ children }: { children: React.ReactNode }) {
           localStorage.removeItem("edupal_school_session");
           localStorage.removeItem("edupal_user");
           localStorage.removeItem("edupal_role");
-          window.location.href = "/school-session";
+          window.location.href = localStorage.getItem("edupal_role") === "SCHOOL_TEACHER" ? "/teacher-session" : "/school-session";
           return;
         }
       }
