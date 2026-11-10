@@ -10,10 +10,10 @@ export async function GET(req: Request) {
     const db = await getDb();
 
     const sql =
-      "SELECT COALESCE(ss.department, 'Unassigned') AS departmentName, " +
+      "SELECT COALESCE(ss.department, 'Unassigned') AS \"departmentName\", " +
       "COUNT(DISTINCT ss.user_id) AS students, " +
-      "COALESCE(ROUND(AVG(tm.accuracy)), 0) AS avgAccuracy, " +
-      "COUNT(a.id) AS totalAnswers " +
+      "COALESCE(ROUND(AVG(tm.accuracy)), 0) AS \"avgAccuracy\", " +
+      "COUNT(a.id) AS \"totalAnswers\" " +
       "FROM school_students ss " +
       "LEFT JOIN users u ON u.id = ss.user_id " +
       "LEFT JOIN topic_mastery tm ON tm.user_id = u.id " +

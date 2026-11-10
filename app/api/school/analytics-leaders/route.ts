@@ -11,10 +11,10 @@ export async function GET(req: Request) {
 
     const sql =
       "SELECT ss.name AS name, " +
-      "ss.class_name AS className, " +
+      "ss.class_name AS \"className\", " +
       "ss.department AS department, " +
       "COUNT(a.id) AS answers, " +
-      "COALESCE(ROUND(AVG(tm.accuracy)), 0) AS avgAccuracy " +
+      "COALESCE(ROUND(AVG(tm.accuracy)), 0) AS \"avgAccuracy\" " +
       "FROM school_students ss " +
       "LEFT JOIN users u ON u.id = ss.user_id " +
       "LEFT JOIN attempts a ON a.user_id = u.id " +

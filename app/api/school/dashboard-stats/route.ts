@@ -32,7 +32,7 @@ export async function GET(req: Request) {
 
     // Top class by session count
     const topClass = (await db.prepare(
-      "SELECT class_name AS className, COUNT(*) AS cnt FROM school_sessions WHERE school_id = ? GROUP BY class_name ORDER BY cnt DESC LIMIT 1"
+      "SELECT class_name AS \"className\", COUNT(*) AS cnt FROM school_sessions WHERE school_id = ? GROUP BY class_name ORDER BY cnt DESC LIMIT 1"
     ).get(schoolId)) as { className: string; cnt: number } | undefined;
 
     return NextResponse.json({

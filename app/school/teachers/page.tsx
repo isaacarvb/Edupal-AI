@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { parseCsv, findColumn, normalizeClass, downloadCsv } from "@/lib/csv";
 
 const card: React.CSSProperties = { background: "#fff", border: "1px solid #E2E8F0", borderRadius: 16, padding: 16, margin: "0 0 12px" };
 
@@ -40,35 +41,32 @@ export default function SchoolTeachers() {
     setImportBusy(true);
     setSelectedFile(file);
     try {
-      let text = await file.text();
-      text = text.replace(/^\uFEFF/, "");
-      const lines = text.trim().split(/\r?\n/);
-      if (lines.length < 2) return setImportMsg("CSV must have a header row and at least one teacher row.");
+      const text = await file.text();
+      const table = parseCsv(text);
+      if (table.length < 2) return setImportMsg("CSV must have a header row and at least one teacher row.");
 
-      const header = lines[0].split(",").map((h) => h.trim().replace(/^"|"$/g, "").toLowerCase());
-      let nameIdx = header.findIndex((h) => h === "name" || h === "teacher" || h === "teacher name" || h === "full name");
-      let classIdx = header.findIndex((h) => h === "class" || h === "class_name" || h === "classname" || h === "class name");
-      let subjectIdx = header.findIndex((h) => h === "subject");
+      const header = table[0];
+      let nameIdx = findColumn(header, ["name", "teacher", "teacher name", "full name", "fullname"]);
+      let classIdx = findColumn(header, ["class", "class name", "classname", "class_name", "level"]);
+      let subjectIdx = findColumn(header, ["subject", "subject taught"]);
 
-      const startRow = nameIdx === -1 || classIdx === -1 || subjectIdx === -1 ? 0 : 1;
+      const hasHeader = nameIdx !== -1 || classIdx !== -1 || subjectIdx !== -1;
+      const startRow = hasHeader ? 1 : 0;
       if (nameIdx === -1) nameIdx = 0;
       if (classIdx === -1) classIdx = 1;
       if (subjectIdx === -1) subjectIdx = 2;
 
-      if (lines.length < startRow + 1) return setImportMsg("No teacher data found in CSV.");
-
       const rows: Array<{ name: string; className: string; subject: string }> = [];
-      for (let i = startRow; i < lines.length; i++) {
-        const cols = lines[i].split(",").map((c) => c.trim().replace(/^"|"$/g, ""));
-        if (cols.length <= Math.max(nameIdx, classIdx, subjectIdx)) continue;
-        const name = cols[nameIdx]?.trim() || "";
-        const className = cols[classIdx]?.trim() || "";
-        const subject = cols[subjectIdx]?.trim() || "";
+      for (let i = startRow; i < table.length; i++) {
+        const cols = table[i];
+        const name = (cols[nameIdx] ?? "").trim();
         if (!name) continue;
+        const className = normalizeClass((cols[classIdx] ?? "").trim());
+        const subject = (cols[subjectIdx] ?? "").trim();
         rows.push({ name, className: className || "Unassigned", subject: subject || "General" });
       }
 
-      if (rows.length === 0) return setImportMsg("No valid teacher rows found.");
+      if (rows.length === 0) return setImportMsg("No valid teacher rows found. Use columns: name, class, subject.");
 
       const s = localStorage.getItem("edupal_school");
       if (!s) return;
@@ -81,7 +79,10 @@ export default function SchoolTeachers() {
       const res = await fetch("/api/school/teachers-import", { method: "POST", body: form });
       const jd = await res.json();
       if (!res.ok) return setImportMsg(jd.error || "Import failed.");
-      setImportMsg(`Imported ${jd.imported} teachers.`);
+      const bits = [`Imported ${jd.imported} new teacher(s)`];
+      if (jd.updated) bits.push(`updated ${jd.updated}`);
+      if (jd.skipped) bits.push(`skipped ${jd.skipped}`);
+      setImportMsg(bits.join(", ") + ".");
       fetchTeachers();
     } catch (e) {
       setImportMsg(e instanceof Error ? e.message : "Import failed.");
@@ -172,7 +173,21 @@ export default function SchoolTeachers() {
 
       {/* Import Section */}
       <div style={card}>
-        <div style={{ fontSize: 12, fontWeight: 800, color: "#5F6E7F", textTransform: "uppercase", marginBottom: 10 }}>Upload CSV</div>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 8, marginBottom: 10 }}>
+          <div style={{ fontSize: 12, fontWeight: 800, color: "#5F6E7F", textTransform: "uppercase" }}>Upload CSV</div>
+          <button
+            onClick={() =>
+              downloadCsv("teacher-roster-template.csv", [
+                ["name", "class", "subject"],
+                ["Mr. Adewale Johnson", "JSS1", "Mathematics"],
+                ["Mrs. Ngozi Okeke", "SSS2", "Biology"]
+              ])
+            }
+            style={{ height: 32, borderRadius: 8, border: "1px solid #0F766E", background: "#F0FDFA", color: "#0F766E", fontWeight: 700, fontSize: 12, padding: "0 10px", cursor: "pointer" }}
+          >
+            Download template
+          </button>
+        </div>
         <div style={{ display: "flex", gap: 8, alignItems: "center", marginBottom: 8 }}>
           <input
             type="file"

@@ -11,7 +11,7 @@ export async function GET(req: Request) {
 
     // Get classes
     const classes = (await db.prepare(
-      "SELECT DISTINCT class_name AS className FROM school_students WHERE school_id = ? AND class_name != '' ORDER BY class_name"
+      "SELECT DISTINCT class_name AS \"className\" FROM school_students WHERE school_id = ? AND class_name != '' ORDER BY class_name"
     ).all(schoolId)) as Array<{ className: string }>;
 
     const result: Record<string, Array<{ name: string; answers: number; avgAccuracy: number }>> = {};
@@ -20,7 +20,7 @@ export async function GET(req: Request) {
       const sql =
         "SELECT ss.name AS name, " +
         "COUNT(a.id) AS answers, " +
-        "COALESCE(ROUND(AVG(tm.accuracy)), 0) AS avgAccuracy " +
+        "COALESCE(ROUND(AVG(tm.accuracy)), 0) AS \"avgAccuracy\" " +
         "FROM school_students ss " +
         "LEFT JOIN users u ON u.id = ss.user_id " +
         "LEFT JOIN attempts a ON a.user_id = u.id " +

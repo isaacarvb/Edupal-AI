@@ -1,6 +1,8 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { parseCsv, findColumn, downloadCsv } from "@/lib/csv";
+import { canonicalSubject } from "@/lib/syllabus";
 
 const card: React.CSSProperties = { background: "#fff", border: "1px solid #E2E8F0", borderRadius: 16, padding: 16, margin: "0 0 12px" };
 
@@ -14,6 +16,7 @@ export default function SchoolQuestions() {
   const [answer, setAnswer] = useState("");
   const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState("");
+  const [importMsg, setImportMsg] = useState("");
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [importBusy, setImportBusy] = useState(false);
 
@@ -39,47 +42,85 @@ export default function SchoolQuestions() {
   }
 
   async function handleImport(file: File) {
-    setMsg("");
+    setImportMsg("");
     setImportBusy(true);
     setSelectedFile(file);
     try {
-      let text = await file.text();
-      text = text.replace(/^\uFEFF/, "");
-      const lines = text.trim().split(/\r?\n/);
-      if (lines.length < 2) return setMsg("CSV must have a header row and at least one question row.");
+      const text = await file.text();
+      const table = parseCsv(text);
+      if (table.length < 2) return setImportMsg("CSV must have a header row and at least one question row.");
 
-      const header = lines[0].split(",").map((h) => h.trim().replace(/^"|"$/g, "").toLowerCase());
-      let subjectIdx = header.findIndex((h) => h === "subject");
-      let topicIdx = header.findIndex((h) => h === "topic");
-      let stemIdx = header.findIndex((h) => h === "stem" || h === "question" || h === "question stem");
-      let optionsIdx = header.findIndex((h) => h === "options");
-      let answerIdx = header.findIndex((h) => h === "answer");
+      const header = table[0];
+      let subjectIdx = findColumn(header, ["subject"]);
+      let topicIdx = findColumn(header, ["topic", "subtopic"]);
+      let stemIdx = findColumn(header, ["stem", "question", "question stem", "question text"]);
+      let optionsIdx = findColumn(header, ["options", "option", "choices", "answers"]);
+      let answerIdx = findColumn(header, ["answer", "correct answer", "correct option", "key"]);
+      const optAIdx = findColumn(header, ["option a", "a", "option 1"]);
+      const optBIdx = findColumn(header, ["option b", "b", "option 2"]);
+      const optCIdx = findColumn(header, ["option c", "c", "option 3"]);
+      const optDIdx = findColumn(header, ["option d", "d", "option 4"]);
+      const hasSplitOptions = optAIdx !== -1 && optBIdx !== -1;
 
-      const startRow = subjectIdx === -1 || topicIdx === -1 || stemIdx === -1 || optionsIdx === -1 || answerIdx === -1 ? 0 : 1;
+      const hasHeader =
+        subjectIdx !== -1 || topicIdx !== -1 || stemIdx !== -1 || optionsIdx !== -1 || answerIdx !== -1 || hasSplitOptions;
+      const startRow = hasHeader ? 1 : 0;
       if (subjectIdx === -1) subjectIdx = 0;
       if (topicIdx === -1) topicIdx = 1;
       if (stemIdx === -1) stemIdx = 2;
       if (optionsIdx === -1) optionsIdx = 3;
       if (answerIdx === -1) answerIdx = 4;
 
-      if (lines.length < startRow + 1) return setMsg("No question data found in CSV.");
-
       const rows: Array<{ subject: string; topic: string; stem: string; options: string[]; answer: string }> = [];
-      for (let i = startRow; i < lines.length; i++) {
-        const cols = lines[i].split(",").map((c) => c.trim().replace(/^"|"$/g, ""));
-        if (cols.length <= Math.max(subjectIdx, topicIdx, stemIdx, optionsIdx, answerIdx)) continue;
-        const subj = cols[subjectIdx]?.trim() || "";
-        const top = cols[topicIdx]?.trim() || "";
-        const stemVal = cols[stemIdx]?.trim() || "";
-        const optionsVal = cols[optionsIdx]?.trim() || "";
-        const ans = cols[answerIdx]?.trim() || "";
-        if (!subj || !top || !stemVal || !optionsVal || !ans) continue;
-        const optsArray = optionsVal.split("|").map((o) => o.trim()).filter(Boolean);
-        if (optsArray.length === 0 || !optsArray.includes(ans)) continue;
-        rows.push({ subject: subj, topic: top, stem: stemVal, options: optsArray, answer: ans });
+      const skipped: string[] = [];
+
+      for (let i = startRow; i < table.length; i++) {
+        const cols = table[i];
+        const subject = canonicalSubject((cols[subjectIdx] ?? "").trim());
+        const topic = (cols[topicIdx] ?? "").trim();
+        const stem = (cols[stemIdx] ?? "").trim();
+        let options: string[] = [];
+        if (hasSplitOptions) {
+          options = [optAIdx, optBIdx, optCIdx, optDIdx]
+            .filter((idx) => idx !== -1)
+            .map((idx) => (cols[idx] ?? "").trim())
+            .filter(Boolean);
+        } else {
+          options = (cols[optionsIdx] ?? "")
+            .split("|")
+            .map((o) => o.trim())
+            .filter(Boolean);
+        }
+        let answer = (cols[answerIdx] ?? "").trim();
+
+        if (!subject || !topic || !stem) {
+          skipped.push(`row ${i + 1}: missing subject/topic/stem`);
+          continue;
+        }
+        if (options.length < 2) {
+          skipped.push(`row ${i + 1}: needs at least 2 options`);
+          continue;
+        }
+        // Allow the answer column to be a letter (A/B/C/D) instead of full text.
+        const letter = answer.toUpperCase();
+        if (/^[A-D]$/.test(letter)) {
+          const idx = letter.charCodeAt(0) - 65;
+          if (options[idx]) answer = options[idx];
+        }
+        if (!options.includes(answer)) {
+          skipped.push(`row ${i + 1}: answer does not match any option`);
+          continue;
+        }
+        rows.push({ subject, topic, stem, options, answer });
       }
 
-      if (rows.length === 0) return setMsg("No valid question rows found. Check columns: subject, topic, stem, options (| separated), answer.");
+      if (rows.length === 0) {
+        return setImportMsg(
+          skipped.length
+            ? `No valid questions found. ${skipped.slice(0, 3).join("; ")}.`
+            : "No valid question rows found. Use columns: subject, topic, stem, options (| separated), answer."
+        );
+      }
 
       const s = localStorage.getItem("edupal_school");
       if (!s) return;
@@ -91,11 +132,14 @@ export default function SchoolQuestions() {
 
       const res = await fetch("/api/school/questions-import", { method: "POST", body: form });
       const jd = await res.json();
-      if (!res.ok) return setMsg(jd.error || "Import failed.");
-      setMsg(`Imported ${jd.imported} questions.`);
+      if (!res.ok) return setImportMsg(jd.error || "Import failed.");
+      const bits = [`Imported ${jd.imported} question(s)`];
+      if (jd.skipped) bits.push(`skipped ${jd.skipped}`);
+      if (skipped.length) bits.push(`${skipped.length} row(s) could not be read`);
+      setImportMsg(bits.join(", ") + ".");
       fetchQuestions();
     } catch (e) {
-      setMsg(e instanceof Error ? e.message : "Import failed.");
+      setImportMsg(e instanceof Error ? e.message : "Import failed.");
     } finally {
       setImportBusy(false);
     }
@@ -109,6 +153,7 @@ export default function SchoolQuestions() {
   const handleRemoveFile = () => {
     setSelectedFile(null);
     setMsg("");
+    setImportMsg("");
     setImportBusy(false);
     const input = document.querySelector('input[type="file"]') as HTMLInputElement;
     if (input) input.value = "";
@@ -166,9 +211,24 @@ export default function SchoolQuestions() {
       </p>
 
       <div style={card}>
-        <div style={{ fontSize: 12, fontWeight: 800, color: "#5F6E7F", textTransform: "uppercase", marginBottom: 10 }}>Upload CSV</div>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 8, marginBottom: 10 }}>
+          <div style={{ fontSize: 12, fontWeight: 800, color: "#5F6E7F", textTransform: "uppercase" }}>Upload CSV</div>
+          <button
+            onClick={() =>
+              downloadCsv("question-bank-template.csv", [
+                ["subject", "topic", "stem", "options", "answer"],
+                ["Mathematics", "Fractions", "What is 1/2 + 1/4?", "1/2|3/4|1/4|2/3", "3/4"],
+                ["English Studies", "Synonyms", "Choose the word nearest in meaning to 'happy'.", "Sad|Joyful|Angry|Tired", "Joyful"]
+              ])
+            }
+            style={{ height: 32, borderRadius: 8, border: "1px solid #0F766E", background: "#F0FDFA", color: "#0F766E", fontWeight: 700, fontSize: 12, padding: "0 10px", cursor: "pointer" }}
+          >
+            Download template
+          </button>
+        </div>
         <p style={{ fontSize: 12, color: "#5F6E7F", marginBottom: 8 }}>
           CSV columns: <code style={{ color: "#1E242E" }}>subject, topic, stem, options, answer</code> — options separated by |
+          (you can also use separate <code style={{ color: "#1E242E" }}>option a…option d</code> columns). Quoted commas are supported.
         </p>
         <div style={{ display: "flex", gap: 8, alignItems: "center", marginBottom: 8 }}>
           <input
@@ -189,6 +249,7 @@ export default function SchoolQuestions() {
             Selected: {selectedFile.name} ({(selectedFile.size / 1024).toFixed(1)} KB)
           </p>
         )}
+        {importMsg && <p style={{ fontSize: 13, marginTop: 6, color: importMsg.startsWith("Imported") ? "#166534" : "#DC2626" }}>{importMsg}</p>}
         {importBusy && <p style={{ fontSize: 13, color: "#5F6E7F" }}>Importing…</p>}
       </div>
 

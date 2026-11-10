@@ -15,6 +15,7 @@ const TIPS: Record<string, string> = {
   "Teachers & Staff": "Manage teacher accounts and their assigned classes",
   "Classes & Departments": "Organise classes, departments, and subject assignments",
   "Learning Resources": "Browse study notes and learning materials by subject",
+  Curriculum: "Class-by-class, topic-by-topic notes for every subject",
   "Questions & Assessments": "Browse the question bank and past papers",
   Assignments: "View and manage assignments set by teachers",
   "Approval Center": "Review and approve/reject teacher lesson notes",
@@ -114,6 +115,7 @@ export default function SchoolShell({ children }: { children: React.ReactNode })
     { href: `/school/teachers${q}`, match: "/school/teachers", label: "Teachers & Staff", emoji: "👨‍🏫" },
     { href: `/school/classes${q}`, match: "/school/classes", label: "Classes & Departments", emoji: "🏫" },
     { href: `/school/learning-resources${q}`, match: "/school/learning-resources", label: "Learning Resources", emoji: "📚" },
+    { href: `/school/curriculum${q}`, match: "/school/curriculum", label: "Curriculum", emoji: "🗂️" },
     { href: `/school/questions${q}`, match: "/school/questions", label: "Questions & Assessments", emoji: "❓" },
     { href: `/school/assignments${q}`, match: "/school/assignments", label: "Assignments", emoji: "✅" },
     { href: `/school/approval${q}`, match: "/school/approval", label: "Approval Center", emoji: "✅" },
@@ -243,7 +245,7 @@ export default function SchoolShell({ children }: { children: React.ReactNode })
 function getSection(label: string): string | null {
   if (["Dashboard", "Academic Reports"].includes(label)) return "OVERVIEW";
   if (["Students", "Teachers & Staff", "Classes & Departments"].includes(label)) return "SCHOOL MANAGEMENT";
-  if (["Learning Resources", "Questions & Assessments", "Assignments", "Approval Center"].includes(label)) return "ACADEMICS";
+  if (["Learning Resources", "Curriculum", "Questions & Assessments", "Assignments", "Approval Center"].includes(label)) return "ACADEMICS";
   if (["Announcements", "Subscription & Billing", "School Settings"].includes(label)) return "ADMINISTRATION";
   return null;
 }

@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { getDb } from "@/lib/db";
 import { randomUUID } from "crypto";
 import { hashPassword } from "@/lib/password";
+import { normalizeClass } from "@/lib/csv";
 import {
   GENERAL_SUBJECTS,
   JSS_SUBJECTS,
@@ -32,12 +33,22 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "School subscription expired" }, { status: 403 });
     }
 
-    // Verify student exists in roster with matching name, class, and department.
-    const student = (await db.prepare(
-      "SELECT id, user_id, name, class_name, department FROM school_students WHERE school_id = ? AND LOWER(name) = LOWER(?) AND LOWER(class_name) = LOWER(?) LIMIT 1"
-    ).get(schoolId, studentName, className)) as
-      | { id: string; user_id: string | null; name: string; class_name: string; department: string | null }
-      | undefined;
+    // Verify student exists in roster with matching name and class. Compare
+    // normalised class labels so "SS2A", "SSS2A" and "sss 2 a" all agree.
+    const candidates = (await db.prepare(
+      "SELECT id, user_id, name, class_name, department FROM school_students WHERE school_id = ? AND LOWER(name) = LOWER(?)"
+    ).all(schoolId, studentName)) as Array<{
+      id: string;
+      user_id: string | null;
+      name: string;
+      class_name: string;
+      department: string | null;
+    }>;
+
+    const wantedClass = normalizeClass(className).toLowerCase();
+    const student =
+      candidates.find((c) => normalizeClass(c.class_name).toLowerCase() === wantedClass) ??
+      candidates.find((c) => c.class_name.trim().toLowerCase() === className.toLowerCase());
 
     if (!student) {
       return NextResponse.json({ error: "Student not found in roster. Check your name and class spelling." }, { status: 404 });
@@ -106,6 +117,18 @@ export async function POST(req: Request) {
       "INSERT INTO wallets (user_id, credits_left, reset_at, plan) VALUES (?, 10, ?, 'FREE') ON CONFLICT DO NOTHING"
     ).run(userId, now);
     await db.prepare("INSERT INTO streaks (user_id) VALUES (?) ON CONFLICT DO NOTHING").run(userId);
+
+    // Keep the school membership in sync. Analytics, broadcasts and lesson
+    // notes all read school_members, so a school-code login must create/update
+    // this row even for students imported before school_members existed.
+    const memberClass = (student.class_name || className).trim();
+    await db.prepare(
+      `INSERT INTO school_members (id, school_id, user_id, class_name, created_at)
+       VALUES (?, ?, ?, ?, ?)
+       ON CONFLICT(user_id) DO UPDATE SET
+         school_id = excluded.school_id,
+         class_name = excluded.class_name`
+    ).run(randomUUID(), schoolId, userId, memberClass, now);
 
     const sessionId = randomUUID();
     await db.prepare(

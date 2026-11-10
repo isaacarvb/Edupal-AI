@@ -12,20 +12,26 @@ export async function DELETE(req: Request) {
 
     const db = await getDb();
 
-    // Get student's school_id
-    const student = (await db.prepare("SELECT school_id FROM school_students WHERE id = ?").get(studentId)) as {
-      school_id: string;
-    } | undefined;
+    // Get student's school_id + linked user so the membership row is cleaned too.
+    const student = (await db.prepare("SELECT school_id, user_id FROM school_students WHERE id = ?").get(studentId)) as
+      | { school_id: string; user_id: string | null }
+      | undefined;
 
     if (!student) {
       return NextResponse.json({ error: "Student not found" }, { status: 404 });
     }
 
-    // Delete student
+    // Remove the roster row and the school membership used by analytics/notes.
+    // The users row is kept so any practice history is not destroyed.
+    if (student.user_id) {
+      await db.prepare("DELETE FROM school_members WHERE user_id = ?").run(student.user_id);
+    }
     await db.prepare("DELETE FROM school_students WHERE id = ?").run(studentId);
 
-    // Decrement seats_used
-    await db.prepare("UPDATE schools SET seats_used = seats_used - 1 WHERE id = ?").run(student.school_id);
+    // seats_used always mirrors the real roster size.
+    await db
+      .prepare("UPDATE schools SET seats_used = (SELECT COUNT(*) FROM school_students WHERE school_id = ?) WHERE id = ?")
+      .run(student.school_id, student.school_id);
 
     return NextResponse.json({ ok: true });
   } catch (e) {

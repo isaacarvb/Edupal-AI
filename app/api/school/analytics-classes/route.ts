@@ -10,10 +10,10 @@ export async function GET(req: Request) {
     const db = await getDb();
 
     const sql =
-      "SELECT ss.class_name AS className, " +
+      "SELECT ss.class_name AS \"className\", " +
       "COUNT(DISTINCT ss.user_id) AS students, " +
-      "COALESCE(ROUND(AVG(tm.accuracy)), 0) AS avgAccuracy, " +
-      "COUNT(DISTINCT CASE WHEN a.created_at >= datetime('now', '-7 days') THEN a.user_id END) AS activeWeek " +
+      "COALESCE(ROUND(AVG(tm.accuracy)), 0) AS \"avgAccuracy\", " +
+      "COUNT(DISTINCT CASE WHEN a.created_at >= ? THEN a.user_id END) AS \"activeWeek\" " +
       "FROM school_students ss " +
       "LEFT JOIN users u ON u.id = ss.user_id " +
       "LEFT JOIN topic_mastery tm ON tm.user_id = u.id " +
@@ -22,7 +22,7 @@ export async function GET(req: Request) {
       "GROUP BY ss.class_name " +
       "ORDER BY students DESC";
 
-    const rows = (await db.prepare(sql).all(schoolId)) as Array<{
+    const rows = (await db.prepare(sql).all(schoolId, new Date(Date.now() - 7 * 86400000).toISOString())) as Array<{
       className: string;
       students: number;
       avgAccuracy: number;

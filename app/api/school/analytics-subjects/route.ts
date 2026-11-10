@@ -12,8 +12,8 @@ export async function GET(req: Request) {
     const sql =
       "SELECT tm.subject AS subject, " +
       "COUNT(DISTINCT ss.user_id) AS students, " +
-      "COALESCE(ROUND(AVG(tm.accuracy)), 0) AS avgAccuracy, " +
-      "SUM(CASE WHEN tm.label = 'WEAK' THEN 1 ELSE 0 END) AS weakCount " +
+      "COALESCE(ROUND(AVG(tm.accuracy)), 0) AS \"avgAccuracy\", " +
+      "SUM(CASE WHEN tm.label = 'WEAK' THEN 1 ELSE 0 END) AS \"weakCount\" " +
       "FROM topic_mastery tm " +
       "JOIN users u ON u.id = tm.user_id " +
       "JOIN school_students ss ON ss.user_id = u.id AND ss.school_id = ? " +

@@ -166,6 +166,10 @@ async function sqliteMigrate(): Promise<void> {
   if (!stCols.has("classes")) h.exec("ALTER TABLE school_teachers ADD COLUMN classes TEXT NOT NULL DEFAULT ''");
   if (!stCols.has("subject")) h.exec("ALTER TABLE school_teachers ADD COLUMN subject TEXT");
   if (!stCols.has("department")) h.exec("ALTER TABLE school_teachers ADD COLUMN department TEXT");
+  // Older "simple" school_teachers tables lack the login columns that the full
+  // Stage C table has. Add them so bulk import and teacher login both work.
+  if (!stCols.has("email")) h.exec("ALTER TABLE school_teachers ADD COLUMN email TEXT NOT NULL DEFAULT ''");
+  if (!stCols.has("password_hash")) h.exec("ALTER TABLE school_teachers ADD COLUMN password_hash TEXT NOT NULL DEFAULT ''");
 
   const lnCols = cols("lesson_notes");
   if (!lnCols.has("id")) h.exec("CREATE TABLE IF NOT EXISTS lesson_notes (id TEXT PRIMARY KEY, school_id TEXT NOT NULL REFERENCES schools(id) ON DELETE CASCADE, teacher_id TEXT NOT NULL REFERENCES school_teachers(id) ON DELETE CASCADE, teacher_name TEXT NOT NULL DEFAULT '', class_name TEXT NOT NULL DEFAULT '', subject TEXT NOT NULL, topic TEXT NOT NULL, body TEXT NOT NULL DEFAULT '', status TEXT NOT NULL DEFAULT 'pending', reviewed_by TEXT, reviewed_at TEXT, created_at TEXT NOT NULL DEFAULT (datetime('now')))");
@@ -367,6 +371,10 @@ async function pgMigrate(): Promise<void> {
       if (!(await hasStCol("id"))) await db.prepare("CREATE TABLE IF NOT EXISTS school_teachers (id TEXT PRIMARY KEY, school_id TEXT NOT NULL REFERENCES schools(id) ON DELETE CASCADE, name TEXT NOT NULL, email TEXT NOT NULL, password_hash TEXT NOT NULL, classes TEXT NOT NULL DEFAULT '', active INTEGER NOT NULL DEFAULT 1, created_at TEXT NOT NULL DEFAULT (TO_CHAR(NOW() AT TIME ZONE 'UTC', 'YYYY-MM-DD\"T\"HH24:MI:SS.MS\"Z\"')))").run();
       if (!(await hasStCol("active"))) await db.prepare("ALTER TABLE school_teachers ADD COLUMN active INTEGER NOT NULL DEFAULT 1").run();
       if (!(await hasStCol("classes"))) await db.prepare("ALTER TABLE school_teachers ADD COLUMN classes TEXT NOT NULL DEFAULT ''").run();
+      // Older "simple" school_teachers tables lack the login columns that the
+      // full Stage C table has. Add them so bulk import and teacher login work.
+      if (!(await hasStCol("email"))) await db.prepare("ALTER TABLE school_teachers ADD COLUMN email TEXT NOT NULL DEFAULT ''").run();
+      if (!(await hasStCol("password_hash"))) await db.prepare("ALTER TABLE school_teachers ADD COLUMN password_hash TEXT NOT NULL DEFAULT ''").run();
       const hasLnCol = async (col: string) =>
         ((await db.prepare("SELECT 1 FROM information_schema.columns WHERE table_name = 'lesson_notes' AND column_name = $1").get(col)) ? true : false);
       if (!(await hasLnCol("id"))) await db.prepare("CREATE TABLE IF NOT EXISTS lesson_notes (id TEXT PRIMARY KEY, school_id TEXT NOT NULL REFERENCES schools(id) ON DELETE CASCADE, teacher_id TEXT NOT NULL REFERENCES school_teachers(id) ON DELETE CASCADE, teacher_name TEXT NOT NULL DEFAULT '', class_name TEXT NOT NULL DEFAULT '', subject TEXT NOT NULL, topic TEXT NOT NULL, body TEXT NOT NULL DEFAULT '', status TEXT NOT NULL DEFAULT 'pending', reviewed_by TEXT, reviewed_at TEXT, created_at TEXT NOT NULL DEFAULT (TO_CHAR(NOW() AT TIME ZONE 'UTC', 'YYYY-MM-DD\"T\"HH24:MI:SS.MS\"Z\"')))").run();

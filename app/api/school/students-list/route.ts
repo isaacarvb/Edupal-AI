@@ -9,7 +9,7 @@ export async function GET(req: Request) {
 
     const db = await getDb();
     const rows = (await db.prepare(
-      "SELECT id, name, class_name AS className, department FROM school_students WHERE school_id = ? ORDER BY name"
+      "SELECT id, name, class_name AS \"className\", department FROM school_students WHERE school_id = ? ORDER BY name"
     ).all(schoolId)) as Array<{ id: string; name: string; className: string; department: string | null }>;
 
     return NextResponse.json({ ok: true, students: rows });

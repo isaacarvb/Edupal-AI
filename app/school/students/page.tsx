@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { parseCsv, findColumn, normalizeClass, downloadCsv } from "@/lib/csv";
 
 const card: React.CSSProperties = { background: "#fff", border: "1px solid #E2E8F0", borderRadius: 16, padding: 16, margin: "0 0 12px" };
 
@@ -42,45 +43,43 @@ export default function SchoolStudents() {
     setImportBusy(true);
     setSelectedFile(file);
     try {
-      let text = await file.text();
-      // Strip BOM (Byte Order Mark) if present
-      text = text.replace(/^\uFEFF/, "");
-      const lines = text.trim().split(/\r?\n/);
-      if (lines.length < 2) return setImportMsg("CSV must have a header row and at least one student row.");
+      const text = await file.text();
+      const table = parseCsv(text);
+      if (table.length < 2) return setImportMsg("CSV must have a header row and at least one student row.");
 
-      const header = lines[0].split(",").map((h) => h.trim().replace(/^"|"$/g, "").toLowerCase());
-      let nameIdx = header.findIndex((h) => h === "name" || h === "student" || h === "student name" || h === "full name");
-      let classIdx = header.findIndex((h) => h === "class" || h === "class_name" || h === "classname" || h === "class name");
-      let deptIdx = header.findIndex((h) => h === "department" || h === "dept");
+      const header = table[0];
+      let nameIdx = findColumn(header, ["name", "student", "student name", "full name", "fullname"]);
+      let classIdx = findColumn(header, ["class", "class name", "classname", "class_name", "level"]);
+      let deptIdx = findColumn(header, ["department", "dept", "section"]);
 
-      // Auto-detect if headers don't match — assume order: name, class, department
-      const startRow = nameIdx === -1 || classIdx === -1 ? 0 : 1;
+      const hasHeader = nameIdx !== -1 || classIdx !== -1 || deptIdx !== -1;
+      const startRow = hasHeader ? 1 : 0;
       if (nameIdx === -1) nameIdx = 0;
       if (classIdx === -1) classIdx = 1;
       if (deptIdx === -1 && header.length > 2) deptIdx = 2;
 
-      if (lines.length < startRow + 1) return setImportMsg("No student data found in CSV.");
-
       const rows: Array<{ name: string; className: string; department: string | null }> = [];
-      let debugInfo = "";
-      for (let i = startRow; i < lines.length; i++) {
-        // Parse CSV line handling quoted values
-        const cols = lines[i].split(",").map((c) => c.trim().replace(/^"|"$/g, ""));
-        if (cols.length <= Math.max(nameIdx, classIdx)) continue;
-        const name = cols[nameIdx]?.trim() || "";
-        const className = cols[classIdx]?.trim() || "";
+      let missingClass = 0;
+      for (let i = startRow; i < table.length; i++) {
+        const cols = table[i];
+        const name = (cols[nameIdx] ?? "").trim();
         if (!name) continue;
-        if (i < startRow + 3) {
-          debugInfo += `[${i}: name="${name}" class="${className}" dept="${deptIdx !== -1 ? cols[deptIdx]?.trim() : "N/A"}"] `;
+        const className = normalizeClass((cols[classIdx] ?? "").trim());
+        if (!className) {
+          missingClass++;
+          continue;
         }
-        rows.push({
-          name,
-          className: className || "Unassigned",
-          department: deptIdx !== -1 ? (cols[deptIdx]?.trim() || null) : null
-        });
+        const dept = deptIdx !== -1 ? (cols[deptIdx] ?? "").trim() : "";
+        rows.push({ name, className, department: dept || null });
       }
 
-      if (rows.length === 0) return setImportMsg("No valid student rows found.");
+      if (rows.length === 0) {
+        return setImportMsg(
+          missingClass > 0
+            ? "No valid student rows found — every row needs a class (e.g. JSS1 or SSS2)."
+            : "No valid student rows found. Use columns: name, class, department."
+        );
+      }
 
       const s = localStorage.getItem("edupal_school");
       if (!s) return;
@@ -93,7 +92,12 @@ export default function SchoolStudents() {
       const res = await fetch("/api/school/students-import", { method: "POST", body: form });
       const jd = await res.json();
       if (!res.ok) return setImportMsg(jd.error || "Import failed.");
-      setImportMsg(`Imported ${jd.imported} students. Frontend parsed: ${debugInfo} | API saved: ${jd.debug || "N/A"}`);
+      const bits = [`Imported ${jd.imported} new student(s)`];
+      if (jd.updated) bits.push(`updated ${jd.updated}`);
+      if (jd.skipped) bits.push(`skipped ${jd.skipped}`);
+      if (missingClass) bits.push(`${missingClass} row(s) missing class`);
+      bits.push(`${jd.total} total on roster`);
+      setImportMsg(bits.join(", ") + ".");
       fetchStudents();
     } catch (e) {
       setImportMsg(e instanceof Error ? e.message : "Import failed.");
@@ -181,11 +185,26 @@ export default function SchoolStudents() {
       <h1 style={{ fontSize: 22, fontWeight: 800, color: "#1E242E", margin: "0 0 16px" }}>Student Roster</h1>
       <p style={{ fontSize: 13, color: "#5F6E7F", marginBottom: 16 }}>
         Upload student roster via CSV. Columns: <code style={{ color: "#1E242E" }}>name, class, department</code> (department optional).
+        Classes should look like <code style={{ color: "#1E242E" }}>JSS1</code> or <code style={{ color: "#1E242E" }}>SSS2</code>.
       </p>
 
       {/* Import Section */}
       <div style={card}>
-        <div style={{ fontSize: 12, fontWeight: 800, color: "#5F6E7F", textTransform: "uppercase", marginBottom: 10 }}>Upload CSV</div>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 8, marginBottom: 10 }}>
+          <div style={{ fontSize: 12, fontWeight: 800, color: "#5F6E7F", textTransform: "uppercase" }}>Upload CSV</div>
+          <button
+            onClick={() =>
+              downloadCsv("student-roster-template.csv", [
+                ["name", "class", "department"],
+                ["Ada Obi", "JSS1", ""],
+                ["Chinedu Eze", "SSS2", "Science"]
+              ])
+            }
+            style={{ height: 32, borderRadius: 8, border: "1px solid #0F766E", background: "#F0FDFA", color: "#0F766E", fontWeight: 700, fontSize: 12, padding: "0 10px", cursor: "pointer" }}
+          >
+            Download template
+          </button>
+        </div>
         <div style={{ display: "flex", gap: 8, alignItems: "center", marginBottom: 8 }}>
           <input
             type="file"
@@ -205,7 +224,7 @@ export default function SchoolStudents() {
             Selected: {selectedFile.name} ({(selectedFile.size / 1024).toFixed(1)} KB)
           </p>
         )}
-        {importMsg && <p style={{ fontSize: 13, marginTop: 6, color: importMsg.startsWith("Imported") ? "#166534" : "#DC2626" }}>{importMsg}</p>}
+        {importMsg && <p style={{ fontSize: 13, marginTop: 6, color: importMsg.startsWith("Imported") || importMsg.startsWith("Deleted") ? "#166534" : "#DC2626" }}>{importMsg}</p>}
         {importBusy && <p style={{ fontSize: 13, color: "#5F6E7F" }}>Importing…</p>}
       </div>
 

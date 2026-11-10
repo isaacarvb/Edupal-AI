@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { isJuniorClass, isSeniorClass } from "@/lib/syllabus";
+import { normalizeClass } from "@/lib/csv";
 
 export default function SchoolSession() {
   const [step, setStep] = useState<"code" | "name" | "done">("code");
@@ -36,10 +37,11 @@ export default function SchoolSession() {
 
   const enterSession = async () => {
     if (!studentName.trim()) return setMsg("Enter your name.");
-    if (!className.trim()) return setMsg("Enter your class.");
+    const classValue = normalizeClass(className);
+    if (!classValue) return setMsg("Enter your class.");
     // Department is required for SSS students only. isSeniorClass/isJuniorClass
     // avoid the old "JSS2 contains ss" mistake.
-    const isSSS = isSeniorClass(className) || (!isJuniorClass(className) && !!department.trim());
+    const isSSS = isSeniorClass(classValue) || (!isJuniorClass(classValue) && !!department.trim());
     if (isSSS && !department.trim()) return setMsg("Department is required for senior secondary students.");
     setMsg("");
     setBusy(true);
@@ -47,7 +49,7 @@ export default function SchoolSession() {
       const res = await fetch("/api/school/session-start", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ schoolId: school!.id, studentName: studentName.trim(), className: className.trim(), department: department.trim() })
+        body: JSON.stringify({ schoolId: school!.id, studentName: studentName.trim(), className: classValue, department: department.trim() })
       });
       const d = await res.json();
       if (!res.ok) return setMsg(d.error || "Failed to start session.");
@@ -57,7 +59,7 @@ export default function SchoolSession() {
         schoolId: school!.id,
         schoolName: school!.name,
         studentName: studentName.trim(),
-        className: className.trim(),
+        className: classValue,
         department: d.department ?? department.trim(),
         sessionId: d.sessionId,
         userId: d.userId,
@@ -108,7 +110,7 @@ export default function SchoolSession() {
         <div style={{ background: "#fff", border: "1px solid #E2E8F0", borderRadius: 16, padding: 24 }}>
           <input value={studentName} onChange={(e) => setStudentName(e.target.value)} placeholder="Your full name"
             style={{ width: "100%", height: 48, borderRadius: 10, border: "1px solid #CBD5E1", padding: "0 16px", fontSize: 16, marginBottom: 12 }} />
-          <input value={className} onChange={(e) => setClassName(e.target.value)} placeholder="Your class (e.g. SS2A)"
+          <input value={className} onChange={(e) => setClassName(e.target.value)} onBlur={() => setClassName((c) => normalizeClass(c))} placeholder="Your class (e.g. JSS1 or SSS2A)"
             style={{ width: "100%", height: 48, borderRadius: 10, border: "1px solid #CBD5E1", padding: "0 16px", fontSize: 16, marginBottom: 12 }} />
           <select value={department} onChange={(e) => setDepartment(e.target.value)}
             style={{ width: "100%", height: 48, borderRadius: 10, border: "1px solid #CBD5E1", padding: "0 16px", fontSize: 16, marginBottom: 12, background: "#fff", color: department ? "#333A45" : "#5F6E7F" }}>
