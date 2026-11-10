@@ -31,12 +31,12 @@ export async function POST(req: Request) {
 
   // Find the school whose admin email matches.
   const school = (await db.prepare(
-    `SELECT s.id, s.name, s.code, s.active, s.expires_at, s.admin_user_id, s.admin_emails
+    `SELECT s.id, s.name, s.code, s.email AS "schoolEmail", s.active, s.expires_at, s.admin_user_id, s.admin_emails
      FROM schools s
-     WHERE LOWER(s.admin_emails) = LOWER(?) OR LOWER(s.admin_emails) LIKE LOWER(?)
+     WHERE LOWER(s.admin_emails) = LOWER(?) OR LOWER(s.email) = LOWER(?) OR LOWER(s.admin_emails) LIKE LOWER(?)
      LIMIT 1`
-  ).get(cleanEmail, `%${cleanEmail}%`)) as
-    | { id: string; name: string; code: string; active: number; expires_at: string | null; admin_user_id: string | null; admin_emails: string }
+  ).get(cleanEmail, cleanEmail, `%${cleanEmail}%`)) as
+    | { id: string; name: string; code: string; schoolEmail: string | null; active: number; expires_at: string | null; admin_user_id: string | null; admin_emails: string }
     | undefined;
 
   if (!school) {

@@ -7,6 +7,7 @@ type SchoolRow = {
   id: string;
   name: string;
   code: string;
+  schoolEmail: string | null;
   active: number;
   expiresAt: string | null;
   adminEmails: string;
@@ -136,7 +137,7 @@ export default function AdminSchoolAccess() {
           <div style={{ flex: "1 1 220px" }}>
             <strong>{s.name}</strong> <span style={{ color: "#5F6E7F", fontFamily: "monospace" }}>{s.code}</span>
             <div style={{ fontSize: 12, color: "#5F6E7F" }}>
-              Registered email: {s.adminEmail || s.adminEmails || "—"}
+              Registered email: {s.schoolEmail || s.adminEmail || s.adminEmails || "—"}
             </div>
             <div style={{ fontSize: 12, color: "#5F6E7F" }}>
               {s.active === 1 ? "Active" : "Inactive"} • Expires: {s.expiresAt ? new Date(s.expiresAt).toLocaleDateString() : "No end date"} • Seats: {s.members} • Registered: {s.createdAt ? s.createdAt.slice(0, 10) : "—"}

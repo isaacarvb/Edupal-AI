@@ -14,7 +14,7 @@ export async function GET(req: Request) {
   const db = await getDb();
   const schools = (await db
     .prepare(
-      `SELECT s.id, s.name, s.code, s.active, s.expires_at AS "expiresAt", s.max_seats AS "maxSeats",
+      `SELECT s.id, s.name, s.code, s.email AS "schoolEmail", s.active, s.expires_at AS "expiresAt", s.max_seats AS "maxSeats",
               s.admin_user_id AS "adminUserId", s.admin_emails AS "adminEmails", s.created_at AS "createdAt",
               g.name AS "groupName", u.email AS "adminEmail", u.name AS "adminName",
               (SELECT COUNT(*) FROM school_members sm WHERE sm.school_id = s.id) AS members
