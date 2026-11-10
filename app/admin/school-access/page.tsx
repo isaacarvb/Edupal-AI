@@ -93,6 +93,7 @@ export default function AdminSchoolAccess() {
   const filtered = schools.filter((s) =>
     s.name.toLowerCase().includes(q.toLowerCase()) ||
     s.adminEmail.toLowerCase().includes(q.toLowerCase()) ||
+    s.adminEmails.toLowerCase().includes(q.toLowerCase()) ||
     s.code.toLowerCase().includes(q.toLowerCase())
   );
 
@@ -134,13 +135,15 @@ export default function AdminSchoolAccess() {
         <div key={s.id} style={{ background: "#fff", border: "1px solid #E2E8F0", borderRadius: 12, padding: 12, margin: "8px 0", fontSize: 14, display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
           <div style={{ flex: "1 1 220px" }}>
             <strong>{s.name}</strong> <span style={{ color: "#5F6E7F", fontFamily: "monospace" }}>{s.code}</span>
-            <div style={{ fontSize: 12, color: "#5F6E7F" }}>{s.adminEmail}</div>
+            <div style={{ fontSize: 12, color: "#5F6E7F" }}>
+              Registered email: {s.adminEmail || s.adminEmails || "—"}
+            </div>
             <div style={{ fontSize: 12, color: "#5F6E7F" }}>
               {s.active === 1 ? "Active" : "Inactive"} • Expires: {s.expiresAt ? new Date(s.expiresAt).toLocaleDateString() : "No end date"} • Seats: {s.members} • Registered: {s.createdAt ? s.createdAt.slice(0, 10) : "—"}
             </div>
           </div>
           <AdminButton size="sm" variant="dark" onClick={() => viewAs(s)}>View as school</AdminButton>
-          <AdminButton size="sm" variant="dangerOutline" busy={delBusy === s.id} onClick={() => del(s.id, s.adminEmail)}>Delete</AdminButton>
+          <AdminButton size="sm" variant="dangerOutline" busy={delBusy === s.id} onClick={() => del(s.id, s.adminEmail || s.adminEmails)}>Delete</AdminButton>
         </div>
       ))}
     </main>
