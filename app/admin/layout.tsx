@@ -16,7 +16,6 @@ const LINKS = [
   { href: "/admin/drafts", label: "AI Drafts", emoji: "🤖" },
   { href: "/admin/subjects", label: "Subjects", emoji: "🎛️" },
   { href: "/admin/notes", label: "Notes Access", emoji: "📚" },
-  { href: "/admin/schools", label: "Schools", emoji: "🏫" },
   { href: "/admin/admins", label: "Admins", emoji: "👑" },
   { href: "/admin/logs", label: "Logs", emoji: "📜" },
   { href: "/admin/settings", label: "Settings", emoji: "⚙️" },
