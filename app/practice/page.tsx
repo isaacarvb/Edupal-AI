@@ -1,5 +1,5 @@
 "use client";
-import { Suspense, useCallback, useEffect, useState } from "react";
+import { Suspense, useCallback, useEffect, useRef, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useHiddenSubjects } from "@/components/useHiddenSubjects";
 import FocusSounds from "@/components/FocusSounds";
@@ -17,7 +17,7 @@ function PracticeInner() {
   const userId = params.get("userId") ?? "";
   const subjectParam = params.get("subject");
   const topicParam = params.get("topic");
-  const subject = subjectParam ?? "English Studies";
+  const subject = subjectParam?.trim() || "English Studies";
   const qotdMode = params.get("qotd") === "1";
   const [isQotd, setIsQotd] = useState(false);
   const [q, setQ] = useState<Q | null>(null);
@@ -46,7 +46,7 @@ function PracticeInner() {
   const [flagged, setFlagged] = useState(false);
   const [err, setErr] = useState("");
 
-  const [qotdServed, setQotdServed] = useState(false);
+  const qotdServedRef = useRef(false);
 
   const load = useCallback(async () => {
     setResult(null);
@@ -56,18 +56,18 @@ function PracticeInner() {
     setFlagged(false);
     setAnswer("");
     setIsQotd(false);
-    if (qotdMode && !qotdServed) {
+    if (qotdMode && !qotdServedRef.current) {
       const res = await fetch(`/api/qotd?userId=${userId}`);
       const data = await res.json();
       if (!data.done && data.question) {
         setQ(data.question);
         setIsQotd(true);
-        setQotdServed(true);
+        qotdServedRef.current = true;
         setAnswered(0);
         setSecs(data.question.type === "MCQ" ? 60 : 180);
         return;
       }
-      setQotdServed(true); // already done today → fall through to normal practice
+      qotdServedRef.current = true; // already done today → fall through to normal practice
     }
     const res = await fetch(`/api/diagnostic/next?userId=${userId}&subject=${encodeURIComponent(subject)}`);
     const data = await res.json();
@@ -83,10 +83,10 @@ function PracticeInner() {
     } else {
       setErr("No question available for this subject.");
     }
-  }, [userId, subject, qotdMode, qotdServed]);
+  }, [userId, subject, qotdMode]);
 
   useEffect(() => {
-    if (userId && subjectParam) load();
+    if (userId && subjectParam?.trim()) load();
     setTimed(localStorage.getItem("edupal_timed") === "1");
     if (userId) {
       fetch(`/api/topics?userId=${userId}`)
