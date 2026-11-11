@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { AdminButton } from "@/components/admin-ui";
 
 type U = { id: string; name: string; email: string; role: string; plan: string; credits: number; exam: string; subjects: string; lastActive: string | null; attempts: number; createdAt: string };
@@ -21,9 +21,12 @@ export default function AdminUsers() {
   const [grantBusy, setGrantBusy] = useState(false);
   const [delBusy, setDelBusy] = useState<string | null>(null);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const selectAllRef = useRef<HTMLInputElement>(null);
   const aid = () => localStorage.getItem("edupal_admin") ?? "";
 
   function load() {
+    // A new search/reload changes what is on screen, so drop the old selection.
+    setSelectedIds(new Set());
     fetch(`/api/admin/users?adminId=${aid()}&q=${encodeURIComponent(q)}&limit=100`).then(async (r) => {
       const d = await r.json();
       if (r.ok) setUsers(d.users);
@@ -116,6 +119,18 @@ export default function AdminUsers() {
   }
 
   const canSelect = (u: U) => !isPreview(u.email);
+  const selectable = users.filter(canSelect);
+  const allSelected = selectable.length > 0 && selectable.every((u) => selectedIds.has(u.id));
+  const someSelected = !allSelected && selectable.some((u) => selectedIds.has(u.id));
+
+  // Native checkboxes need the indeterminate state set via JS.
+  useEffect(() => {
+    if (selectAllRef.current) selectAllRef.current.indeterminate = someSelected;
+  }, [someSelected]);
+
+  function toggleAll(checked: boolean) {
+    setSelectedIds(checked ? new Set(selectable.map((u) => u.id)) : new Set());
+  }
 
   return (
     <main style={{ maxWidth: 1000, margin: "0 auto", padding: 24, color: "#333A45" }}>
@@ -151,6 +166,24 @@ export default function AdminUsers() {
         <AdminButton variant="ghost" onClick={load}>Search</AdminButton>
       </div>
       <p style={{ fontSize: 13, color: "#5F6E7F" }}>{users.length} shown. View opens the user portal with a ← Back to Admin button.</p>
+
+      {/* Select-all bar (current page of results only) */}
+      <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap", background: "#F8FAFC", border: "1px solid #E2E8F0", borderRadius: 10, padding: "8px 12px", marginBottom: 8, fontSize: 13 }}>
+        <label style={{ display: "flex", alignItems: "center", gap: 8, fontWeight: 700, cursor: selectable.length ? "pointer" : "default", color: selectable.length ? "#333A45" : "#94A3B8" }}>
+          <input
+            ref={selectAllRef}
+            type="checkbox"
+            checked={allSelected}
+            disabled={selectable.length === 0}
+            onChange={(e) => toggleAll(e.target.checked)}
+            style={{ width: 18, height: 18, cursor: selectable.length ? "pointer" : "default" }}
+          />
+          Select all {selectable.length} shown
+        </label>
+        <span style={{ color: "#5F6E7F" }}>
+          {selectedIds.size > 0 ? `${selectedIds.size} selected` : "Preview accounts are never selected."}
+        </span>
+      </div>
 
       {/* Bulk delete bar */}
       {selectedIds.size > 0 && (
