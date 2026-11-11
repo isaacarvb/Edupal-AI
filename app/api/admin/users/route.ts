@@ -5,7 +5,8 @@ import { requireAdmin, adminIdFrom, requireRole, logAudit } from "@/lib/admin";
 
 // GET ?q=&plan=&limit=50 — list users with plan + last active.
 // POST {adminId, email, accessType, name?} — grant free/paid access (upsert).
-// DELETE ?id=&adminId= — delete user (cascades).
+// DELETE ?id=&adminId= — delete single user.
+// DELETE { adminId, ids: string[] } — delete multiple users at once.
 export async function GET(req: Request) {
   let admin: { id: string };
   try {
@@ -93,10 +94,12 @@ export async function DELETE(req: Request) {
   const u = new URL(req.url);
   const id = u.searchParams.get("id");
   let adminId = u.searchParams.get("adminId");
+  let ids: string[] | undefined;
   if (!adminId) {
     try {
       const b = await req.json();
       adminId = b?.adminId ?? null;
+      ids = b?.ids ?? undefined;
     } catch { /* query-only */ }
   }
   try {
@@ -105,8 +108,19 @@ export async function DELETE(req: Request) {
   } catch {
     return NextResponse.json({ error: "forbidden" }, { status: 403 });
   }
-  if (!id) return NextResponse.json({ error: "id required" }, { status: 400 });
   const db = await getDb();
+  const deleted: string[] = [];
+  if (ids && ids.length > 0) {
+    // Batch delete
+    for (const targetId of ids) {
+      const target = (await db.prepare("SELECT email FROM users WHERE id = ?").get(targetId)) as { email: string } | undefined;
+      await db.prepare("DELETE FROM users WHERE id = ?").run(targetId);
+      deleted.push(targetId);
+      await logAudit(db, adminId, "delete-user", target?.email ?? targetId);
+    }
+    return NextResponse.json({ ok: true, deleted: deleted.length });
+  }
+  if (!id) return NextResponse.json({ error: "id required" }, { status: 400 });
   const target = (await db.prepare("SELECT email FROM users WHERE id = ?").get(id)) as { email: string } | undefined;
   await db.prepare("DELETE FROM users WHERE id = ?").run(id);
   await logAudit(db, adminId, "delete-user", target?.email ?? id);
