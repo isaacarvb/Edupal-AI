@@ -10,8 +10,7 @@ const PUBLIC_ROUTES = ["/", "/login", "/signup"];
 const TIPS: Record<string, string> = {
   "My Classes": "Your classes, roster and per-student activity",
   Curriculum: "Class-by-class, topic-by-topic notes for every subject",
-  "Lesson Notes": "Write lesson notes for VP review — approved notes show to students",
-  Assignments: "Set practice assignments for your classes and track completion"
+  "Lesson Notes": "Write lesson notes for VP review — approved notes show to students"
 };
 
 // Teacher environment shell: academic workspace.
@@ -98,7 +97,6 @@ export default function TeacherShell({ children }: { children: React.ReactNode }
     { href: `/teacher/dashboard${q}`, match: "/teacher/dashboard", label: "My Classes", emoji: "📚" },
     { href: `/teacher/curriculum${q}`, match: "/teacher/curriculum", label: "Curriculum", emoji: "🗂️" },
     { href: `/teacher/lesson-notes${q}`, match: "/teacher/lesson-notes", label: "Lesson Notes", emoji: "📝" },
-    { href: `/teacher/assignments${q}`, match: "/teacher/assignments", label: "Assignments", emoji: "✅" },
     { href: `/teacher/questions${q}`, match: "/teacher/questions", label: "Question Bank", emoji: "📋" },
     { href: `/teacher/approved-notes${q}`, match: "/teacher/approved-notes", label: "Approved Notes", emoji: "📄" }
   ];

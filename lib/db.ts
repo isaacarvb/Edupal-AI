@@ -221,6 +221,10 @@ async function sqliteMigrate(): Promise<void> {
   h.exec("CREATE INDEX IF NOT EXISTS idx_school_teachers_class ON school_teachers(class_name)");
 
   h.exec("CREATE TABLE IF NOT EXISTS lesson_notes (id TEXT PRIMARY KEY, school_id TEXT NOT NULL REFERENCES schools(id) ON DELETE CASCADE, teacher_id TEXT NOT NULL REFERENCES school_teachers(id) ON DELETE CASCADE, teacher_name TEXT NOT NULL DEFAULT '', class_name TEXT NOT NULL DEFAULT '', subject TEXT NOT NULL, topic TEXT NOT NULL, body TEXT NOT NULL DEFAULT '', attachment_url TEXT, attachment_name TEXT, status TEXT NOT NULL DEFAULT 'pending', reviewed_by TEXT, reviewed_at TEXT, created_at TEXT NOT NULL DEFAULT (datetime('now')))");
+  // Older lesson_notes tables were created before file attachments were added.
+  // CREATE TABLE IF NOT EXISTS does not add columns, so patch them in explicitly.
+  if (!cols("lesson_notes").has("attachment_url")) h.exec("ALTER TABLE lesson_notes ADD COLUMN attachment_url TEXT");
+  if (!cols("lesson_notes").has("attachment_name")) h.exec("ALTER TABLE lesson_notes ADD COLUMN attachment_name TEXT");
   h.exec("CREATE INDEX IF NOT EXISTS idx_lesson_notes_school_status ON lesson_notes(school_id, status)");
 
   h.exec("CREATE TABLE IF NOT EXISTS school_announcements (id TEXT PRIMARY KEY, school_id TEXT NOT NULL REFERENCES schools(id) ON DELETE CASCADE, title TEXT NOT NULL DEFAULT '', body TEXT NOT NULL DEFAULT '', class_name TEXT, created_at TEXT NOT NULL DEFAULT (datetime('now')))");
@@ -381,6 +385,10 @@ async function pgMigrate(): Promise<void> {
       if (!(await hasLnCol("teacher_name"))) await db.prepare("ALTER TABLE lesson_notes ADD COLUMN teacher_name TEXT NOT NULL DEFAULT ''").run();
       if (!(await hasLnCol("reviewed_by"))) await db.prepare("ALTER TABLE lesson_notes ADD COLUMN reviewed_by TEXT").run();
       if (!(await hasLnCol("reviewed_at"))) await db.prepare("ALTER TABLE lesson_notes ADD COLUMN reviewed_at TEXT").run();
+      // Existing tables predate the attachment columns; CREATE TABLE IF NOT EXISTS
+      // will not add them, so add them here.
+      if (!(await hasLnCol("attachment_url"))) await db.prepare("ALTER TABLE lesson_notes ADD COLUMN attachment_url TEXT").run();
+      if (!(await hasLnCol("attachment_name"))) await db.prepare("ALTER TABLE lesson_notes ADD COLUMN attachment_name TEXT").run();
       const hasAsCol = async (col: string) =>
         ((await db.prepare("SELECT 1 FROM information_schema.columns WHERE table_name = 'assignments' AND column_name = $1").get(col)) ? true : false);
       if (!(await hasAsCol("id"))) await db.prepare("CREATE TABLE IF NOT EXISTS assignments (id TEXT PRIMARY KEY, school_id TEXT NOT NULL REFERENCES schools(id) ON DELETE CASCADE, teacher_id TEXT NOT NULL REFERENCES school_teachers(id) ON DELETE CASCADE, class_name TEXT NOT NULL DEFAULT '', subject TEXT NOT NULL, topic TEXT NOT NULL, instructions TEXT NOT NULL DEFAULT '', due_at TEXT, created_at TEXT NOT NULL DEFAULT (TO_CHAR(NOW() AT TIME ZONE 'UTC', 'YYYY-MM-DD\"T\"HH24:MI:SS.MS\"Z\"')))").run();
