@@ -17,6 +17,10 @@ export async function GET(req: Request) {
     const weekAgo = new Date(Date.now() - 7 * 86400000).toISOString().slice(0, 10);
     const classes = [];
 
+    const pending = (await db
+      .prepare("SELECT COUNT(*) AS n FROM lesson_notes WHERE school_id = ? AND teacher_id = ? AND status = 'pending'")
+      .get(school.id, teacher.id)) as { n: unknown } | undefined;
+
     for (const className of teacher.classes) {
       const members = (await db
         .prepare(
@@ -66,6 +70,7 @@ export async function GET(req: Request) {
     return NextResponse.json({
       teacher: { id: teacher.id, name: teacher.name, email: teacher.email, classes: teacher.classes },
       school: { id: school.id, name: school.name, code: school.code },
+      pendingNotes: Number(pending?.n ?? 0),
       classes
     });
   } catch (e) {

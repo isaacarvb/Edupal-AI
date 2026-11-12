@@ -2,15 +2,14 @@
 import { useEffect, useRef, useState } from "react";
 import { usePathname, useSearchParams } from "next/navigation";
 import { signOut } from "next-auth/react";
-import TopBar from "@/components/TopBar";
 import NoticeBell from "@/components/NoticeBell";
-
-const PUBLIC_ROUTES = ["/", "/login", "/signup"];
 
 const TIPS: Record<string, string> = {
   "My Classes": "Your classes, roster and per-student activity",
   Curriculum: "Class-by-class, topic-by-topic notes for every subject",
-  "Lesson Notes": "Write lesson notes for VP review — approved notes show to students"
+  "Lesson Notes": "Write lesson notes for VP review — approved notes show to students",
+  "Question Bank": "Write and manage practice questions for your classes",
+  "Approved Notes": "Notes the VP has approved for classroom use"
 };
 
 // Teacher environment shell: academic workspace.
@@ -20,9 +19,12 @@ export default function TeacherShell({ children }: { children: React.ReactNode }
   const [userId, setUserId] = useState<string | null>(null);
   const [name, setName] = useState("Teacher");
   const [schoolName, setSchoolName] = useState("School");
+  const [classes, setClasses] = useState<string[]>([]);
+  const [pendingNotes, setPendingNotes] = useState(0);
   const [mobile, setMobile] = useState(false);
   const [open, setOpen] = useState(false);
   const [collapsed, setCollapsed] = useState(false);
+  const [classesOpen, setClassesOpen] = useState(true);
   const [tip, setTip] = useState<{ text: string; top: number } | null>(null);
   const tipTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -36,12 +38,20 @@ export default function TeacherShell({ children }: { children: React.ReactNode }
 
   useEffect(() => {
     setCollapsed(localStorage.getItem("teacher_collapsed") === "1");
+    setClassesOpen(localStorage.getItem("teacher_classes_open") !== "0");
   }, []);
 
   function toggleCollapse() {
     setCollapsed((c) => {
       localStorage.setItem("teacher_collapsed", c ? "0" : "1");
       return !c;
+    });
+  }
+
+  function toggleClasses() {
+    setClassesOpen((o) => {
+      localStorage.setItem("teacher_classes_open", o ? "0" : "1");
+      return !o;
     });
   }
 
@@ -52,7 +62,7 @@ export default function TeacherShell({ children }: { children: React.ReactNode }
     window.addEventListener("hashchange", apply);
     return () => window.removeEventListener("hashchange", apply);
   }, [path]);
-  const here = `${path}${hash}`;
+  const here = `${decodeURIComponent(path)}${hash}`;
   const isActive = (match: string) => match === here;
 
   useEffect(() => {
@@ -65,6 +75,8 @@ export default function TeacherShell({ children }: { children: React.ReactNode }
         .then((d) => {
           if (d?.teacher?.name) setName(d.teacher.name);
           if (d?.school?.name) setSchoolName(d.school.name);
+          if (Array.isArray(d?.teacher?.classes)) setClasses(d.teacher.classes);
+          if (typeof d?.pendingNotes === "number") setPendingNotes(d.pendingNotes);
         });
     }
   }, [path, search]);
@@ -93,13 +105,20 @@ export default function TeacherShell({ children }: { children: React.ReactNode }
   const wide = !collapsed;
   const initial = name.trim().charAt(0).toUpperCase() || "T";
 
-  const LINKS = [
-    { href: `/teacher/dashboard${q}`, match: "/teacher/dashboard", label: "My Classes", emoji: "📚" },
-    { href: `/teacher/curriculum${q}`, match: "/teacher/curriculum", label: "Curriculum", emoji: "🗂️" },
-    { href: `/teacher/lesson-notes${q}`, match: "/teacher/lesson-notes", label: "Lesson Notes", emoji: "📝" },
-    { href: `/teacher/questions${q}`, match: "/teacher/questions", label: "Question Bank", emoji: "📋" },
-    { href: `/teacher/approved-notes${q}`, match: "/teacher/approved-notes", label: "Approved Notes", emoji: "📄" }
-  ];
+  const navLinkStyle: React.CSSProperties = {
+    color: "#fff", textDecoration: "none", fontSize: 14, padding: "10px 12px",
+    borderRadius: 999, display: "flex", alignItems: "center", gap: wide ? 8 : 0,
+    justifyContent: wide ? "flex-start" : "center", whiteSpace: "nowrap"
+  };
+
+  function SectionLabel({ children }: { children: React.ReactNode }) {
+    if (!wide) return null;
+    return (
+      <div style={{ fontSize: 10, fontWeight: 800, letterSpacing: 1, color: "#94A3B8", padding: "10px 12px 4px", textTransform: "uppercase" }}>
+        {children}
+      </div>
+    );
+  }
 
   const sidebar = (
     <aside
@@ -129,23 +148,104 @@ export default function TeacherShell({ children }: { children: React.ReactNode }
           )}
         </div>
       </div>
-      <nav style={{ padding: 10, display: "flex", flexDirection: "column", gap: 2, flex: 1 }}>
-        {LINKS.map((l) => (
-          <a
-            key={l.label} href={l.href}
-            onMouseEnter={(e) => showTip(l.label, e.currentTarget)}
-            onMouseLeave={hideTip}
-            className={isActive(l.match) ? "nav-link nav-link-active" : "nav-link"}
-            style={{
-              color: "#fff", textDecoration: "none", fontSize: 14, padding: "10px 12px",
-              borderRadius: 999, display: "flex", alignItems: "center", gap: wide ? 8 : 0,
-              justifyContent: wide ? "flex-start" : "center", whiteSpace: "nowrap"
-            }}
-          >
-            <span style={{ fontSize: 16 }}>{l.emoji}</span>
-            {wide && <span style={{ flex: 1 }}>{l.label}</span>}
+      <nav style={{ padding: 10, display: "flex", flexDirection: "column", gap: 2, flex: 1, overflowY: "auto" }}>
+        <SectionLabel>Teaching</SectionLabel>
+
+        {/* My Classes: header opens the overview, chevron expands the class list. */}
+        <div
+          className={isActive("/teacher/dashboard") ? "nav-link nav-link-active" : "nav-link"}
+          style={{ display: "flex", alignItems: "center", borderRadius: 999 }}
+          onMouseEnter={(e) => showTip("My Classes", e.currentTarget)}
+          onMouseLeave={hideTip}
+        >
+          <a href={`/teacher/dashboard${q}`} style={{ ...navLinkStyle, flex: 1, paddingRight: 4 }}>
+            <span style={{ fontSize: 16 }}>📚</span>
+            {wide && <span style={{ flex: 1 }}>My Classes</span>}
           </a>
-        ))}
+          {wide && classes.length > 0 && (
+            <button
+              onClick={toggleClasses}
+              aria-label={classesOpen ? "Collapse class list" : "Expand class list"}
+              title={classesOpen ? "Collapse class list" : "Expand class list"}
+              style={{ background: "transparent", border: 0, color: "#CBD5E1", cursor: "pointer", fontSize: 12, padding: "8px 12px 8px 4px" }}
+            >
+              {classesOpen ? "▾" : "▸"}
+            </button>
+          )}
+        </div>
+
+        {wide && classesOpen && classes.length > 0 && (
+          <div style={{ display: "flex", flexDirection: "column", gap: 1, padding: "2px 0 4px 14px" }}>
+            {classes.map((c) => {
+              const href = `/teacher/classes/${encodeURIComponent(c)}${q}`;
+              const active = isActive(`/teacher/classes/${c}`);
+              return (
+                <a
+                  key={c}
+                  href={href}
+                  onMouseEnter={(e) => showTip(c, e.currentTarget)}
+                  onMouseLeave={hideTip}
+                  className={active ? "nav-link nav-link-active" : "nav-link"}
+                  style={{
+                    color: "#CBD5E1", textDecoration: "none", fontSize: 13, padding: "7px 12px",
+                    borderRadius: 999, display: "flex", alignItems: "center", gap: 8,
+                    borderLeft: active ? "2px solid #5EEAD4" : "2px solid #333A45"
+                  }}
+                >
+                  <span style={{ fontSize: 11, color: active ? "#A7F3D0" : "#64748B" }}>●</span>
+                  <span>{c}</span>
+                </a>
+              );
+            })}
+          </div>
+        )}
+
+        <a href={`/teacher/curriculum${q}`}
+          onMouseEnter={(e) => showTip("Curriculum", e.currentTarget)}
+          onMouseLeave={hideTip}
+          className={isActive("/teacher/curriculum") ? "nav-link nav-link-active" : "nav-link"}
+          style={navLinkStyle}
+        >
+          <span style={{ fontSize: 16 }}>🗂️</span>
+          {wide && <span style={{ flex: 1 }}>Curriculum</span>}
+        </a>
+
+        <a href={`/teacher/lesson-notes${q}`}
+          onMouseEnter={(e) => showTip("Lesson Notes", e.currentTarget)}
+          onMouseLeave={hideTip}
+          className={isActive("/teacher/lesson-notes") ? "nav-link nav-link-active" : "nav-link"}
+          style={navLinkStyle}
+        >
+          <span style={{ fontSize: 16 }}>📝</span>
+          {wide && <span style={{ flex: 1 }}>Lesson Notes</span>}
+          {wide && pendingNotes > 0 && (
+            <span title={`${pendingNotes} awaiting review`} style={{ background: "#F59E0B", color: "#1E242E", fontSize: 10, fontWeight: 800, borderRadius: 999, padding: "1px 7px" }}>
+              {pendingNotes}
+            </span>
+          )}
+        </a>
+
+        <a href={`/teacher/questions${q}`}
+          onMouseEnter={(e) => showTip("Question Bank", e.currentTarget)}
+          onMouseLeave={hideTip}
+          className={isActive("/teacher/questions") ? "nav-link nav-link-active" : "nav-link"}
+          style={navLinkStyle}
+        >
+          <span style={{ fontSize: 16 }}>📋</span>
+          {wide && <span style={{ flex: 1 }}>Question Bank</span>}
+        </a>
+
+        <SectionLabel>Resources</SectionLabel>
+
+        <a href={`/teacher/approved-notes${q}`}
+          onMouseEnter={(e) => showTip("Approved Notes", e.currentTarget)}
+          onMouseLeave={hideTip}
+          className={isActive("/teacher/approved-notes") ? "nav-link nav-link-active" : "nav-link"}
+          style={navLinkStyle}
+        >
+          <span style={{ fontSize: 16 }}>📄</span>
+          {wide && <span style={{ flex: 1 }}>Approved Notes</span>}
+        </a>
       </nav>
       <div style={{ padding: 10, borderTop: "1px solid #333A45" }}>
         {wide ? (

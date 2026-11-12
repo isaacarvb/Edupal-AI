@@ -3,18 +3,22 @@ import { useEffect, useState } from "react";
 
 const card: React.CSSProperties = { background: "#fff", border: "1px solid #E2E8F0", borderRadius: 16, padding: 16, margin: "0 0 12px" };
 
-type ClassData = { className: string; students: { userId: string; name: string; streak: number; answersWeek: number; accuracy: number }[]; weakTopics: { subject: string; topic: string; students: number; accuracy: number }[] };
-type ApprovedNote = { id: string; subject: string; topic: string; body: string; className: string; createdAt: string };
+type Student = { userId: string; name: string; streak: number; answersWeek: number; accuracy: number };
+type WeakTopic = { subject: string; topic: string; students: number; accuracy: number };
+type ClassData = { className: string; students: Student[]; weakTopics: WeakTopic[] };
+type Dashboard = {
+  teacher: { name: string; email: string; classes: string[] };
+  school: { name: string; code: string };
+  pendingNotes?: number;
+  classes: ClassData[];
+};
 
 export default function TeacherDashboard() {
-  const [userId, setUserId] = useState<string | null>(null);
-  const [data, setData] = useState<{ teacher: { name: string; email: string; classes: string[] }; school: { name: string; code: string }; classes: ClassData[] } | null>(null);
-  const [notes, setNotes] = useState<ApprovedNote[]>([]);
+  const [data, setData] = useState<Dashboard | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     const id = localStorage.getItem("edupal_user");
-    setUserId(id);
     if (!id) {
       setError("Please log in as a teacher.");
       return;
@@ -32,16 +36,6 @@ export default function TeacherDashboard() {
         if (d) setData(d);
       })
       .catch(() => setError("Failed to connect to the server."));
-
-    // Fetch approved lesson notes for display in class
-    fetch(`/api/school/lesson-notes?userId=${id}&teacherId=${id}&status=approved`)
-      .then((r) => (r.ok ? r.json() : null))
-      .then((d) => {
-        if (d?.notes) setNotes(d.notes.map((n: any) => ({
-          id: n.id, subject: n.subject, topic: n.topic, body: n.body,
-          className: n.className, createdAt: n.createdAt
-        })));
-      });
   }, []);
 
   if (error) {
@@ -63,16 +57,9 @@ export default function TeacherDashboard() {
   const firstName = data.teacher.name.split(" ")[0];
   const totalStudents = data.classes.reduce((s, c) => s + c.students.length, 0);
   const totalActive = data.classes.reduce((s, c) => s + c.students.filter((st) => st.answersWeek > 0).length, 0);
-  const allAccuracies = data.classes.flatMap(c => c.students.map(s => s.accuracy)).filter(a => a > 0);
+  const allAccuracies = data.classes.flatMap((c) => c.students.map((s) => s.accuracy)).filter((a) => a > 0);
   const avgAccuracy = allAccuracies.length > 0 ? Math.round(allAccuracies.reduce((s, a) => s + a, 0) / allAccuracies.length) : 0;
-
-  // Group approved notes by class for easy in-class display
-  const notesByClass = new Map<string, ApprovedNote[]>();
-  for (const n of notes) {
-    const arr = notesByClass.get(n.className) || [];
-    arr.push(n);
-    notesByClass.set(n.className, arr);
-  }
+  const pendingNotes = data.pendingNotes ?? 0;
 
   return (
     <main style={{ maxWidth: 1100, margin: "0 auto", padding: 20, color: "#333A45" }}>
@@ -107,84 +94,61 @@ export default function TeacherDashboard() {
         </div>
       </div>
 
-      {/* Approved Lesson Notes for Class Display */}
-      {notes.length > 0 && (
-        <div style={card}>
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 10 }}>
-            <h2 style={{ color: "#1E242E", fontSize: 16, margin: 0 }}>📋 Approved Lesson Notes (for Class Display)</h2>
-            <a href="/teacher/lesson-notes" style={{ fontSize: 13, color: "#0F766E", fontWeight: 700, textDecoration: "none" }}>Manage Notes →</a>
+      {pendingNotes > 0 && (
+        <a href="/teacher/lesson-notes" style={{ textDecoration: "none" }}>
+          <div style={{ ...card, background: "#FFFBEB", borderColor: "#FCD34D", display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12, flexWrap: "wrap" }}>
+            <div>
+              <div style={{ fontWeight: 800, color: "#92400E", fontSize: 14 }}>📝 {pendingNotes} lesson note{pendingNotes === 1 ? "" : "s"} awaiting VP review</div>
+              <div style={{ fontSize: 12, color: "#92400E", opacity: 0.8, marginTop: 2 }}>Approved notes become visible to your students.</div>
+            </div>
+            <span style={{ fontSize: 13, fontWeight: 800, color: "#0F766E" }}>Open Lesson Notes →</span>
           </div>
-          {data.classes.map((c) => {
-            const classNotes = notesByClass.get(c.className) || [];
-            if (classNotes.length === 0) return null;
-            return (
-              <div key={c.className} style={{ marginBottom: 16, paddingBottom: 16, borderBottom: "1px solid #F1F5F9" }}>
-                <h3 style={{ fontSize: 14, margin: "0 0 8px", color: "#0F766E", fontWeight: 800 }}>{c.className}</h3>
-                <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
-                  {classNotes.map((n) => (
-                    <div key={n.id} style={{ flex: 1, minWidth: 200, background: "#F8FAFC", border: "1px solid #E2E8F0", borderRadius: 10, padding: 12, fontSize: 13 }}>
-                      <div style={{ fontWeight: 700, color: "#1E242E", marginBottom: 4 }}>{n.topic}</div>
-                      <div style={{ fontSize: 11, color: "#5F6E7F", marginBottom: 6 }}>{n.subject}</div>
-                      <div style={{ fontSize: 11, color: "#5F6E7F", marginBottom: 6 }}>{n.body.slice(0, 120)}{n.body.length > 120 ? "…" : ""}</div>
-                      <a href={`/teacher/lesson-notes`} style={{ fontSize: 11, color: "#0F766E", fontWeight: 700, textDecoration: "none" }}>View full →</a>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            );
-          })}
+        </a>
+      )}
+
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", margin: "20px 0 10px", flexWrap: "wrap", gap: 8 }}>
+        <h2 style={{ color: "#1E242E", fontSize: 18, margin: 0 }}>My Classes</h2>
+        <span style={{ fontSize: 12, color: "#5F6E7F" }}>Open a class to see its students, notes and question bank.</span>
+      </div>
+
+      {data.classes.length === 0 && (
+        <div style={card}>
+          <p style={{ fontSize: 13, color: "#5F6E7F", margin: 0 }}>
+            No classes are assigned to you yet. Ask your school admin to add you to a class roster.
+          </p>
         </div>
       )}
 
-      <div style={{ marginTop: 16 }}>
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(250px, 1fr))", gap: 12 }}>
         {data.classes.map((c) => {
           const classAvg = c.students.length > 0 ? Math.round(c.students.reduce((s, st) => s + st.accuracy, 0) / c.students.length) : 0;
+          const active = c.students.filter((st) => st.answersWeek > 0).length;
+          const weak = c.weakTopics[0];
           return (
-            <div key={c.className} style={card}>
-              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 10 }}>
-                <div>
-                  <h2 style={{ color: "#1E242E", fontSize: 16, margin: 0 }}>{c.className}</h2>
-                  <p style={{ fontSize: 12, color: "#5F6E7F", margin: "2px 0 0" }}>{c.students.length} student{c.students.length === 1 ? "" : "s"} · Avg {classAvg}%</p>
+            <a
+              key={c.className}
+              href={`/teacher/classes/${encodeURIComponent(c.className)}`}
+              style={{ textDecoration: "none", color: "inherit" }}
+            >
+              <div
+                style={{ ...card, margin: 0, height: "100%", boxSizing: "border-box", cursor: "pointer", transition: "box-shadow 150ms ease, border-color 150ms ease" }}
+                onMouseEnter={(e) => { e.currentTarget.style.boxShadow = "0 6px 18px -6px rgb(15 118 110 / 0.35)"; e.currentTarget.style.borderColor = "#0F766E"; }}
+                onMouseLeave={(e) => { e.currentTarget.style.boxShadow = "none"; e.currentTarget.style.borderColor = "#E2E8F0"; }}
+              >
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 10 }}>
+                  <div style={{ fontSize: 20, fontWeight: 800, color: "#1E242E" }}>{c.className}</div>
+                  <span style={{ fontSize: 11, fontWeight: 800, background: "#F0FDFA", color: "#0F766E", border: "1px solid #99F6E4", borderRadius: 999, padding: "2px 8px" }}>{classAvg}% avg</span>
                 </div>
-                <div style={{ display: "flex", gap: 8 }}>
-                  <a href={`/teacher/lesson-notes?class=${encodeURIComponent(c.className)}`}
-                    style={{ fontSize: 13, color: "#0F766E", fontWeight: 700, textDecoration: "none" }}>Write Note →</a>
-                  <a href={`/teacher/assignments?class=${encodeURIComponent(c.className)}`}
-                    style={{ fontSize: 13, color: "#0F766E", fontWeight: 700, textDecoration: "none", marginLeft: 12 }}>Set Assignment →</a>
-                  <a href={`/teacher/questions?class=${encodeURIComponent(c.className)}`}
-                    style={{ fontSize: 13, color: "#0F766E", fontWeight: 700, textDecoration: "none", marginLeft: 12 }}>Question Bank →</a>
+                <div style={{ display: "flex", gap: 14, fontSize: 12, color: "#5F6E7F", marginBottom: 10 }}>
+                  <span><strong style={{ color: "#1E242E" }}>{c.students.length}</strong> student{c.students.length === 1 ? "" : "s"}</span>
+                  <span><strong style={{ color: "#1E242E" }}>{active}</strong> active this week</span>
                 </div>
+                <div style={{ fontSize: 12, color: "#5F6E7F", minHeight: 34 }}>
+                  {weak ? <>Weak topic: <strong style={{ color: "#B45309" }}>{weak.topic}</strong> ({weak.accuracy}%)</> : "No weak topics flagged yet."}
+                </div>
+                <div style={{ marginTop: 10, fontSize: 13, fontWeight: 800, color: "#0F766E" }}>Open class →</div>
               </div>
-              <div style={{ overflowX: "auto" }}>
-                <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12 }}>
-                  <thead>
-                    <tr style={{ textAlign: "left", color: "#5F6E7F", fontSize: 11, borderBottom: "2px solid #F1F5F9" }}>
-                      <th style={{ padding: "8px 10px", textAlign: "left" }}>Student</th>
-                      <th style={{ padding: "8px 10px" }}>Accuracy</th>
-                      <th style={{ padding: "8px 10px" }}>Streak</th>
-                      <th style={{ padding: "8px 10px" }}>Answers This Week</th>
-                      <th style={{ padding: "8px 10px" }}>Weak Topics</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {c.students.map((s) => {
-                      const weak = c.weakTopics.filter((w) => w.students > 0).slice(0, 2);
-                      return (
-                        <tr key={s.userId} style={{ borderBottom: "1px solid #F1F5F9" }}>
-                          <td style={{ padding: "8px 10px", fontWeight: 700 }}>{s.name}</td>
-                          <td style={{ padding: "8px 10px" }}>{s.accuracy}%</td>
-                          <td style={{ padding: "8px 10px" }}>{s.streak} days</td>
-                          <td style={{ padding: "8px 10px" }}>{s.answersWeek}</td>
-                          <td style={{ padding: "8px 10px", fontSize: 11, color: "#5F6E7F" }}>
-                            {weak.length > 0 ? weak.map((w) => `${w.topic} (${w.accuracy}%)`).join(" · ") : "—"}
-                          </td>
-                        </tr>
-                      );
-                    })}
-                  </tbody>
-                </table>
-              </div>
-            </div>
+            </a>
           );
         })}
       </div>

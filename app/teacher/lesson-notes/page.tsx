@@ -8,7 +8,6 @@ type Note = { id: string; subject: string; topic: string; body: string; status: 
 
 export default function TeacherLessonNotes() {
   const [userId, setUserId] = useState<string | null>(null);
-  const [classParam, setClassParam] = useState("");
   const [denied, setDenied] = useState(false);
   const [notes, setNotes] = useState<Note[]>([]);
   const [subject, setSubject] = useState("");
@@ -25,7 +24,8 @@ export default function TeacherLessonNotes() {
     if (!id) return setDenied(true);
     if (localStorage.getItem("edupal_role") !== "SCHOOL_TEACHER") return setDenied(true);
     const params = new URLSearchParams(window.location.search);
-    setClassParam(params.get("class") ?? "");
+    const fromUrl = params.get("class") ?? "";
+    if (fromUrl) setClassName(fromUrl);
     fetch(`/api/school/lesson-notes?userId=${id}&teacherId=${id}`)
       .then((r) => (r.ok ? r.json() : null))
       .then((d) => {
@@ -103,11 +103,10 @@ export default function TeacherLessonNotes() {
         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10, marginBottom: 10 }}>
           <input value={className} onChange={(e) => setClassName(e.target.value)} placeholder="Class (e.g. SS2)"
             style={input} />
-          {classParam && <input value={classParam} readOnly style={{ ...input, background: "#F1F5F9" }} />}
-        </div>
-        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10, marginBottom: 10 }}>
           <input value={subject} onChange={(e) => setSubject(e.target.value)} placeholder="Subject (e.g. Mathematics)"
             style={input} />
+        </div>
+        <div style={{ marginBottom: 10 }}>
           <input value={topic} onChange={(e) => setTopic(e.target.value)} placeholder="Topic (e.g. Quadratic Equations)"
             style={input} />
         </div>

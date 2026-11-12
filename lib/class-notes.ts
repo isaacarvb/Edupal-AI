@@ -22,11 +22,13 @@ const NOTE_EXTENSIONS = new Set([".md", ".markdown", ".txt", ".docx"]);
 // Common aliases used in filenames, longest first so "social and citizenship
 // studies" wins over a shorter accidental match.
 const EXTRA_ALIASES = [
+  "citizenship and heritage studies",
   "social and citizenship studies",
   "social and citizenship education",
   "intermediate science",
   "basic science and technology",
   "basic technology",
+  "physical and health education",
   "physical health education",
   "christian religious studies",
   "literature in english",
@@ -76,7 +78,8 @@ function cleanFileLabel(raw: string): string {
   return raw
     .replace(/\.(md|markdown|txt|docx)$/i, "")
     .replace(/\b(JSS|SSS|SS)\s*[1-3]\s*[A-Z]?\b/gi, " ")
-    .replace(/\b(comprehensive\s+)?(study\s+)?notes?\b/gi, " ")
+    .replace(/\b(comprehensive\s+)?(study\s+)?notes?\s*\d*\b/gi, " ")
+    .replace(/\(\s*\d+\s*\)/g, " ")
     .replace(/\bweek\s*\d+\b/gi, " ")
     .replace(/[_\-.]+/g, " ")
     .replace(/\s+/g, " ")
@@ -149,7 +152,11 @@ function splitTopics(text: string, subject: string): RawTopic[] {
   const markers: Marker[] = [];
 
   // "TOPIC 1: Name", "UNIT 2 — Name", "CHAPTER 3", "WEEK 4", "MODULE 5".
-  for (const m of src.matchAll(/^(?:TOPIC|UNIT|CHAPTER|WEEK|MODULE|SECTION)\s*\d+\s*[:.\-–]?\s*(.+)$/gim)) {
+  // Some imported documents spell the number out ("WEEK ONE: ..."), so accept
+  // both digits and the words one–twenty.
+  const NUM = "(?:\\d+|one|two|three|four|five|six|seven|eight|nine|ten|eleven|twelve|thirteen|fourteen|fifteen|sixteen|seventeen|eighteen|nineteen|twenty)";
+  const markerRe = new RegExp(`^(?:TOPIC|UNIT|CHAPTER|WEEK|MODULE|SECTION)\\s*${NUM}\\s*[:.\\-–]?\\s*(.+)$`, "gim");
+  for (const m of src.matchAll(markerRe)) {
     markers.push({ index: m.index ?? 0, length: m[0].length, name: m[1].trim() });
   }
 
@@ -175,8 +182,12 @@ function splitTopics(text: string, subject: string): RawTopic[] {
     const index = m.index ?? 0;
     if (index === titleEnd - m[0].length) continue; // the title heading
     // Do not double-count a "# TOPIC 1:" line already captured above.
-    if (/^#\s*(?:TOPIC|UNIT|CHAPTER|WEEK|MODULE|SECTION)\s*\d+/i.test(m[0])) continue;
-    markers.push({ index, length: m[0].length, name: m[2].trim().replace(/^(?:TOPIC|UNIT|CHAPTER|WEEK|MODULE|SECTION)\s*\d+\s*[:.\-–]?\s*/i, "") });
+    if (new RegExp(`^#\\s*(?:TOPIC|UNIT|CHAPTER|WEEK|MODULE|SECTION)\\s*${NUM}`, "i").test(m[0])) continue;
+    markers.push({
+      index,
+      length: m[0].length,
+      name: m[2].trim().replace(new RegExp(`^(?:TOPIC|UNIT|CHAPTER|WEEK|MODULE|SECTION)\\s*${NUM}\\s*[:.\\-–]?\\s*`, "i"), "")
+    });
   }
 
   if (markers.length === 0) {
@@ -247,9 +258,12 @@ export function getClassNotes(className: string): ClassSubjectNotes[] {
     if (rawTopics.length === 0) continue;
 
     const existing = bySubject.get(subject) ?? { name: subject, topics: [] };
-    rawTopics.forEach((t, i) => {
+    rawTopics.forEach((t) => {
+      // Position is counted across the whole subject, not per file, so ids stay
+      // unique even when two files repeat the same week/topic title.
+      const position = existing.topics.length + 1;
       existing.topics.push({
-        id: `class-${slug(normalizeClass(className))}-${slug(subject)}-${slug(t.name) || i + 1}`,
+        id: `class-${slug(normalizeClass(className))}-${slug(subject)}-${slug(t.name) || "topic"}-${position}`,
         name: t.name,
         notes: t.body ? [t.body] : []
       });

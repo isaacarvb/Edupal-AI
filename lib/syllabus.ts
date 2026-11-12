@@ -118,6 +118,7 @@ const CANONICAL_ALIASES: Record<string, string> = {
   "intermediate science": "Intermediate Science",
   "intermediate science (basic science and technology)": "Intermediate Science",
   "citizenship education": "Social and Citizenship Studies",
+  "citizenship and heritage studies": "Civic Education",
   "social and citizenship education": "Social and Citizenship Studies",
   "social and citizenship studies": "Social and Citizenship Studies",
   "social studies & citizenship": "Social and Citizenship Studies",
