@@ -204,6 +204,7 @@ export async function importQuestions(dbParam) {
     "JSS_past_questions.csv",
     "SSS_past_questions.csv",
     "past_questions.csv",
+    "supplementary_questions.csv",
   ];
 
   let total = 0;
