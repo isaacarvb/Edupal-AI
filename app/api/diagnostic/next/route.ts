@@ -62,7 +62,7 @@ export async function GET(req: Request) {
            FROM tiered
            WHERE difficulty = ? AND id NOT IN (SELECT question_id FROM attempts WHERE user_id = ?)
             ${freeOnly ? "AND bank_idx <= 10" : ""}
-            AND (type != 'MCQ' OR LENGTH(options_json) < 500)
+            AND (type != 'MCQ' OR LENGTH("optionsJson") < 500)
            ORDER BY CASE WHEN source = 'CURATED' THEN 0 ELSE 1 END, id
            LIMIT 1`
         )

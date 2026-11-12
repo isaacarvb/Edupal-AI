@@ -250,14 +250,17 @@ export async function importQuestions(dbParam) {
         skipped += batch.length - batchAdded;
       } else {
         for (const row of batch) {
-          const r = await db.run(
-            `INSERT INTO questions
-             (id, exam, subject, topic, type, stem, options_json, answer_key, marking_rubric, source, predicted_repeat)
-             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'PAST_QUESTIONS', ?)
-             ON CONFLICT(id) DO NOTHING`,
-            row.id, row.exam, row.subject, row.topic, row.type, row.stem,
-            row.options_json, row.answer_key, row.marking_rubric, row.predicted_repeat
-          );
+          const r = db
+            .prepare(
+              `INSERT INTO questions
+               (id, exam, subject, topic, type, stem, options_json, answer_key, marking_rubric, source, predicted_repeat)
+               VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'PAST_QUESTIONS', ?)
+               ON CONFLICT(id) DO NOTHING`
+            )
+            .run(
+              row.id, row.exam, row.subject, row.topic, row.type, row.stem,
+              row.options_json, row.answer_key, row.marking_rubric, row.predicted_repeat
+            );
           const changes = r.changes ?? r.rowCount ?? 0;
           if (changes > 0) added++;
           else skipped++;
