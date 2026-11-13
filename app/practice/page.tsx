@@ -5,7 +5,7 @@ import { useHiddenSubjects } from "@/components/useHiddenSubjects";
 import FocusSounds from "@/components/FocusSounds";
 import { JSS_SUBJECTS, SSS_SUBJECTS, DEPARTMENTS, COMMON_SUBJECTS, canonicalDepartment, shortSubject } from "@/lib/syllabus";
 
-type Q = { id: string; subject: string; topic: string; type: string; stem: string; optionsJson: string; predictedRepeat: number; difficulty: string };
+type Q = { id: string; subject: string; topic: string; type: string; stem: string; optionsJson: string; answerKey?: string; predictedRepeat: number; difficulty: string };
 type Theory = { score: number; maxScore: number; hits: string[]; misses: string[]; tips: string[]; modelAnswer: string };
 
 const btnPrimary: React.CSSProperties = { display: "block", width: "100%", height: 48, borderRadius: 10, border: 0, fontSize: 16, fontWeight: 600, background: "#0F766E", color: "#fff", cursor: "pointer", margin: "8px 0" };
@@ -491,7 +491,7 @@ function PracticeInner() {
                     <strong>Question data issue:</strong> This question's options are corrupted in the database.
                   </p>
                   <p style={{ fontSize: 13, color: "#78350F", margin: "0 0 8px" }}>
-                    Correct answer: <strong>{(q as any).answerKey || "Unknown"}</strong>
+                    Correct answer: <strong>{q.answerKey || "Unknown"}</strong>
                   </p>
                   <button onClick={() => load()} style={{ background: "#F59E0B", color: "#fff", border: 0, borderRadius: 8, padding: "8px 16px", fontWeight: 700, cursor: "pointer" }}>
                     Skip to next question →

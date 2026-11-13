@@ -46,6 +46,7 @@ export async function GET(req: Request) {
         .prepare(
           `WITH ranked AS (
              SELECT id, exam, subject, topic, type, stem, options_json AS "optionsJson",
+                    answer_key AS "answerKey",
                     predicted_repeat AS "predictedRepeat", source,
                     ROW_NUMBER() OVER (PARTITION BY topic ORDER BY id) AS rn,
                     COUNT(*) OVER (PARTITION BY topic) AS n,
@@ -58,7 +59,7 @@ export async function GET(req: Request) {
                             ELSE 'HARD' END AS difficulty
              FROM ranked
            )
-           SELECT id, exam, subject, topic, type, stem, "optionsJson", "predictedRepeat", difficulty
+           SELECT id, exam, subject, topic, type, stem, "optionsJson", "answerKey", "predictedRepeat", difficulty
            FROM tiered
            WHERE difficulty = ? AND id NOT IN (SELECT question_id FROM attempts WHERE user_id = ?)
             ${freeOnly ? "AND bank_idx <= 10" : ""}

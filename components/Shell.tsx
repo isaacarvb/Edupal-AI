@@ -170,6 +170,12 @@ export default function Shell({ children }: { children: React.ReactNode }) {
     );
   }
 
+  // School pages have their own sidebar in app/school/layout.tsx. Skip the
+  // student shell here so only the school sidebar renders.
+  if (path === "/school" || path?.startsWith("/school/")) {
+    return <>{children}</>;
+  }
+
   // Route to the correct environment based on role.
   if (env === "school") {
     return <SchoolShell>{children}</SchoolShell>;

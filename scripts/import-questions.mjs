@@ -148,8 +148,36 @@ function questionId(stem) {
   return `q-${createHash("sha256").update(stem).digest("hex").slice(0, 16)}`;
 }
 
+// Some legacy CSV rows stored each option character-by-character and separated
+// the options with "|||", e.g.
+//   "F|i|l|t|r|a|t|i|o|n|||M|a|g|n|e|t|i|s|m"
+// The normal "|" split then produces an array of single letters. Detect that
+// exact shape and rebuild the real option strings.
+export function normalizeOptionsString(optionsStr) {
+  const raw = String(optionsStr ?? "");
+  if (!raw.includes("|||")) return raw;
+  const parts = raw.split("|||");
+  if (parts.length < 2) return raw;
+  // Each part must be short cells. Some parts are a single cell with no inner
+  // "|" (e.g. "8" or "s"), so require at least one cell, not more than one.
+  const isCharSplit = parts.every((part) => {
+    const cells = part.split("|");
+    return cells.length >= 1 && cells.every((c) => c.length <= 2);
+  });
+  if (!isCharSplit) return raw;
+  const seen = new Set();
+  return parts
+    .map((part) => part.split("|").join("").trim())
+    .filter((opt) => {
+      if (!opt || seen.has(opt)) return false;
+      seen.add(opt);
+      return true;
+    })
+    .join("|");
+}
+
 // Build a parsed row object from a CSV line
-function buildRow(line) {
+export function buildRow(line) {
   const fields = parseCSVLine(line);
   if (fields.length < 10) return null;
   const [exam, year, rawSubject, rawTopic, type, stem, optionsStr, answer, rubric, predicted] = fields;
@@ -158,7 +186,7 @@ function buildRow(line) {
   const topicClean = cleanEncoding(rawTopic);
   const answerClean = cleanEncoding(answer);
   const rubricClean = cleanEncoding(rubric);
-  const options = optionsStr.split("|").map((o) => cleanEncoding(o.trim())).filter(Boolean);
+  const options = normalizeOptionsString(optionsStr).split("|").map((o) => cleanEncoding(o.trim())).filter(Boolean);
   return {
     id: questionId(stemClean),
     exam,
