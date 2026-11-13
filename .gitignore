@@ -13,3 +13,4 @@ storage/
 
 # Original RTF-based .doc lesson notes stay local; converted .md files are committed.
 docs/**/*.doc
+docs-originals/

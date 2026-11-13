@@ -1,18 +1,20 @@
 import fs from "node:fs";
 import path from "node:path";
 
-// Convert the RTF-based ".doc" lesson notes in docs/<CLASS>/ into plain
-// Markdown so the curriculum loader (lib/class-notes.ts) can read them.
+// Convert the RTF-based ".doc" lesson notes into plain Markdown so the
+// curriculum loader (lib/class-notes.ts) can read them.
 //
-// The originals are RTF files saved with a .doc extension. They are large
-// (often 4–9 MB each because of embedded images), so we keep the readable text
-// only and write a small ".md" sibling next to each file.
+// The originals live in docs-originals/<CLASS>/ and are kept out of docs/ so
+// the huge RTF files are never bundled into the Netlify function (Netlify caps
+// a function at 250 MB). The readable text is written to docs/<CLASS>/ as a
+// small ".md" file.
 //
 // Usage:
 //   node scripts/convert-doc-notes.mjs            # skip files that already have .md
 //   node scripts/convert-doc-notes.mjs --force    # overwrite existing .md files
 
 const DOCS_DIR = path.join(process.cwd(), "docs");
+const ORIGINALS_DIR = path.join(process.cwd(), "docs-originals");
 const CLASSES = ["JSS1", "JSS2", "JSS3", "SSS1", "SSS2", "SSS3"];
 const force = process.argv.includes("--force");
 
@@ -104,14 +106,17 @@ let skipped = 0;
 let failed = 0;
 
 for (const cls of CLASSES) {
-  const dir = path.join(DOCS_DIR, cls);
+  const outDir = path.join(DOCS_DIR, cls);
+  const originalsDir = path.join(ORIGINALS_DIR, cls);
+  const dir = fs.existsSync(originalsDir) ? originalsDir : outDir;
   if (!fs.existsSync(dir)) continue;
+  fs.mkdirSync(outDir, { recursive: true });
   for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
     if (!entry.isFile()) continue;
     if (!/\.(doc|rtf)$/i.test(entry.name)) continue;
 
     const src = path.join(dir, entry.name);
-    const outFile = path.join(dir, entry.name.replace(/\.(doc|rtf)$/i, ".md"));
+    const outFile = path.join(outDir, entry.name.replace(/\.(doc|rtf)$/i, ".md"));
     if (!force && fs.existsSync(outFile)) {
       skipped++;
       continue;
