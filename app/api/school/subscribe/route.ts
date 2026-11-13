@@ -24,6 +24,24 @@ export async function POST(req: Request) {
       | undefined;
     if (!school) return NextResponse.json({ error: "School not found" }, { status: 404 });
 
+    // Renewal guard: the paid seat count can never be lower than the roster
+    // already on the system, otherwise students would be stranded.
+    const rosterRow = (await db
+      .prepare("SELECT COUNT(*) AS n FROM school_students WHERE school_id = ?")
+      .get(schoolId)) as { n: number | string } | undefined;
+    const rosterCount = Number(rosterRow?.n ?? 0);
+    if (rosterCount > students) {
+      return NextResponse.json(
+        {
+          error:
+            `Your roster already has ${rosterCount} student(s). ` +
+            `Choose at least ${rosterCount} seats, or remove ${rosterCount - students} student(s) from the roster first.`,
+          rosterCount
+        },
+        { status: 400 }
+      );
+    }
+
     const existingExpiry = school.expires_at ? new Date(school.expires_at) : null;
     const now = new Date();
     const startDate = existingExpiry && existingExpiry > now ? existingExpiry : now;

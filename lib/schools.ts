@@ -19,12 +19,14 @@ export type SchoolRow = {
   active: number;
   expiresAt: string | null;
   maxSeats: number;
+  seatsUsed: number;
   admin_emails: string;
   createdAt: string;
 };
 
 const COLS = `id, group_id AS "groupId", name, code, admin_user_id AS "adminUserId",
-  active, expires_at AS "expiresAt", admin_emails AS "adminEmails", max_seats AS "maxSeats", created_at AS "createdAt"`;
+  active, expires_at AS "expiresAt", admin_emails AS "adminEmails", max_seats AS "maxSeats",
+  seats_used AS "seatsUsed", created_at AS "createdAt"`;
 
 // A school grants access while it is switched on AND its subscription has not
 // lapsed. No expiry date = never lapses (owner-issued lifetime deals).

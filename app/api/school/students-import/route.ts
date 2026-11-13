@@ -4,6 +4,7 @@ import { hashPassword } from "@/lib/password";
 import { randomUUID } from "crypto";
 import { canonicalDepartment, isJuniorClass } from "@/lib/syllabus";
 import { normalizeClass } from "@/lib/csv";
+import { schoolIsActive } from "@/lib/schools";
 
 // Bulk student roster import.
 //
@@ -28,9 +29,63 @@ export async function POST(req: Request) {
 
     const db = await getDb();
 
-    // Verify school exists
-    const school = await db.prepare("SELECT id FROM schools WHERE id = ?").get(schoolId);
+    // The roster can only grow inside a paid subscription, and never beyond
+    // the seats the school bought. Both checks run BEFORE anything is written,
+    // so an over-limit file is rejected as a whole.
+    const school = (await db
+      .prepare(
+        'SELECT id, active, expires_at AS "expiresAt", max_seats AS "maxSeats" FROM schools WHERE id = ?'
+      )
+      .get(schoolId)) as
+      | { id: string; active: number; expiresAt: string | null; maxSeats: number }
+      | undefined;
     if (!school) return NextResponse.json({ error: "School not found" }, { status: 404 });
+
+    if (!schoolIsActive(school)) {
+      return NextResponse.json(
+        { error: "Your school subscription is not active. Subscribe first, then upload your student roster.", needsSubscription: true },
+        { status: 403 }
+      );
+    }
+
+    const rosterRows = (await db
+      .prepare("SELECT LOWER(name) AS n, LOWER(class_name) AS c FROM school_students WHERE school_id = ?")
+      .all(schoolId)) as Array<{ n: string; c: string }>;
+    const existingKeys = new Set(rosterRows.map((r) => `${r.n}|${r.c}`));
+    const rosterCount = rosterRows.length;
+
+    // Only students who are not already on the roster use a seat. Duplicate
+    // rows inside the same file are counted once.
+    const seen = new Set<string>();
+    let newStudents = 0;
+    for (const s of students) {
+      const name = String(s.name ?? "").trim();
+      const className = normalizeClass(String(s.className ?? s.class ?? ""));
+      if (!name || !className) continue;
+      const key = `${name.toLowerCase()}|${className.toLowerCase()}`;
+      if (existingKeys.has(key) || seen.has(key)) continue;
+      seen.add(key);
+      newStudents++;
+    }
+
+    const seats = Number(school.maxSeats ?? 0);
+    if (rosterCount + newStudents > seats) {
+      const over = rosterCount + newStudents - seats;
+      return NextResponse.json(
+        {
+          error:
+            `Your plan covers ${seats} student seat(s). ` +
+            `Your roster has ${rosterCount}, and this file adds ${newStudents} new student(s), ` +
+            `which would make ${rosterCount + newStudents}. ` +
+            `Remove ${over} student(s) from the file or increase your plan.`,
+          seats,
+          rosterCount,
+          newStudents,
+          over
+        },
+        { status: 400 }
+      );
+    }
 
     let imported = 0;
     let updated = 0;

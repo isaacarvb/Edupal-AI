@@ -65,9 +65,17 @@ export default function SchoolSubscription() {
     fetch(`/api/school/subscription-status?schoolId=${school.id}`)
       .then((r) => (r.ok ? r.json() : null))
       .then((d) => {
-        if (d?.subscription) setSchool((prev) => prev ? { ...prev, active: d.subscription.active ?? prev.active, expires_at: d.subscription.expires_at ?? prev.expires_at } : prev);
+        if (d?.school) {
+          setSchool((prev) => prev ? {
+            ...prev,
+            active: d.school.active ?? prev.active,
+            expires_at: d.school.expires_at ?? prev.expires_at,
+            max_seats: Number(d.school.max_seats ?? prev.max_seats),
+            seats_used: Number(d.school.seats_used ?? prev.seats_used)
+          } : prev);
+        }
       });
-  }, [school]);
+  }, [school?.id]);
 
   const handleCalculate = () => {
     if (!studentsNum || studentsNum < 20) {
@@ -157,7 +165,7 @@ export default function SchoolSubscription() {
         <div style={{ background: "#ECFDF5", border: "1px solid #A7F3D0", borderRadius: 10, padding: 14, marginBottom: 16 }}>
           <div style={{ fontSize: 13, color: "#5F6E7F", marginBottom: 6 }}><strong>Current Subscription</strong></div>
           <div style={{ fontSize: 14, color: "#1E242E" }}>
-            Students: {school.max_seats} · Expires: {school.expires_at ? new Date(school.expires_at).toLocaleDateString("en-NG") : "No end date"}
+            Seats: {school.seats_used} of {school.max_seats} used · Expires: {school.expires_at ? new Date(school.expires_at).toLocaleDateString("en-NG") : "No end date"}
           </div>
         </div>
       )}

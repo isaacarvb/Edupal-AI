@@ -14,6 +14,7 @@ export default function SchoolStudents() {
   const [importBusy, setImportBusy] = useState(false);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [seats, setSeats] = useState<{ used: number; total: number } | null>(null);
 
   const fileInputRef = { current: null as HTMLInputElement | null };
 
@@ -23,7 +24,23 @@ export default function SchoolStudents() {
       try { setSchool(JSON.parse(s)); } catch { /* ignore */ }
     }
     fetchStudents();
+    fetchSeats();
   }, []);
+
+  async function fetchSeats() {
+    const s = localStorage.getItem("edupal_school");
+    if (!s) return;
+    try {
+      const d = JSON.parse(s);
+      const res = await fetch(`/api/school/subscription-status?schoolId=${d.id}`);
+      if (res.ok) {
+        const jd = await res.json();
+        if (jd.school) {
+          setSeats({ used: Number(jd.school.seats_used ?? 0), total: Number(jd.school.max_seats ?? 0) });
+        }
+      }
+    } catch { /* ignore */ }
+  }
 
   async function fetchStudents() {
     const s = localStorage.getItem("edupal_school");
@@ -99,6 +116,7 @@ export default function SchoolStudents() {
       bits.push(`${jd.total} total on roster`);
       setImportMsg(bits.join(", ") + ".");
       fetchStudents();
+      fetchSeats();
     } catch (e) {
       setImportMsg(e instanceof Error ? e.message : "Import failed.");
     } finally {
@@ -137,6 +155,7 @@ export default function SchoolStudents() {
       setImportMsg(`Deleted ${jd.deleted} students.`);
       setStudents([]);
       fetchStudents();
+      fetchSeats();
     } catch (e) {
       setImportMsg(e instanceof Error ? e.message : "Failed to delete all.");
     } finally {
@@ -151,6 +170,7 @@ export default function SchoolStudents() {
       const res = await fetch(`/api/school/students-delete?studentId=${encodeURIComponent(studentId)}`, { method: "DELETE" });
       if (res.ok) {
         setStudents((prev) => prev.filter((s) => s.id !== studentId));
+        fetchSeats();
       } else {
         const d = await res.json().catch(() => ({}));
         setImportMsg(d.error || "Failed to remove student.");
@@ -187,6 +207,25 @@ export default function SchoolStudents() {
         Upload student roster via CSV. Columns: <code style={{ color: "#1E242E" }}>name, class, department</code> (department optional).
         Classes should look like <code style={{ color: "#1E242E" }}>JSS1</code> or <code style={{ color: "#1E242E" }}>SSS2</code>.
       </p>
+
+      {/* Seat usage */}
+      {seats && (
+        <div style={{ ...card, display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap" }}>
+          <div style={{ flex: 1, minWidth: 200 }}>
+            <div style={{ fontSize: 14, fontWeight: 800, color: "#1E242E" }}>
+              {seats.used} of {seats.total} seat{seats.total === 1 ? "" : "s"} used
+            </div>
+            <div style={{ fontSize: 12, color: "#5F6E7F", marginTop: 2 }}>
+              {seats.used >= seats.total
+                ? "All seats are taken. Remove a student or increase your plan to add more."
+                : `${seats.total - seats.used} seat(s) still available on your current plan.`}
+            </div>
+          </div>
+          <div style={{ width: 180, height: 10, borderRadius: 999, background: "#E2E8F0", overflow: "hidden" }}>
+            <div style={{ width: `${seats.total > 0 ? Math.min(100, Math.round((seats.used / seats.total) * 100)) : 0}%`, height: "100%", background: seats.used >= seats.total ? "#DC2626" : "#0F766E" }} />
+          </div>
+        </div>
+      )}
 
       {/* Import Section */}
       <div style={card}>
