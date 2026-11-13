@@ -234,14 +234,6 @@ function DashboardInner() {
             </div>
           </div>
         </div>
-
-        <div style={{ flex: "1 1 280px", minWidth: 0 }}>
-          <div style={card}>
-            <h3 style={{ margin: "0 0 4px", fontSize: 16 }}>Past paper mode</h3>
-            <p style={{ fontSize: 13, margin: "0 0 8px" }}>Full timed paper, scored at the end. Unlimited plan.</p>
-            <a href={`/past-paper?userId=${userId}`} style={{ display: "block", textAlign: "center", background: "#fff", color: "#0F766E", border: "2px solid #0F766E", borderRadius: 10, height: 44, lineHeight: "40px", fontWeight: 700, fontSize: 14, textDecoration: "none" }}>Open past paper mode</a>
-          </div>
-        </div>
       </div>
     </main>
   );

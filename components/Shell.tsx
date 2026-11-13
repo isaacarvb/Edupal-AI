@@ -18,9 +18,11 @@ export default function Shell({ children }: { children: React.ReactNode }) {
   const [role, setRole] = useState<string | null>(null);
   const [name, setName] = useState("Student");
   const [daysLeft, setDaysLeft] = useState<number | null>(null);
+  const [plan, setPlan] = useState("");
   const [mobile, setMobile] = useState(false);
   const [open, setOpen] = useState(false);
   const [collapsed, setCollapsed] = useState(false);
+  const [openSections, setOpenSections] = useState<Record<string, boolean>>({});
   const [adminView, setAdminView] = useState(false);
   const [classroom, setClassroom] = useState(false);
   const [tip, setTip] = useState<{ text: string; top: number } | null>(null);
@@ -40,7 +42,21 @@ export default function Shell({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     setCollapsed(localStorage.getItem("edupal_collapsed") === "1");
+    try {
+      const raw = localStorage.getItem("student_sections");
+      setOpenSections(raw ? JSON.parse(raw) : {});
+    } catch {
+      setOpenSections({});
+    }
   }, []);
+
+  function toggleSection(name: string) {
+    setOpenSections((prev) => {
+      const next = { ...prev, [name]: !(prev[name] ?? true) };
+      localStorage.setItem("student_sections", JSON.stringify(next));
+      return next;
+    });
+  }
 
   function toggleCollapse() {
     setCollapsed((c) => {
@@ -85,6 +101,7 @@ export default function Shell({ children }: { children: React.ReactNode }) {
         .then((r) => (r.ok ? r.json() : null))
         .then((d) => {
           if (d?.profile?.name) setName(String(d.profile.name));
+          if (d?.profile?.plan) setPlan(String(d.profile.plan));
           const ed = d.profile?.examDate as string | null;
           setDaysLeft(ed ? Math.ceil((Date.parse(ed) - Date.now()) / 86400000) : null);
         });
@@ -194,9 +211,17 @@ export default function Shell({ children }: { children: React.ReactNode }) {
     { href: userId ? `/weak-topics?userId=${userId}` : "/onboarding", match: "/weak-topics", label: "Weak Topics", emoji: "🎯", badge: "" },
     { href: userId ? `/dashboard/curriculum${q}` : "/onboarding", match: "/dashboard/curriculum", label: "Curriculum & Notes", emoji: "📚", badge: "" },
     { href: userId ? `/likely-questions${q}` : "/onboarding", match: "/likely-questions", label: "Likely Questions", emoji: "🔥", badge: userId ? likelyBadge : "" },
+    { href: userId ? `/past-paper?userId=${userId}` : "/onboarding", match: "/past-paper", label: "Past Papers", emoji: "📄", badge: userId && plan !== "UNLIMITED" ? "Unlimited" : "" },
     { href: "/metrics", match: "/metrics", label: "Progress Analytics", emoji: "📊", badge: "" },
+    { href: userId ? `/leaderboard?userId=${userId}` : "/onboarding", match: "/leaderboard", label: "Leaderboard", emoji: "🏆", badge: "" },
     { href: userId ? `/subscription?userId=${userId}` : "/onboarding", match: "/subscription", label: "Subscription & Credits", emoji: "💳", badge: "" },
     { href: "/deadlines", match: "/deadlines", label: "Exam Info", emoji: "📅", badge: "" }
+  ];
+  const byLabel = (label: string) => links.find((l) => l.label === label)!;
+  const sections = [
+    { name: "LEARN", links: ["Dashboard", "Practice", "Weak Topics", "Curriculum & Notes", "Likely Questions", "Past Papers"].map(byLabel) },
+    { name: "PROGRESS", links: ["Progress Analytics", "Leaderboard"].map(byLabel) },
+    { name: "ACCOUNT", links: ["Subscription & Credits", "Exam Info"].map(byLabel) }
   ];
   const homeHref = userId ? `/dashboard${q}` : "/";
   const wide = !collapsed;
@@ -230,29 +255,54 @@ export default function Shell({ children }: { children: React.ReactNode }) {
           )}
         </div>
       </div>
-      <nav style={{ padding: 10, display: "flex", flexDirection: "column", gap: 2, flex: 1 }}>
-        {links.map((l) => (
-          <a
-            key={l.label} href={l.href}
-            onMouseEnter={(e) => showTip(l.label, e.currentTarget)}
-            onMouseLeave={hideTip}
-            className={isActive(l.match) ? "nav-link nav-link-active" : "nav-link"}
-            style={{
-              color: "#fff", textDecoration: "none", fontSize: 14, padding: "10px 12px",
-              borderRadius: 999, display: "flex", alignItems: "center", gap: wide ? 8 : 0,
-              justifyContent: wide ? "flex-start" : "center", whiteSpace: "nowrap"
-            }}
-          >
-            <span style={{ fontSize: 16 }}>{l.emoji}</span>
-            {wide && <span style={{ flex: 1 }}>{l.label}</span>}
-            {wide && l.badge !== "" && (
-              <span style={{ fontSize: 10, fontWeight: 800, padding: "3px 8px", borderRadius: 999,
-                background: l.badge === "Live" ? "#16A34A" : "#F59E0B", color: l.badge === "Live" ? "#fff" : "#422006" }}>
-                {l.badge}
-              </span>
-            )}
-          </a>
-        ))}
+      <nav style={{ padding: 10, display: "flex", flexDirection: "column", gap: 2, flex: 1, overflowY: "auto" }}>
+        {sections.map((section) => {
+          const isOpen = openSections[section.name] ?? true;
+          return (
+            <div key={section.name} style={{ display: "flex", flexDirection: "column", gap: 2 }}>
+              {wide ? (
+                <button
+                  onClick={() => toggleSection(section.name)}
+                  aria-label={isOpen ? `Collapse ${section.name}` : `Expand ${section.name}`}
+                  style={{
+                    display: "flex", alignItems: "center", justifyContent: "space-between", width: "100%",
+                    background: "transparent", border: 0, cursor: "pointer", textAlign: "left",
+                    fontSize: 10, fontWeight: 800, letterSpacing: 1, color: "#94A3B8",
+                    padding: "10px 12px 4px", textTransform: "uppercase"
+                  }}
+                >
+                  <span>{section.name}</span>
+                  <span style={{ fontSize: 10, color: "#64748B" }}>{isOpen ? "▾" : "▸"}</span>
+                </button>
+              ) : (
+                <div style={{ height: 1, background: "#333A45", margin: "6px 8px" }} />
+              )}
+
+              {(isOpen || !wide) && section.links.map((l) => (
+                <a
+                  key={l.label} href={l.href}
+                  onMouseEnter={(e) => showTip(l.label, e.currentTarget)}
+                  onMouseLeave={hideTip}
+                  className={isActive(l.match) ? "nav-link nav-link-active" : "nav-link"}
+                  style={{
+                    color: "#fff", textDecoration: "none", fontSize: 14, padding: "10px 12px",
+                    borderRadius: 999, display: "flex", alignItems: "center", gap: wide ? 8 : 0,
+                    justifyContent: wide ? "flex-start" : "center", whiteSpace: "nowrap"
+                  }}
+                >
+                  <span style={{ fontSize: 16 }}>{l.emoji}</span>
+                  {wide && <span style={{ flex: 1 }}>{l.label}</span>}
+                  {wide && l.badge !== "" && (
+                    <span style={{ fontSize: 10, fontWeight: 800, padding: "3px 8px", borderRadius: 999,
+                      background: l.badge === "Live" ? "#16A34A" : "#F59E0B", color: l.badge === "Live" ? "#fff" : "#422006" }}>
+                      {l.badge}
+                    </span>
+                  )}
+                </a>
+              ))}
+            </div>
+          );
+        })}
       </nav>
       <div style={{ padding: 10, borderTop: "1px solid #333A45" }}>
         {wide ? (
