@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { getDb } from "@/lib/db";
-import { requireSchoolAdmin, requireSchoolTeacher } from "@/lib/schools";
+import { requireSchoolAdmin, requireSchoolTeacher, requireActiveSchool } from "@/lib/schools";
 
 // GET ?userId=&className=&subject=&status=&teacherId=
 // School admin sees all questions in school; teacher sees only their own
@@ -24,6 +24,8 @@ export async function GET(req: Request) {
       teacherOnly = true;
       tId = teacher.id;
     }
+    const gate = await requireActiveSchool(db, schoolId);
+    if ("error" in gate) return gate.error;
     let sql = `SELECT q.id, q.school_id AS "schoolId", q.teacher_id AS "teacherId",
       q.teacher_name AS "teacherName", q.class_name AS "className", q.subject, q.topic,
       q.type, q.stem, q.options_json AS "optionsJson", q.answer_key AS "answerKey",
@@ -68,6 +70,8 @@ export async function POST(req: Request) {
   const b = await req.json();
   try {
     const { teacher, school } = await requireSchoolTeacher(await getDb(), String(b?.userId ?? ""));
+    const gate = await requireActiveSchool(await getDb(), school.id);
+    if ("error" in gate) return gate.error;
     const className = String(b?.className ?? "").trim();
     const subject = String(b?.subject ?? "").trim();
     const topic = String(b?.topic ?? "").trim();
@@ -101,7 +105,9 @@ export async function PATCH(req: Request) {
   const b = await req.json();
   try {
     const db = await getDb();
-    const { teacher } = await requireSchoolTeacher(db, String(b?.userId ?? ""));
+    const { teacher, school } = await requireSchoolTeacher(db, String(b?.userId ?? ""));
+    const gate = await requireActiveSchool(db, school.id);
+    if ("error" in gate) return gate.error;
     const questionId = String(b?.questionId ?? "");
     if (!questionId) return NextResponse.json({ error: "questionId required" }, { status: 400 });
 
@@ -134,7 +140,9 @@ export async function DELETE(req: Request) {
   const userId = searchParams.get("userId");
   const questionId = searchParams.get("questionId");
   try {
-    const { teacher } = await requireSchoolTeacher(await getDb(), userId);
+    const { teacher, school } = await requireSchoolTeacher(await getDb(), userId);
+    const gate = await requireActiveSchool(await getDb(), school.id);
+    if ("error" in gate) return gate.error;
     if (!questionId) return NextResponse.json({ error: "questionId required" }, { status: 400 });
     const db = await getDb();
     await db.prepare("DELETE FROM questions WHERE id = ? AND teacher_id = ?").run(questionId, teacher.id);

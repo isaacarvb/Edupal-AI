@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { getDb } from "@/lib/db";
 import { logAudit } from "@/lib/admin";
-import { requireSchoolAdmin, requireSchoolTeacher } from "@/lib/schools";
+import { requireSchoolAdmin, requireSchoolTeacher, requireActiveSchool } from "@/lib/schools";
 import { getLessonNotes, createLessonNote, reviewLessonNote } from "@/lib/lessons";
 import { writeFile } from "node:fs/promises";
 import { join } from "node:path";
@@ -35,6 +35,8 @@ export async function GET(req: Request) {
         return NextResponse.json({ error: "forbidden: not your notes" }, { status: 403 });
       }
     }
+    const gate = await requireActiveSchool(db, schoolId);
+    if ("error" in gate) return gate.error;
     const notes = await getLessonNotes(db, schoolId!, {
       status,
       className,
@@ -57,6 +59,8 @@ export async function POST(req: Request) {
     const body = String(form.get("body") ?? "").trim();
 
     const { teacher, school } = await requireSchoolTeacher(db, userId);
+    const gate = await requireActiveSchool(db, school.id);
+    if ("error" in gate) return gate.error;
     if (!className || !subject || !topic || !body) {
       return NextResponse.json({ error: "class, subject, topic and body required" }, { status: 400 });
     }
@@ -93,6 +97,8 @@ export async function PATCH(req: Request) {
   const db = await getDb();
   try {
     const { school } = await requireSchoolAdmin(db, String(b?.userId ?? ""));
+    const gate = await requireActiveSchool(db, school.id);
+    if ("error" in gate) return gate.error;
     const noteId = String(b?.noteId ?? "");
     const status = b?.status;
     if (status !== "approved" && status !== "rejected") {

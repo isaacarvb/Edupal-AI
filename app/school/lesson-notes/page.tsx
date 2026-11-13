@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import SubscriptionGate from "@/components/SubscriptionGate";
 
 const card: React.CSSProperties = { background: "#fff", border: "1px solid #E2E8F0", borderRadius: 16, padding: 16, margin: "0 0 12px" };
 
@@ -16,7 +17,23 @@ type Note = {
   createdAt: string;
 };
 
-export default function SchoolLessonNotes() {
+export default function SchoolLessonNotesPage() {
+  return (
+    <SubscriptionGate
+      feature="Lesson Notes"
+      description="Review, approve or reject the lesson notes your teachers submit before students see them."
+      bullets={[
+        "See every note by teacher, class and subject",
+        "Approve or reject with one click",
+        "Approved notes appear in the student portal"
+      ]}
+    >
+      <SchoolLessonNotes />
+    </SubscriptionGate>
+  );
+}
+
+function SchoolLessonNotes() {
   const [school, setSchool] = useState<{ id: string; name: string } | null>(null);
   const [notes, setNotes] = useState<Note[]>([]);
   const [filter, setFilter] = useState<"all" | "pending" | "approved" | "rejected">("all");

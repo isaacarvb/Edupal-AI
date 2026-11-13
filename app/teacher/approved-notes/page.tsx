@@ -1,5 +1,6 @@
 "use client";
 import { useEffect, useState } from "react";
+import SubscriptionGate from "@/components/SubscriptionGate";
 
 const card: React.CSSProperties = { background: "#fff", border: "1px solid #E2E8F0", borderRadius: 16, padding: 16, margin: "0 0 12px" };
 
@@ -8,7 +9,23 @@ type Note = {
   className: string; createdAt: string; attachmentUrl: string | null; attachmentName: string | null;
 };
 
-export default function TeacherApprovedNotes() {
+export default function TeacherApprovedNotesPage() {
+  return (
+    <SubscriptionGate
+      feature="Approved Notes"
+      description="Read the lesson notes your VP has approved for classroom use."
+      bullets={[
+        "Browse approved notes by class and subject",
+        "Use them directly in class",
+        "Print or save a copy for offline teaching"
+      ]}
+    >
+      <TeacherApprovedNotes />
+    </SubscriptionGate>
+  );
+}
+
+function TeacherApprovedNotes() {
   const [notes, setNotes] = useState<Note[]>([]);
   const [denied, setDenied] = useState(false);
   const [loading, setLoading] = useState(true);

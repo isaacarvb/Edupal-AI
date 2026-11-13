@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { getDb } from "@/lib/db";
+import { requireActiveSchool } from "@/lib/schools";
 
 export async function GET(req: Request) {
   try {
@@ -8,6 +9,8 @@ export async function GET(req: Request) {
     if (!schoolId) return NextResponse.json({ error: "schoolId required" }, { status: 400 });
 
     const db = await getDb();
+    const access = await requireActiveSchool(db, schoolId);
+    if ("error" in access) return access.error;
     const rows = (await db.prepare(
       "SELECT id, teacher_name AS \"teacherName\", class_name AS \"className\", subject, topic, body, attachment_name AS \"attachmentName\", status, created_at AS \"createdAt\" FROM lesson_notes WHERE school_id = ? ORDER BY created_at DESC"
     ).all(schoolId)) as Array<{

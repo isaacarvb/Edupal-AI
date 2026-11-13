@@ -1,10 +1,27 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import SubscriptionGate from "@/components/SubscriptionGate";
 
 const card: React.CSSProperties = { background: "#fff", border: "1px solid #E2E8F0", borderRadius: 16, padding: 16, margin: "0 0 12px" };
 
-export default function SchoolMockExams() {
+export default function SchoolMockExamsPage() {
+  return (
+    <SubscriptionGate
+      feature="Mock Exams"
+      description="Schedule school mock exams by class and subject, then review how each class performed."
+      bullets={[
+        "Set the class, subjects, duration and date",
+        "Students sit the paper inside EduPal",
+        "Compare results across classes and subjects"
+      ]}
+    >
+      <SchoolMockExams />
+    </SubscriptionGate>
+  );
+}
+
+function SchoolMockExams() {
   const [school, setSchool] = useState<{ id: string; name: string } | null>(null);
   const [exams, setExams] = useState<{ id: string; title: string; subjects: string; className: string; durationMinutes: number; scheduledAt: string | null; status: string; createdAt: string }[]>([]);
   const [title, setTitle] = useState("");

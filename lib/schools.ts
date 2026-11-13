@@ -1,5 +1,6 @@
 import { getDb, uid, type Db } from "./db";
 import { hashPassword } from "./password";
+import { NextResponse } from "next/server";
 
 // ---------------------------------------------------------------------------
 // School Portal — institutional layer.
@@ -56,6 +57,30 @@ export async function getSchoolByAdmin(db: Db, userId: string): Promise<SchoolRo
 
 export async function getSchoolById(db: Db, schoolId: string): Promise<SchoolRow | undefined> {
   return (await db.prepare(`SELECT ${COLS} FROM schools WHERE id = ?`).get(schoolId)) as SchoolRow | undefined;
+}
+
+// Section gate: the school must have an active, unexpired subscription.
+// Returns a ready-to-send 403/400/404 response when it does not.
+export async function requireActiveSchool(db: Db, schoolId: string | null | undefined) {
+  if (!schoolId) {
+    return { error: NextResponse.json({ error: "schoolId required" }, { status: 400 }) };
+  }
+  const school = await getSchoolById(db, schoolId);
+  if (!school) {
+    return { error: NextResponse.json({ error: "School not found" }, { status: 404 }) };
+  }
+  if (!schoolIsActive(school)) {
+    return {
+      error: NextResponse.json(
+        {
+          error: "Your school subscription is not active. Subscribe to unlock this section.",
+          needsSubscription: true
+        },
+        { status: 403 }
+      )
+    };
+  }
+  return { school };
 }
 
 // Gate for every /api/school/* call: the caller must be the staff login of a

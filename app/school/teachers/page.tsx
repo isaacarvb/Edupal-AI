@@ -1,11 +1,28 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import SubscriptionGate from "@/components/SubscriptionGate";
 import { parseCsv, findColumn, normalizeClass, downloadCsv } from "@/lib/csv";
 
 const card: React.CSSProperties = { background: "#fff", border: "1px solid #E2E8F0", borderRadius: 16, padding: 16, margin: "0 0 12px" };
 
-export default function SchoolTeachers() {
+export default function SchoolTeachersPage() {
+  return (
+    <SubscriptionGate
+      feature="Teacher Roster"
+      description="Create teacher accounts, assign their classes and subjects, and manage access."
+      bullets={[
+        "Bulk upload teachers or add them one at a time",
+        "Each teacher sees only the classes assigned to them",
+        "Remove a teacher without deleting their historical lesson notes"
+      ]}
+    >
+      <SchoolTeachers />
+    </SubscriptionGate>
+  );
+}
+
+function SchoolTeachers() {
   const [school, setSchool] = useState<{ id: string; name: string; code: string } | null>(null);
   const [teachers, setTeachers] = useState<{ id: string; name: string; className: string; subject: string }[]>([]);
   const [search, setSearch] = useState("");

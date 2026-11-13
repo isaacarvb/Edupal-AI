@@ -1,10 +1,27 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import SubscriptionGate from "@/components/SubscriptionGate";
 
 const card: React.CSSProperties = { background: "#fff", border: "1px solid #E2E8F0", borderRadius: 16, padding: 16, margin: "0 0 12px" };
 
-export default function SchoolAnnouncements() {
+export default function SchoolAnnouncementsPage() {
+  return (
+    <SubscriptionGate
+      feature="Announcements"
+      description="Send school-wide or class-specific announcements to students and teachers."
+      bullets={[
+        "Broadcast to the whole school or one class",
+        "Students see announcements in their notice bell",
+        "Keep a history of everything you have sent"
+      ]}
+    >
+      <SchoolAnnouncements />
+    </SubscriptionGate>
+  );
+}
+
+function SchoolAnnouncements() {
   const [school, setSchool] = useState<{ id: string; name: string } | null>(null);
   const [announcements, setAnnouncements] = useState<{ id: string; title: string; body: string; className: string | null; createdAt: string }[]>([]);
   const [title, setTitle] = useState("");

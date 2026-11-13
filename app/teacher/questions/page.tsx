@@ -1,12 +1,29 @@
 "use client";
 import { useEffect, useState } from "react";
+import SubscriptionGate from "@/components/SubscriptionGate";
 
 const card: React.CSSProperties = { background: "#fff", border: "1px solid #E2E8F0", borderRadius: 16, padding: 16, margin: "0 0 12px" };
 const input: React.CSSProperties = { height: 44, borderRadius: 10, border: "1px solid #CBD5E1", padding: "0 12px", fontSize: 14, width: "100%", boxSizing: "border-box" };
 
 type Question = { id: string; subject: string; topic: string; type: string; stem: string; optionsJson: string[]; answerKey: string; markingRubric: string; status: string; className: string; createdAt: string };
 
-export default function TeacherQuestions() {
+export default function TeacherQuestionsPage() {
+  return (
+    <SubscriptionGate
+      feature="Question Bank"
+      description="Write and manage practice questions for the classes you teach."
+      bullets={[
+        "Create MCQ and theory questions",
+        "Assign them to a class, subject and topic",
+        "Reuse questions in practice sets and mock exams"
+      ]}
+    >
+      <TeacherQuestions />
+    </SubscriptionGate>
+  );
+}
+
+function TeacherQuestions() {
   const [userId, setUserId] = useState<string | null>(null);
   const [denied, setDenied] = useState(false);
   const [questions, setQuestions] = useState<Question[]>([]);

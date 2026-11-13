@@ -12,6 +12,8 @@ import {
 } from "@/lib/syllabus";
 import { normalizeClass } from "@/lib/csv";
 import { getClassNotes } from "@/lib/class-notes";
+import { getDb } from "@/lib/db";
+import { requireSchoolAdmin, requireSchoolTeacher, requireActiveSchool } from "@/lib/schools";
 
 // School Curriculum API.
 //
@@ -67,8 +69,30 @@ export async function GET(req: Request) {
     const rawClass = searchParams.get("className") ?? "";
     const className = normalizeClass(rawClass);
     const subjectName = searchParams.get("subject") ?? "";
+    const userId = searchParams.get("userId");
+    const requestedSchoolId = searchParams.get("schoolId");
 
     if (!className) return NextResponse.json({ error: "className required" }, { status: 400 });
+
+    // Curriculum is a paid section: only an active school admin/teacher may read it.
+    // The admin portal passes its school id (it has no user id); teachers pass userId.
+    const db = await getDb();
+    let schoolId: string | null = requestedSchoolId;
+    if (!schoolId) {
+      try {
+        const { school } = await requireSchoolAdmin(db, userId);
+        schoolId = school.id;
+      } catch {
+        try {
+          const { school } = await requireSchoolTeacher(db, userId);
+          schoolId = school.id;
+        } catch {
+          return NextResponse.json({ error: "forbidden: school session required" }, { status: 403 });
+        }
+      }
+    }
+    const gate = await requireActiveSchool(db, schoolId);
+    if ("error" in gate) return gate.error;
 
     const junior = isJuniorClass(className);
     const senior = isSeniorClass(className);

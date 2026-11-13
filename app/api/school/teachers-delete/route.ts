@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { getDb } from "@/lib/db";
+import { requireActiveSchool } from "@/lib/schools";
 
 export async function DELETE(req: Request) {
   try {
@@ -19,6 +20,9 @@ export async function DELETE(req: Request) {
     if (!teacher) {
       return NextResponse.json({ error: "Teacher not found" }, { status: 404 });
     }
+
+    const access = await requireActiveSchool(db, teacher.school_id);
+    if ("error" in access) return access.error;
 
     // Lesson notes cascade from school_teachers; then remove the login account.
     await db.prepare("DELETE FROM school_teachers WHERE id = ?").run(teacherId);

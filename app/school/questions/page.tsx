@@ -1,12 +1,29 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import SubscriptionGate from "@/components/SubscriptionGate";
 import { parseCsv, findColumn, downloadCsv } from "@/lib/csv";
 import { canonicalSubject } from "@/lib/syllabus";
 
 const card: React.CSSProperties = { background: "#fff", border: "1px solid #E2E8F0", borderRadius: 16, padding: 16, margin: "0 0 12px" };
 
-export default function SchoolQuestions() {
+export default function SchoolQuestionsPage() {
+  return (
+    <SubscriptionGate
+      feature="Question Bank"
+      description="Build a private question bank for your school's teachers, practice sets and mock exams."
+      bullets={[
+        "Add questions one at a time or import a CSV",
+        "Organise by class, subject and topic",
+        "Teachers can reuse your school's questions"
+      ]}
+    >
+      <SchoolQuestions />
+    </SubscriptionGate>
+  );
+}
+
+function SchoolQuestions() {
   const [school, setSchool] = useState<{ id: string; name: string } | null>(null);
   const [questions, setQuestions] = useState<{ id: string; subject: string; topic: string; stem: string; answer: string; createdAt: string }[]>([]);
   const [subject, setSubject] = useState("");

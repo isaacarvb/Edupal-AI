@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { getDb } from "@/lib/db";
+import { requireActiveSchool } from "@/lib/schools";
 import { randomUUID } from "crypto";
 import { canonicalSubject } from "@/lib/syllabus";
 
@@ -27,6 +28,8 @@ export async function POST(req: Request) {
     }
 
     const db = await getDb();
+    const access = await requireActiveSchool(db, schoolId);
+    if ("error" in access) return access.error;
 
     const school = await db.prepare("SELECT id FROM schools WHERE id = ?").get(schoolId);
     if (!school) return NextResponse.json({ error: "School not found" }, { status: 404 });

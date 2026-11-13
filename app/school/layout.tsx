@@ -18,7 +18,10 @@ const TIPS: Record<string, string> = {
 };
 
 // The same 11 links the school portal already had, grouped into four sections.
-const SECTIONS = [
+// `locked` sections need an active subscription; the sidebar shows a padlock.
+type SchoolNavLink = { href: string; label: string; emoji: string; locked?: boolean };
+
+const SECTIONS: Array<{ name: string; links: SchoolNavLink[] }> = [
   {
     name: "OVERVIEW",
     links: [
@@ -29,24 +32,24 @@ const SECTIONS = [
   {
     name: "SCHOOL MANAGEMENT",
     links: [
-      { href: "/school/students", label: "Student Roster", emoji: "👥" },
-      { href: "/school/teachers", label: "Teacher Roster", emoji: "👨‍🏫" }
+      { href: "/school/students", label: "Student Roster", emoji: "👥", locked: true },
+      { href: "/school/teachers", label: "Teacher Roster", emoji: "👨‍🏫", locked: true }
     ]
   },
   {
     name: "ACADEMICS",
     links: [
-      { href: "/school/lesson-notes", label: "Lesson Notes", emoji: "📚" },
-      { href: "/school/curriculum", label: "Curriculum", emoji: "🗂️" },
-      { href: "/school/mock-exams", label: "Mock Exams", emoji: "📝" },
-      { href: "/school/questions", label: "Question Bank", emoji: "❓" }
+      { href: "/school/lesson-notes", label: "Lesson Notes", emoji: "📚", locked: true },
+      { href: "/school/curriculum", label: "Curriculum", emoji: "🗂️", locked: true },
+      { href: "/school/mock-exams", label: "Mock Exams", emoji: "📝", locked: true },
+      { href: "/school/questions", label: "Question Bank", emoji: "❓", locked: true }
     ]
   },
   {
     name: "ADMINISTRATION",
     links: [
       { href: "/school/subscription", label: "School Subscription", emoji: "💳" },
-      { href: "/school/announcements", label: "Announcements", emoji: "📢" },
+      { href: "/school/announcements", label: "Announcements", emoji: "📢", locked: true },
       { href: "/school/settings", label: "Settings", emoji: "⚙️" }
     ]
   }
@@ -58,6 +61,7 @@ export default function SchoolLayout({ children }: { children: React.ReactNode }
   const [mobile, setMobile] = useState(false);
   const [open, setOpen] = useState(false);
   const [school, setSchool] = useState<{ name: string; code: string } | null>(null);
+  const [isActive, setIsActive] = useState<boolean | null>(null);
   const [openSections, setOpenSections] = useState<Record<string, boolean>>({});
   const [tip, setTip] = useState<{ text: string; top: number } | null>(null);
   const tipTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -83,6 +87,12 @@ export default function SchoolLayout({ children }: { children: React.ReactNode }
       try {
         const d = JSON.parse(s);
         setSchool({ name: d.name, code: d.code });
+        if (d.id) {
+          fetch(`/api/school/access?schoolId=${encodeURIComponent(d.id)}`)
+            .then((r) => (r.ok ? r.json() : null))
+            .then((j) => setIsActive(Boolean(j?.school?.isActive)))
+            .catch(() => {});
+        }
       } catch { /* ignore */ }
     }
   }, []);
@@ -199,6 +209,9 @@ export default function SchoolLayout({ children }: { children: React.ReactNode }
                 >
                   <span style={{ fontSize: 16 }}>{l.emoji}</span>
                   {wide && <span style={{ flex: 1 }}>{l.label}</span>}
+                  {l.locked && isActive === false && (
+                    <span title="Subscribe to unlock this section" style={{ fontSize: 10, opacity: 0.9 }}>🔒</span>
+                  )}
                 </a>
               ))}
             </div>

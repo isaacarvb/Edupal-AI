@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { getDb } from "@/lib/db";
+import { requireActiveSchool } from "@/lib/schools";
 
 export async function DELETE(req: Request) {
   try {
@@ -11,6 +12,8 @@ export async function DELETE(req: Request) {
     }
 
     const db = await getDb();
+    const access = await requireActiveSchool(db, schoolId);
+    if ("error" in access) return access.error;
 
     const count = (await db.prepare("SELECT COUNT(*) AS n FROM school_teachers WHERE school_id = ?").get(schoolId)) as {
       n: number;

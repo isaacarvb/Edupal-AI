@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { getDb } from "@/lib/db";
+import { requireActiveSchool } from "@/lib/schools";
 
 export async function DELETE(req: Request) {
   try {
@@ -20,6 +21,9 @@ export async function DELETE(req: Request) {
     if (!student) {
       return NextResponse.json({ error: "Student not found" }, { status: 404 });
     }
+
+    const access = await requireActiveSchool(db, student.school_id);
+    if ("error" in access) return access.error;
 
     // Remove the roster row and the school membership used by analytics/notes.
     // The users row is kept so any practice history is not destroyed.

@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import SchoolCurriculumView from "@/components/SchoolCurriculumView";
+import SubscriptionGate from "@/components/SubscriptionGate";
 
 export default function TeacherCurriculumPage() {
   const [denied, setDenied] = useState(false);
@@ -24,5 +25,17 @@ export default function TeacherCurriculumPage() {
     );
   }
 
-  return <SchoolCurriculumView />;
+  return (
+    <SubscriptionGate
+      feature="Curriculum & Notes"
+      description="Class-by-class, topic-by-topic notes for every subject you teach."
+      bullets={[
+        "Browse JSS1 to SSS3, subject by subject",
+        "Read objectives, notes, activities and exam focus for each topic",
+        "Print or save any topic for your lesson planning"
+      ]}
+    >
+      <SchoolCurriculumView />
+    </SubscriptionGate>
+  );
 }

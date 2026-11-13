@@ -1,11 +1,28 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import SubscriptionGate from "@/components/SubscriptionGate";
 import { parseCsv, findColumn, normalizeClass, downloadCsv } from "@/lib/csv";
 
 const card: React.CSSProperties = { background: "#fff", border: "1px solid #E2E8F0", borderRadius: 16, padding: 16, margin: "0 0 12px" };
 
-export default function SchoolStudents() {
+export default function SchoolStudentsPage() {
+  return (
+    <SubscriptionGate
+      feature="Student Roster"
+      description="Upload and manage the students who log in with your school code, class by class."
+      bullets={[
+        "Bulk upload a CSV roster with name, class and department",
+        "Every student gets a working EduPal account and practice history",
+        "Seat usage is checked against your paid plan before anything is saved"
+      ]}
+    >
+      <SchoolStudents />
+    </SubscriptionGate>
+  );
+}
+
+function SchoolStudents() {
   const [school, setSchool] = useState<{ id: string; name: string; code: string } | null>(null);
   const [students, setStudents] = useState<{ id: string; name: string; className: string; department: string | null }[]>([]);
   const [search, setSearch] = useState("");

@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { getDb } from "@/lib/db";
+import { requireActiveSchool } from "@/lib/schools";
 
 export async function POST(req: Request) {
   try {
@@ -12,6 +13,12 @@ export async function POST(req: Request) {
     }
 
     const db = await getDb();
+    const note = (await db.prepare("SELECT school_id FROM lesson_notes WHERE id = ?").get(noteId)) as
+      | { school_id: string }
+      | undefined;
+    if (!note) return NextResponse.json({ error: "Lesson note not found" }, { status: 404 });
+    const access = await requireActiveSchool(db, note.school_id);
+    if ("error" in access) return access.error;
     const now = new Date().toISOString();
 
     await db.prepare(

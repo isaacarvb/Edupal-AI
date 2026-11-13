@@ -1,12 +1,29 @@
 "use client";
 import { useEffect, useState } from "react";
+import SubscriptionGate from "@/components/SubscriptionGate";
 
 const card: React.CSSProperties = { background: "#fff", border: "1px solid #E2E8F0", borderRadius: 16, padding: 16, margin: "0 0 12px" };
 const input: React.CSSProperties = { height: 44, borderRadius: 10, border: "1px solid #CBD5E1", padding: "0 12px", fontSize: 14, width: "100%", boxSizing: "border-box" };
 
 type Note = { id: string; subject: string; topic: string; body: string; status: string; className: string; createdAt: string; attachmentUrl: string | null; attachmentName: string | null };
 
-export default function TeacherLessonNotes() {
+export default function TeacherLessonNotesPage() {
+  return (
+    <SubscriptionGate
+      feature="Lesson Notes"
+      description="Write lesson notes for your classes and send them to the VP for review."
+      bullets={[
+        "Draft notes by class, subject and topic",
+        "Attach a file if you already have one",
+        "Approved notes are shared with your students"
+      ]}
+    >
+      <TeacherLessonNotes />
+    </SubscriptionGate>
+  );
+}
+
+function TeacherLessonNotes() {
   const [userId, setUserId] = useState<string | null>(null);
   const [denied, setDenied] = useState(false);
   const [notes, setNotes] = useState<Note[]>([]);

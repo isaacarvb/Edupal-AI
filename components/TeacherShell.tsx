@@ -25,6 +25,7 @@ export default function TeacherShell({ children }: { children: React.ReactNode }
   const [open, setOpen] = useState(false);
   const [collapsed, setCollapsed] = useState(false);
   const [classesOpen, setClassesOpen] = useState(true);
+  const [subActive, setSubActive] = useState<boolean | null>(null);
   const [tip, setTip] = useState<{ text: string; top: number } | null>(null);
   const tipTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -78,6 +79,10 @@ export default function TeacherShell({ children }: { children: React.ReactNode }
           if (Array.isArray(d?.teacher?.classes)) setClasses(d.teacher.classes);
           if (typeof d?.pendingNotes === "number") setPendingNotes(d.pendingNotes);
         });
+      fetch(`/api/school/access?userId=${encodeURIComponent(id)}`)
+        .then((r) => (r.ok ? r.json() : null))
+        .then((d) => setSubActive(Boolean(d?.school?.isActive)))
+        .catch(() => {});
     }
   }, [path, search]);
 
@@ -208,6 +213,9 @@ export default function TeacherShell({ children }: { children: React.ReactNode }
         >
           <span style={{ fontSize: 16 }}>🗂️</span>
           {wide && <span style={{ flex: 1 }}>Curriculum</span>}
+          {subActive === false && (
+            <span title="Subscribe to unlock this section" style={{ fontSize: 10, opacity: 0.9 }}>🔒</span>
+          )}
         </a>
 
         <a href={`/teacher/lesson-notes${q}`}
@@ -218,6 +226,9 @@ export default function TeacherShell({ children }: { children: React.ReactNode }
         >
           <span style={{ fontSize: 16 }}>📝</span>
           {wide && <span style={{ flex: 1 }}>Lesson Notes</span>}
+          {subActive === false && (
+            <span title="Subscribe to unlock this section" style={{ fontSize: 10, opacity: 0.9 }}>🔒</span>
+          )}
           {wide && pendingNotes > 0 && (
             <span title={`${pendingNotes} awaiting review`} style={{ background: "#F59E0B", color: "#1E242E", fontSize: 10, fontWeight: 800, borderRadius: 999, padding: "1px 7px" }}>
               {pendingNotes}
@@ -233,6 +244,9 @@ export default function TeacherShell({ children }: { children: React.ReactNode }
         >
           <span style={{ fontSize: 16 }}>📋</span>
           {wide && <span style={{ flex: 1 }}>Question Bank</span>}
+          {subActive === false && (
+            <span title="Subscribe to unlock this section" style={{ fontSize: 10, opacity: 0.9 }}>🔒</span>
+          )}
         </a>
 
         <SectionLabel>Resources</SectionLabel>
@@ -245,6 +259,9 @@ export default function TeacherShell({ children }: { children: React.ReactNode }
         >
           <span style={{ fontSize: 16 }}>📄</span>
           {wide && <span style={{ flex: 1 }}>Approved Notes</span>}
+          {subActive === false && (
+            <span title="Subscribe to unlock this section" style={{ fontSize: 10, opacity: 0.9 }}>🔒</span>
+          )}
         </a>
       </nav>
       <div style={{ padding: 10, borderTop: "1px solid #333A45" }}>

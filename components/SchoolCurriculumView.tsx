@@ -59,6 +59,20 @@ function classCard(name: string, onOpen: () => void, chips?: string[]) {
   );
 }
 
+// School admins sign in with the school email and only store the school id.
+// Teachers store a real user id, so they are resolved by userId instead.
+function authQuery(): string {
+  const role = typeof window === "undefined" ? "" : localStorage.getItem("edupal_role") ?? "";
+  if (role !== "SCHOOL_TEACHER") {
+    try {
+      const raw = localStorage.getItem("edupal_school");
+      const id = raw ? String(JSON.parse(raw)?.id ?? "") : "";
+      if (id) return `&schoolId=${encodeURIComponent(id)}`;
+    } catch { /* fall through to userId */ }
+  }
+  return `&userId=${encodeURIComponent(localStorage.getItem("edupal_user") ?? "")}`;
+}
+
 export default function SchoolCurriculum() {
   const [selectedClass, setSelectedClass] = useState<string | null>(null);
   const [overview, setOverview] = useState<Overview | null>(null);
@@ -74,7 +88,7 @@ export default function SchoolCurriculum() {
     if (!selectedClass) return;
     setLoadingOverview(true);
     setError("");
-    fetch(`/api/school/curriculum?className=${encodeURIComponent(selectedClass)}`)
+    fetch(`/api/school/curriculum?className=${encodeURIComponent(selectedClass)}${authQuery()}`)
       .then((r) => r.json())
       .then((d) => {
         if (d.error) throw new Error(d.error);
@@ -101,7 +115,7 @@ export default function SchoolCurriculum() {
     setOpenTopic(null);
     setLoadingSubject(true);
     setError("");
-    fetch(`/api/school/curriculum?className=${encodeURIComponent(selectedClass)}&subject=${encodeURIComponent(name)}`)
+    fetch(`/api/school/curriculum?className=${encodeURIComponent(selectedClass)}&subject=${encodeURIComponent(name)}${authQuery()}`)
       .then((r) => r.json())
       .then((d) => {
         if (d.error) throw new Error(d.error);

@@ -4,6 +4,7 @@ import { hashPassword } from "@/lib/password";
 import { randomUUID } from "crypto";
 import { canonicalDepartment } from "@/lib/syllabus";
 import { normalizeClass } from "@/lib/csv";
+import { requireActiveSchool } from "@/lib/schools";
 
 // Bulk teacher roster import.
 //
@@ -27,6 +28,8 @@ export async function POST(req: Request) {
     }
 
     const db = await getDb();
+    const access = await requireActiveSchool(db, schoolId);
+    if ("error" in access) return access.error;
 
     const school = await db.prepare("SELECT id FROM schools WHERE id = ?").get(schoolId);
     if (!school) return NextResponse.json({ error: "School not found" }, { status: 404 });

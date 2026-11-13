@@ -4,6 +4,7 @@ import { logAudit } from "@/lib/admin";
 import {
   requireSchoolAdmin,
   requireSchoolTeacher,
+  requireActiveSchool,
   createSchoolTeacher,
   deleteSchoolTeacher,
   getSchoolTeachers,
@@ -33,6 +34,8 @@ export async function GET(req: Request) {
       teacherOnly = true;
       teacherId = teacher.id;
     }
+    const gate = await requireActiveSchool(db, targetSchoolId);
+    if ("error" in gate) return gate.error;
     const teachers = await getSchoolTeachers(db, targetSchoolId!);
     return NextResponse.json({
       teachers: teacherOnly ? teachers.filter((t) => t.id === teacherId) : teachers,
@@ -49,6 +52,8 @@ export async function POST(req: Request) {
   try {
     const { school } = await requireSchoolAdmin(db, String(b?.userId ?? ""));
     const adminId = school.adminUserId ?? "";
+    const gate = await requireActiveSchool(db, school.id);
+    if ("error" in gate) return gate.error;
     const name = String(b?.name ?? "").trim();
     const email = String(b?.email ?? "").trim().toLowerCase();
     const password = String(b?.password ?? "");
@@ -74,6 +79,8 @@ export async function DELETE(req: Request) {
   const db = await getDb();
   try {
     const { school } = await requireSchoolAdmin(db, userId);
+    const gate = await requireActiveSchool(db, school.id);
+    if ("error" in gate) return gate.error;
     const target = await getTeacherById(db, teacherId ?? "");
     if (!target) return NextResponse.json({ error: "teacher not found" }, { status: 404 });
     if (target.schoolId !== school.id) return NextResponse.json({ error: "forbidden: not your school" }, { status: 403 });
