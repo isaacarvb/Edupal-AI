@@ -404,10 +404,10 @@ async function pgMigrate(): Promise<void> {
       if (!(await hasAsCol("school_id"))) await db.prepare("ALTER TABLE assignments ADD COLUMN school_id TEXT NOT NULL DEFAULT ''").run();
       if (!(await hasAsCol("teacher_id"))) await db.prepare("ALTER TABLE assignments ADD COLUMN teacher_id TEXT NOT NULL DEFAULT ''").run();
       if (!(await hasAsCol("instructions"))) await db.prepare("ALTER TABLE assignments ADD COLUMN instructions TEXT NOT NULL DEFAULT ''").run();
-      if (!(await hasAsCol("start_date"))) await db.prepare("ALTER TABLE assignments ADD COLUMN start_date TEXT").run();
-      if (!(await hasAsCol("end_date"))) await db.prepare("ALTER TABLE assignments ADD COLUMN end_date TEXT").run();
-      if (!(await hasAsCol("attachment_url"))) await db.prepare("ALTER TABLE assignments ADD COLUMN attachment_url TEXT").run();
-      if (!(await hasAsCol("attachment_name"))) await db.prepare("ALTER TABLE assignments ADD COLUMN attachment_name TEXT").run();
+      if (!(await hasAsCol("start_date"))) await db.prepare("ALTER TABLE assignments ADD COLUMN IF NOT EXISTS start_date TEXT").run();
+      if (!(await hasAsCol("end_date"))) await db.prepare("ALTER TABLE assignments ADD COLUMN IF NOT EXISTS end_date TEXT").run();
+      if (!(await hasAsCol("attachment_url"))) await db.prepare("ALTER TABLE assignments ADD COLUMN IF NOT EXISTS attachment_url TEXT").run();
+      if (!(await hasAsCol("attachment_name"))) await db.prepare("ALTER TABLE assignments ADD COLUMN IF NOT EXISTS attachment_name TEXT").run();
       if (!(await hasAsCol("due_at"))) await db.prepare("ALTER TABLE assignments ADD COLUMN due_at TEXT").run();
       const hasBcCol = async (col: string) =>
         ((await db.prepare("SELECT 1 FROM information_schema.columns WHERE table_name = 'broadcasts' AND column_name = $1").get(col)) ? true : false);
