@@ -5,6 +5,7 @@ import { signOut } from "next-auth/react";
 import TopBar from "./TopBar";
 import AdminViewBanner from "./AdminViewBanner";
 import NoticeBell from "./NoticeBell";
+import StudyTimeHeartbeat from "./StudyTimeHeartbeat";
 import SchoolShell from "./SchoolShell";
 import TeacherShell from "./TeacherShell";
 
@@ -362,6 +363,7 @@ export default function Shell({ children }: { children: React.ReactNode }) {
         {children}
       </div>
       {userId && <NoticeBell userId={userId} />}
+      {userId && env === "individual" && <StudyTimeHeartbeat />}
       {classroom && (
         <div style={{ position: "fixed", bottom: 14, left: "50%", transform: "translateX(-50%)", zIndex: 70,
           background: "#1E242E", color: "#fff", borderRadius: 999, padding: "8px 8px 8px 16px",

@@ -13,6 +13,7 @@ function SettingsInner() {
   const [language, setLanguage] = useState("SIMPLE");
   const [lite, setLite] = useState(false);
   const [dark, setDark] = useState(false);
+  const [leaderboardHidden, setLeaderboardHidden] = useState(false);
   const [cur, setCur] = useState("");
   const [next, setNext] = useState("");
   const [confirm, setConfirm] = useState("");
@@ -53,6 +54,10 @@ function SettingsInner() {
           setNotConfirmed(Number(d.profile.datesConfirmed ?? 1) === 0);
         }
       });
+      fetch(`/api/leaderboard/settings?userId=${encodeURIComponent(id)}`)
+        .then((r) => (r.ok ? r.json() : null))
+        .then((d) => setLeaderboardHidden(Boolean(d?.hidden)))
+        .catch(() => {});
     }
   }, [params]);
 
@@ -197,6 +202,23 @@ function SettingsInner() {
     });
   }
 
+  async function toggleLeaderboard() {
+    const next = !leaderboardHidden;
+    setLeaderboardHidden(next);
+    try {
+      const res = await fetch("/api/leaderboard/settings", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ userId, hidden: next })
+      });
+      if (!res.ok) throw new Error("failed");
+      setMsg(next ? "Hidden from the leaderboard." : "You are back on the leaderboard.");
+    } catch {
+      setLeaderboardHidden(!next);
+      setMsg("Could not update leaderboard visibility.");
+    }
+  }
+
   function Toggle({ on, onClick, label }: { on: boolean; onClick: () => void; label: string }) {
     return (
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "8px 0" }}>
@@ -268,6 +290,11 @@ function SettingsInner() {
         </div>
         <Toggle on={dark} onClick={toggleDark} label="Dark mode (Appearance)" />
         <Toggle on={lite} onClick={toggleLite} label="Reduced data mode (text-only)" />
+        <Toggle on={!leaderboardHidden} onClick={toggleLeaderboard} label="Show me on the weekly leaderboard" />
+        <p style={{ fontSize: 12, color: "#5F6E7F", margin: "0 0 4px" }}>
+          The leaderboard shows your first name and last initial only. Switch this off to stay private —
+          your XP and study time are still tracked for you.
+        </p>
       </div>
 
       <div style={group}>

@@ -143,10 +143,10 @@ export async function getAssignments(db: Db, schoolId: string, opts?: {
     id: String(r.id), schoolId: String(r.schoolId), teacherId: String(r.teacherId),
     teacherName: String(r.teacherName ?? ""), className: String(r.className ?? ""),
     subject: String(r.subject ?? ""), topic: String(r.topic ?? ""),
-    instructions: String(r.instructions ?? ""), startDate: r.start_date ? String(r.start_date) : null,
-    endDate: r.end_date ? String(r.end_date) : null,
-    attachmentUrl: r.attachment_url ? String(r.attachment_url) : null,
-    attachmentName: r.attachment_name ? String(r.attachment_name) : null,
+    instructions: String(r.instructions ?? ""), startDate: r.startDate ? String(r.startDate) : null,
+    endDate: r.endDate ? String(r.endDate) : null,
+    attachmentUrl: r.attachmentUrl ? String(r.attachmentUrl) : null,
+    attachmentName: r.attachmentName ? String(r.attachmentName) : null,
     createdAt: String(r.createdAt ?? "")
   }));
 }

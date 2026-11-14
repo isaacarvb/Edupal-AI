@@ -182,6 +182,10 @@ async function sqliteMigrate(): Promise<void> {
   if (!asCols.has("school_id")) h.exec("ALTER TABLE assignments ADD COLUMN school_id TEXT NOT NULL DEFAULT ''");
   if (!asCols.has("teacher_id")) h.exec("ALTER TABLE assignments ADD COLUMN teacher_id TEXT NOT NULL DEFAULT ''");
   if (!asCols.has("instructions")) h.exec("ALTER TABLE assignments ADD COLUMN instructions TEXT NOT NULL DEFAULT ''");
+  if (!asCols.has("start_date")) h.exec("ALTER TABLE assignments ADD COLUMN start_date TEXT");
+  if (!asCols.has("end_date")) h.exec("ALTER TABLE assignments ADD COLUMN end_date TEXT");
+  if (!asCols.has("attachment_url")) h.exec("ALTER TABLE assignments ADD COLUMN attachment_url TEXT");
+  if (!asCols.has("attachment_name")) h.exec("ALTER TABLE assignments ADD COLUMN attachment_name TEXT");
   if (!asCols.has("due_at")) h.exec("ALTER TABLE assignments ADD COLUMN due_at TEXT");
 
   const bcCols = cols("broadcasts");
@@ -245,6 +249,11 @@ async function sqliteMigrate(): Promise<void> {
 
   h.exec("CREATE TABLE IF NOT EXISTS school_notifications (id TEXT PRIMARY KEY, school_id TEXT NOT NULL REFERENCES schools(id) ON DELETE CASCADE, type TEXT NOT NULL DEFAULT '', sent_at TEXT NOT NULL DEFAULT (datetime('now')))");
   h.exec("CREATE INDEX IF NOT EXISTS idx_school_notifications_school ON school_notifications(school_id)");
+
+  // ---- Leaderboard: weekly XP + study time ----
+  h.exec("CREATE TABLE IF NOT EXISTS study_time (user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE, day TEXT NOT NULL, seconds INTEGER NOT NULL DEFAULT 0, updated_at TEXT NOT NULL DEFAULT (datetime('now')), PRIMARY KEY (user_id, day))");
+  h.exec("CREATE INDEX IF NOT EXISTS idx_study_time_day ON study_time(day)");
+  h.exec("CREATE TABLE IF NOT EXISTS leaderboard_settings (user_id TEXT PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE, hidden INTEGER NOT NULL DEFAULT 0, updated_at TEXT NOT NULL DEFAULT (datetime('now')))");
 
   // ---- Security migration: failed login tracking + two-factor auth ----
   const ucols = cols("users");
@@ -395,6 +404,10 @@ async function pgMigrate(): Promise<void> {
       if (!(await hasAsCol("school_id"))) await db.prepare("ALTER TABLE assignments ADD COLUMN school_id TEXT NOT NULL DEFAULT ''").run();
       if (!(await hasAsCol("teacher_id"))) await db.prepare("ALTER TABLE assignments ADD COLUMN teacher_id TEXT NOT NULL DEFAULT ''").run();
       if (!(await hasAsCol("instructions"))) await db.prepare("ALTER TABLE assignments ADD COLUMN instructions TEXT NOT NULL DEFAULT ''").run();
+      if (!(await hasAsCol("start_date"))) await db.prepare("ALTER TABLE assignments ADD COLUMN start_date TEXT").run();
+      if (!(await hasAsCol("end_date"))) await db.prepare("ALTER TABLE assignments ADD COLUMN end_date TEXT").run();
+      if (!(await hasAsCol("attachment_url"))) await db.prepare("ALTER TABLE assignments ADD COLUMN attachment_url TEXT").run();
+      if (!(await hasAsCol("attachment_name"))) await db.prepare("ALTER TABLE assignments ADD COLUMN attachment_name TEXT").run();
       if (!(await hasAsCol("due_at"))) await db.prepare("ALTER TABLE assignments ADD COLUMN due_at TEXT").run();
       const hasBcCol = async (col: string) =>
         ((await db.prepare("SELECT 1 FROM information_schema.columns WHERE table_name = 'broadcasts' AND column_name = $1").get(col)) ? true : false);
@@ -439,6 +452,10 @@ async function pgMigrate(): Promise<void> {
       await db.prepare("CREATE INDEX IF NOT EXISTS idx_school_sessions_school ON school_sessions(school_id)").run();
       await db.prepare("CREATE INDEX IF NOT EXISTS idx_school_sessions_last_activity ON school_sessions(last_activity)").run();
       await db.prepare("CREATE INDEX IF NOT EXISTS idx_school_notifications_school ON school_notifications(school_id)").run();
+      // ---- Leaderboard: weekly XP + study time ----
+      await db.prepare("CREATE TABLE IF NOT EXISTS study_time (user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE, day TEXT NOT NULL, seconds INTEGER NOT NULL DEFAULT 0, updated_at TEXT NOT NULL DEFAULT (TO_CHAR(NOW() AT TIME ZONE 'UTC', 'YYYY-MM-DD\"T\"HH24:MI:SS.MS\"Z\"')), PRIMARY KEY (user_id, day))").run();
+      await db.prepare("CREATE INDEX IF NOT EXISTS idx_study_time_day ON study_time(day)").run();
+      await db.prepare("CREATE TABLE IF NOT EXISTS leaderboard_settings (user_id TEXT PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE, hidden INTEGER NOT NULL DEFAULT 0, updated_at TEXT NOT NULL DEFAULT (TO_CHAR(NOW() AT TIME ZONE 'UTC', 'YYYY-MM-DD\"T\"HH24:MI:SS.MS\"Z\"')))").run();
       // ---- Security migration: failed login tracking + two-factor auth ----
       const hasUCol = async (col: string) =>
         ((await db.prepare("SELECT 1 FROM information_schema.columns WHERE table_name = 'users' AND column_name = $1").get(col)) ? true : false);

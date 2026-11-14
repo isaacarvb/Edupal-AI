@@ -468,3 +468,21 @@ CREATE TABLE IF NOT EXISTS broadcasts (
   created_at TEXT NOT NULL DEFAULT (datetime('now'))
 );
 CREATE INDEX IF NOT EXISTS idx_broadcasts_school ON broadcasts(school_id, starts_at, ends_at);
+
+-- Leaderboard: weekly XP comes from attempts. Study time is heartbeated from
+-- the student app. `day` is a WAT (UTC+1) date string, so the weekly reset is
+-- Monday 00:00 West Africa Time.
+CREATE TABLE IF NOT EXISTS study_time (
+  user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  day TEXT NOT NULL,
+  seconds INTEGER NOT NULL DEFAULT 0,
+  updated_at TEXT NOT NULL DEFAULT (datetime('now')),
+  PRIMARY KEY (user_id, day)
+);
+CREATE INDEX IF NOT EXISTS idx_study_time_day ON study_time(day);
+
+CREATE TABLE IF NOT EXISTS leaderboard_settings (
+  user_id TEXT PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE,
+  hidden INTEGER NOT NULL DEFAULT 0,
+  updated_at TEXT NOT NULL DEFAULT (datetime('now'))
+);

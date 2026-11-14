@@ -1,6 +1,7 @@
 "use client";
 import { Suspense, useEffect, useState } from "react";
 import { useSearchParams } from "next/navigation";
+import { formatStudyTime, type League } from "@/lib/leaderboard-shared";
 
 const card: React.CSSProperties = { background: "#fff", border: "1px solid #E2E8F0", borderRadius: 16, padding: 16, margin: "0 0 12px" };
 
@@ -19,6 +20,7 @@ function DashboardInner() {
   const [schoolBroadcasts, setSchoolBroadcasts] = useState<Array<{ id: string; body: string; className: string | null }>>([]);
   const [schoolAssignments, setSchoolAssignments] = useState<Array<{ id: string; subject: string; topic: string; instructions: string; dueAt: string | null; teacherName: string }>>([]);
   const [schoolStats, setSchoolStats] = useState<{ totalStudents: number; activeWeek: number; avgStreak: number } | null>(null);
+  const [leaderboard, setLeaderboard] = useState<null | { rank: number | null; xp: number; seconds: number; scope: string; hidden: boolean; tier: League }>(null);
   const limited = params.get("limited") ?? "";
 
   function chipStyle(days: number | null): React.CSSProperties {
@@ -63,19 +65,26 @@ function DashboardInner() {
     // School content: membership → notes, broadcasts, assignments for the class.
     fetch(`/api/student/lesson-notes?userId=${userId}`)
       .then((r) => (r.ok ? r.json() : null))
-      .then((d) => { setSchoolNotes(d.notes ?? []); if (d.className) setSchoolMember((p) => p ? { ...p, className: d.className } : null); });
+      .then((d) => { setSchoolNotes(d?.notes ?? []); if (d?.className) setSchoolMember((p) => p ? { ...p, className: d.className } : null); });
     fetch(`/api/student/broadcasts?userId=${userId}`)
       .then((r) => (r.ok ? r.json() : null))
-      .then((d) => { setSchoolBroadcasts(d.broadcasts ?? []); if (d.className) setSchoolMember((p) => p ? { ...p, className: d.className } : null); });
+      .then((d) => { setSchoolBroadcasts(d?.broadcasts ?? []); if (d?.className) setSchoolMember((p) => p ? { ...p, className: d.className } : null); });
     fetch(`/api/student/assignments?userId=${userId}`)
       .then((r) => (r.ok ? r.json() : null))
-      .then((d) => { setSchoolAssignments(d.assignments ?? []); if (d.className) setSchoolMember((p) => p ? { ...p, className: d.className } : null); });
+      .then((d) => { setSchoolAssignments(d?.assignments ?? []); if (d?.className) setSchoolMember((p) => p ? { ...p, className: d.className } : null); });
     // Fetch membership directly to get schoolId (needed if other endpoints return empty).
     fetch(`/api/school/member?userId=${userId}`).then((r) => r.ok ? r.json() : null).then((d) => { if (d?.schoolId) setSchoolMember({ schoolId: d.schoolId, className: d.className ?? "" }); }).catch(() => {});
     // Fetch school stats
     fetch(`/api/school/overview?userId=${userId}`)
       .then((r) => (r.ok ? r.json() : null))
       .then((d) => { if (d?.summary) setSchoolStats(d.summary); }).catch(() => {});
+    // Weekly leaderboard position (school board when the student has a school).
+    fetch(`/api/leaderboard?userId=${userId}&scope=auto&metric=xp`)
+      .then((r) => (r.ok ? r.json() : null))
+      .then((d) => {
+        if (d?.me) setLeaderboard({ rank: d.me.rank, xp: d.me.xp, seconds: d.me.seconds, scope: d.scope, hidden: d.me.hidden, tier: d.me.tier });
+      })
+      .catch(() => {});
   }
 
   useEffect(refresh, [userId]);
@@ -234,6 +243,112 @@ function DashboardInner() {
             </div>
           </div>
         </div>
+
+        {/* LEADERBOARD */}
+        <aside style={{ flex: "1 1 260px", minWidth: 0 }}>
+          <div
+            style={{
+              background: "linear-gradient(150deg, #1E1B4B 0%, #4338CA 55%, #0F766E 100%)",
+              borderRadius: 16,
+              padding: 16,
+              color: "#fff",
+              boxShadow: "0 16px 32px -22px rgb(67 56 202 / 0.7)"
+            }}
+          >
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 8 }}>
+              <span style={{ fontSize: 11, fontWeight: 900, letterSpacing: 1.2, textTransform: "uppercase", color: "#C7D2FE" }}>
+                🏆 This week
+              </span>
+              {leaderboard && (
+                <span style={{ fontSize: 11, fontWeight: 900, background: "rgba(255,255,255,0.16)", border: "1px solid rgba(255,255,255,0.28)", borderRadius: 999, padding: "3px 9px", whiteSpace: "nowrap" }}>
+                  {leaderboard.tier.emoji} {leaderboard.tier.name}
+                </span>
+              )}
+            </div>
+
+            {leaderboard ? (
+              <>
+                <div style={{ display: "flex", alignItems: "baseline", gap: 6, margin: "10px 0 2px" }}>
+                  <span style={{ fontSize: 34, fontWeight: 900, lineHeight: 1 }}>
+                    {leaderboard.hidden ? "—" : leaderboard.rank ? `#${leaderboard.rank}` : "—"}
+                  </span>
+                  <span style={{ fontSize: 12, fontWeight: 700, color: "#E0E7FF" }}>
+                    {leaderboard.hidden
+                      ? "hidden"
+                      : leaderboard.scope === "class"
+                        ? "in your class"
+                        : leaderboard.scope === "school"
+                          ? "in your school"
+                          : "worldwide"}
+                  </span>
+                </div>
+                <div style={{ display: "flex", gap: 18, marginTop: 10 }}>
+                  <div>
+                    <div style={{ fontSize: 10, fontWeight: 900, letterSpacing: 0.8, textTransform: "uppercase", color: "#A5B4FC" }}>XP</div>
+                    <div style={{ fontSize: 18, fontWeight: 900 }}>{leaderboard.xp.toLocaleString()}</div>
+                  </div>
+                  <div>
+                    <div style={{ fontSize: 10, fontWeight: 900, letterSpacing: 0.8, textTransform: "uppercase", color: "#A5B4FC" }}>Study time</div>
+                    <div style={{ fontSize: 18, fontWeight: 900 }}>{formatStudyTime(leaderboard.seconds)}</div>
+                  </div>
+                </div>
+                <a
+                  href="/leaderboard"
+                  style={{
+                    display: "block",
+                    marginTop: 14,
+                    textAlign: "center",
+                    background: "#fff",
+                    color: "#1E1B4B",
+                    borderRadius: 10,
+                    height: 40,
+                    lineHeight: "40px",
+                    fontWeight: 800,
+                    fontSize: 13,
+                    textDecoration: "none"
+                  }}
+                >
+                  View leaderboard →
+                </a>
+                <p style={{ margin: "8px 0 0", fontSize: 11, color: "#C7D2FE", textAlign: "center" }}>
+                  Resets Monday 00:00 WAT
+                </p>
+              </>
+            ) : (
+              <>
+                <p style={{ margin: "10px 0 12px", fontSize: 13, lineHeight: 1.6, color: "#E0E7FF" }}>
+                  Practise to earn XP and see how you rank against your class and school.
+                </p>
+                <a
+                  href="/leaderboard"
+                  style={{
+                    display: "block",
+                    textAlign: "center",
+                    background: "#fff",
+                    color: "#1E1B4B",
+                    borderRadius: 10,
+                    height: 40,
+                    lineHeight: "40px",
+                    fontWeight: 800,
+                    fontSize: 13,
+                    textDecoration: "none"
+                  }}
+                >
+                  Open leaderboard →
+                </a>
+              </>
+            )}
+          </div>
+
+          <div style={{ ...card, marginTop: 12 }}>
+            <div style={{ fontSize: 11, fontWeight: 900, letterSpacing: 1, textTransform: "uppercase", color: "#94A3B8", marginBottom: 6 }}>
+              How XP works
+            </div>
+            <p style={{ margin: 0, fontSize: 12, color: "#5F6E7F", lineHeight: 1.7 }}>
+              +10 XP per correct answer, +2 for trying. Capped at 300 XP a day so everyone has a fair race.
+            </p>
+          </div>
+        </aside>
       </div>
     </main>
   );
